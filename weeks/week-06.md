@@ -145,6 +145,32 @@ Remember that one schedule. When Chinchilla disagrees two years later, it blames
 
 ---
 
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3, App. D · The experiments</p>
+
+## Which experiments did they run?
+
+<table class="rules">
+  <tr><td>#</td><td>varied</td><td>runs</td><td>gives</td><td>figures</td></tr>
+  <tr><td>1</td><td>model size</td><td>768 to 1.5B, all of WebText2</td><td>$L(N)$, $L(C)$, learning curves</td><td>1, 2, 4, 6, 8, 11, 13, 14</td></tr>
+  <tr><td>2</td><td>shape</td><td>fixed $N$: depth, width, heads, feed-forward</td><td>shape barely matters</td><td>5</td></tr>
+  <tr><td>3</td><td>model × data</td><td>22M to 23B tokens, early stop</td><td>$L(D)$, $L(N, D)$, overfitting</td><td>1, 4, 9, 16</td></tr>
+  <tr><td>4</td><td>batch size</td><td>3M and 85M models</td><td>critical batch $B_{\rm crit}(L)$</td><td>10, 18</td></tr>
+  <tr><td>5</td><td>schedule</td><td>a 3M model</td><td>schedule barely matters</td><td>22</td></tr>
+  <tr><td>6</td><td>architecture</td><td>LSTMs, recurrent Transformers</td><td>LSTMs worse on late tokens</td><td>7, 17</td></tr>
+  <tr><td>7</td><td>context</td><td>8-token contexts</td><td>better on the first tokens</td><td>21</td></tr>
+</table>
+
+<p class="footnote">Kaplan et al. 2020 · §3, App. D. The numbering is ours; the paper doesn't number its experiments. §6's compute allocation is fitted from 1 and 4, not new runs. Schedule: learning-rate schedule. Figures: the main ones</p>
+
+Note:
+The paper doesn't number its experiments, so here is the list we'll use for the rest of this section. Section 3 opens by naming what they varied: model size, dataset size, shape, context length and batch size. The appendices add a learning-rate schedule scan and the comparison with other architectures.
+Experiment 1 is the backbone: models from 768 to 1.5 billion non-embedding parameters, many shapes, all trained on the whole of WebText2 for 250,000 steps. Most of the paper's figures come from these runs: the size law, the compute law read off their learning curves, the learning-curve law, and the transfer to other text.
+Experiments 2, 3 and 4 each vary one more thing: the shape at fixed size; dataset size crossed with model size, with early stopping; and the batch size, on two small models. Keep experiment 4 in mind. Its critical batch size is what turns raw compute into the adjusted compute later on.
+Experiments 5, 6 and 7 are checks: the learning-rate schedule, LSTMs and recurrent Transformers, and models trained on an 8-token context.
+The compute-allocation result of Section 6 isn't a new experiment; it's fitted from experiments 1 and 4. From here on, the running header of each results slide says which experiment it comes from, or "from the fit" when the slide is derived rather than measured.
+
+---
+
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2.1 · Eq. 2.1</p>
 
 ## Where does $N \approx 12\thinspace  n_{\rm layer}\thinspace  d_{\rm model}^2$ come from?
@@ -211,7 +237,7 @@ What it leaves out: the attention computation over the context, which the paper 
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.1 · Fig. 2</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §1.1 · Fig. 2</p>
 
 ## Does even one training run follow a power law?
 
@@ -239,7 +265,7 @@ That regularity is the hint that loss as a function of scale might be a power la
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · Eq. 1.6, Fig. 4</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §5.2 · Eq. 1.6, Fig. 4</p>
 
 ## A power law in steps, on top of a floor
 
@@ -265,7 +291,7 @@ Two caveats, both from the paper. It only fits after an initial transient, the w
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · Fig. 4 (right)</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §5.2 · Fig. 4 (right)</p>
 
 ## Do real learning curves fit it?
 
@@ -291,7 +317,7 @@ Optional. The measured learning curves (solid) against the fitted equation (dott
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. D.6 · Fig. 22</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 5, learning-rate schedule · App. D.6 · Fig. 22</p>
 
 ## Does the learning-rate schedule change it?
 
@@ -347,7 +373,7 @@ That constant ratio is what makes extrapolation possible: estimate the exponent 
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.2 · Eq. 1.1 to 1.3</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 3 · §1.2 · Eq. 1.1 to 1.3</p>
 
 ## The three laws: what does 10x of each buy?
 
@@ -379,7 +405,7 @@ The constants N_c and D_c depend on the tokenizer; the paper says they have no f
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · Fig. 5</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 2, shape · §3.1 · Fig. 5</p>
 
 ## Deep and narrow, or shallow and wide?
 
@@ -411,7 +437,7 @@ The limits: within reasonable shapes, standard Transformers only. Models with on
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · Fig. 6</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §3.2 · Fig. 6</p>
 
 ## Why leave the embeddings out of $N$?
 
@@ -439,7 +465,7 @@ What can go wrong: for a small model the embedding table dwarfs the rest. A 2-la
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · Fig. 8</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §3.2.2 · Fig. 8</p>
 
 ## Does it carry over to other text?
 
@@ -466,7 +492,7 @@ What it does not show: robustness to any distribution shift. These are all Engli
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4 Charting the infinite data limit</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 3, model × data · §4 Charting the infinite data limit</p>
 
 ## What if model and data are both limited?
 
@@ -495,7 +521,7 @@ The figure: loss against model size for datasets from 21 million to 22 billion t
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.2 · Fig. 9 (right)</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 3, model × data · §4.2 · Fig. 9 (right)</p>
 
 ## When does a bigger model stop helping?
 
@@ -525,7 +551,7 @@ A detail: 0.74 is the ratio of the joint-fit exponents, 0.076 over 0.103. The se
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.2 · Eq. 4.4</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 3 fit · §4.2 · Eq. 4.4</p>
 
 ## How much data does a billion-parameter model need?
 
@@ -560,7 +586,7 @@ But note the paper's own warning: this is the data needed to avoid overfitting, 
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1 · App. D.3, Fig. 18</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 4, batch size · §5.1 · App. D.3, Fig. 18</p>
 
 ## How big can a batch be before it's wasteful?
 
@@ -589,7 +615,7 @@ The critical batch size is E_min over S_min. Training at it costs twice the mini
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1 · Fig. 10</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 4, batch size · §5.1 · Fig. 10</p>
 
 ## Why does the critical batch grow as loss falls?
 
@@ -618,7 +644,7 @@ Why this matters for the main result: every run used one fixed batch of half a m
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · Fig. 11</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §5.2 · Fig. 11</p>
 
 ## Fixed compute vs fixed steps: which size wins?
 
@@ -642,7 +668,7 @@ The top panel is the seed of the whole Chinchilla paper: a U-shaped curve at fix
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6 Optimal allocation of the compute budget</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §6 Optimal allocation of the compute budget</p>
 
 ## The question, as an optimisation
 
@@ -677,7 +703,7 @@ The batch isn't free either: training at the critical batch means B grows as the
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6 · App. B</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §6 · App. B</p>
 
 ## Where is the balance?
 
@@ -712,7 +738,7 @@ That's the paper's most practical claim: for a fixed budget, a bigger model stop
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. B · Fig. 12</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · App. B · Fig. 12</p>
 
 ## How much does early stopping save?
 
@@ -740,7 +766,7 @@ Figure 12 shows the optimum is flat: models from 0.6 to 2.2 times the optimal si
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.2 · Eq. 1.7, 1.8</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §1.2 · Eq. 1.7, 1.8</p>
 
 ## How fast should each knob grow?
 
@@ -777,7 +803,7 @@ With the fitted values, alpha_C is about 0.05, matching the measured compute law
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 14</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §6.1 · Fig. 14</p>
 
 ## The measured answer: $N_{\rm opt} \propto C_{\min}^{0.73}$
 
@@ -806,7 +832,7 @@ Hold on to how it was measured: these frontier points are checkpoints read partw
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 13</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §6.1 · Fig. 13</p>
 
 ## Why adjust for the batch?
 
@@ -828,7 +854,7 @@ Optional. The compute frontier before and after the batch adjustment. The author
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.1 · Fig. 3</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §1.1 · Fig. 3</p>
 
 ## A billion times the compute, spent how?
 
@@ -851,7 +877,7 @@ Optional. The same allocation drawn as shares of a billion-fold increase in comp
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Table 6</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §6.1 · Table 6</p>
 
 ## What does 100x more compute buy, Kaplan's way?
 
@@ -878,7 +904,7 @@ This is what people mean when they say Kaplan's laws favour bigger models over m
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.3 · Fig. 15</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1, 3 and 4 · §6.3 · Fig. 15</p>
 
 ## Where do the laws break?
 
