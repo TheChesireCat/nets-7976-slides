@@ -169,6 +169,25 @@ Experiments 2, 3 and 4 each vary one more thing: the shape at fixed size; datase
 Experiments 5, 6 and 7 are checks: the learning-rate schedule, LSTMs and recurrent Transformers, and models trained on an 8-token context.
 The compute-allocation result of Section 6 isn't a new experiment; it's fitted from experiments 1 and 4. From here on, the running header of each results slide says which experiment it comes from, or "from the fit" when the slide is derived rather than measured.
 
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1, 3 and 4 · How the figures are made</p>
+
+## How do the same runs become most of the figures?
+
+<div class="rows">
+<div class="fig"><img src="img/week-06-kaplan-pipeline.svg" alt="Diagram: experiment 1's learning curves feed five uses: loss at the end of each run gives L(N) (Fig. 1 right, 6); the same models on other text give transfer (Fig. 8); rescaling to compute and taking the lowest curve gives the frontier L(C_min) (Fig. 1 left, 13); steps adjusted to S_min give the L(N, S) fit (Fig. 4 right, 11); the best N along the frontier gives N_opt proportional to C_min^0.73 (Fig. 14). Experiment 4's critical batch size adjusts the last three. Experiment 3, on data subsets with early stopping, separately gives L(D) and L(N, D) (Fig. 1 middle, 4 left, 9)"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §2.2, §3.2, §3.3, §4, §5, §6. Diagram ours. $C_{\min} = C/(1 + B/B_{\rm crit}(L))$; Fig. 1 left is already on $C_{\min}$ (its footnote), Fig. 13 sets it beside raw $C$. 250k steps × $2^{19}$ tokens ≈ $1.3\times10^{11}$ tokens, about 5.7 passes over WebText2 (ours)</p>
+
+Note:
+Most of the paper's figures are not separate experiments. They are the same experiment 1 runs, looked at in different ways.
+Every model in experiment 1 is trained the same way: 250,000 steps at a batch of 512 sequences of 1,024 tokens, so about half a million tokens per step, the same batch for every size. Nobody tuned the batch per model; the paper says the best batch is "a moving target". That's about 1.3 times 10 to the 11 tokens per run, roughly five or six passes over WebText2, by our arithmetic. The paper doesn't give the count; it says the models were trained near convergence with no overfitting except possibly the largest.
+The test loss is logged as each run trains. Those learning curves are Figure 2. From them: the final loss of each run against its size is L of N. Multiply the token axis by 6N to get compute, and the lowest curve at each compute value is the frontier, L of C.
+Experiment 4 comes in here. Its critical batch size converts the steps and compute of these fixed-batch runs into what they would have been at a small batch, S min and C min. With that, the curves fit L of N and S, Figure 4 right, and reading off the best model size along the frontier gives the allocation, Figure 14.
+L of D is the exception. It doesn't come from experiment 1 at all: it's experiment 3, one model trained on smaller and smaller subsets with early stopping.
+
 ---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2.1 · Eq. 2.1</p>
