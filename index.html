@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETS-7976 Slides</title>
+  <link rel="stylesheet" href="reader.css?v=202610291622">
+</head>
+<body class="reader">
+  <main class="weeks">
+    <h1>Foundations of Transformers and LLMs</h1>
+    <p class="lead">NETS-7976 weekly reading decks. Tap a week to read it on a phone; each slide has its speaker notes underneath.</p>
+    <div id="weeks"><p class="lead">Loading…</p></div>
+  </main>
+  <script>
+    // List every week-NN.html that exists, with the subtitle from its title slide. No list to keep up to date.
+    (async () => {
+      const box = document.getElementById('weeks');
+      const nums = Array.from({ length: 16 }, (_, i) => String(i + 1).padStart(2, '0'));
+      const found = await Promise.all(nums.map(async n => {
+        try {
+          const r = await fetch(`week-${n}.html`, { cache: 'no-cache' });
+          if (!r.ok) return null;
+          const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+          const sub = doc.querySelector('.subtitle')?.textContent.trim() || doc.title;
+          const date = doc.querySelector('.date')?.textContent.trim() || '';
+          return { n, sub, date };
+        } catch (e) { return null; }
+      }));
+      box.innerHTML = '';
+      found.filter(Boolean).forEach(({ n, sub, date }) => {
+        const [head, ...rest] = sub.split(' · ');
+        box.insertAdjacentHTML('beforeend',
+          `<a class="week" href="read.html?week=${n}"><b>${head}</b><span>${rest.join(' · ') || ''}</span></a>` +
+          `<a class="deck-link" href="week-${n}.html">${date ? date + ' · ' : ''}open as slides</a>`);
+      });
+      if (!box.children.length) box.innerHTML = '<p class="lead">No weeks found.</p>';
+    })();
+  </script>
+</body>
+</html>

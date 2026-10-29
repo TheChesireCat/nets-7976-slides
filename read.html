@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETS-7976 · Reader</title>
+  <!-- Phone reader: one week's deck as a vertical stack of slide panels with speaker notes under each.
+       Opens as read.html?week=06. It loads week-NN.html and its weeks/week-NN.md through reveal.js (same markdown,
+       math and stylesheets as the deck), then lifts every slide out of reveal into its own scaled panel. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/theme/white.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight/monokai.css">
+  <link rel="stylesheet" href="reader.css?v=202610291622">
+</head>
+<body class="reader">
+  <header class="bar">
+    <a class="home" href="index.html">‹ Weeks</a>
+    <span class="title" id="title">Loading…</span>
+    <select id="jump" aria-label="Jump to a section"><option value="">Jump to…</option></select>
+    <button id="notes-all" type="button" aria-pressed="false">Notes</button>
+  </header>
+  <button id="resume" type="button" hidden></button>
+  <main id="list"><p class="status" id="status">Loading slides…</p></main>
+
+  <div id="zoom" hidden>
+    <div class="zoom-slide" id="zoom-slide"></div>
+    <div class="zoom-controls">
+      <button type="button" id="zoom-prev" aria-label="Previous slide">‹</button>
+      <span id="zoom-num"></span>
+      <button type="button" id="zoom-next" aria-label="Next slide">›</button>
+      <button type="button" id="zoom-close" aria-label="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- reveal.js renders the deck here once, off screen; the slides are then moved into #list. -->
+  <div id="source" aria-hidden="true"><div class="reveal"><div class="slides"></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/markdown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/math.js"></script>
+  <script src="frame.js?v=202610291622"></script>
+  <script src="reader.js?v=202610291622"></script>
+</body>
+</html>

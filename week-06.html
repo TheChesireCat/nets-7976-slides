@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NETS-7976 · Week 6 · Scaling Laws and Emergent Behaviors</title>
+
+  <!-- reveal.js pinned from the CDN: no npm install, no build step. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/theme/white.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight/monokai.css">
+  <link rel="stylesheet" href="style.css?v=202610291622">
+  <link rel="stylesheet" href="lecture.css?v=202610291622">
+</head>
+<body>
+  <div class="reveal show-controls">
+    <div class="slides">
+
+      <section class="cover">
+        <div class="wordmark"><b>NETS</b><br><span>7976</span></div>
+        <h1>Foundations of Transformers and LLMs</h1>
+        <p class="subtitle">Week 6 · Scaling Laws and Emergent Behaviors</p>
+        <p class="author">Ankit</p>
+        <p class="email">ramakrishnan.ank@northeastern.edu</p>
+        <p class="affiliation">Northeastern University</p>
+        <p class="date">Wednesday October 21, 2026</p>
+      </section>
+
+      <!-- This week's content. "---" = next slide, "--" = vertical slide, "Note:" = speaker notes. -->
+      <section data-markdown="weeks/week-06.md" data-separator="^\n---\n$" data-separator-vertical="^\n--\n$" data-separator-notes="^Note:"></section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/markdown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.2/dist/plugin/notes.js"></script>
+  <script src="frame.js?v=202610291622"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,        // slide id in the URL: jump to a slide by id
+      controls: true,
+      controlsBackArrows: 'visible', // keep up/left arrows visible inside optional vertical stacks
+      slideNumber: 'c/t',
+      width: 1280,
+      height: 720,
+      center: false,     // slides read top-left like a page
+      margin: 0,         // lecture.css sets the page margins itself
+      plugins: [RevealMarkdown, RevealHighlight, RevealMath.KaTeX, RevealNotes],
+    });
+
+    // Header / stage / footer wrapper for each content slide (frame.js, shared with the phone reader).
+    Reveal.on('ready', () => { wrapFrames(document); Reveal.layout(); });
+  </script>
+</body>
+</html>
