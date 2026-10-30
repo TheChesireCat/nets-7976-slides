@@ -1823,7 +1823,7 @@ The state of play in 2022. Following Kaplan, models had grown from GPT-3's 175 b
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4 · Tables 1, 6</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4 · Tables 1, 6</p>
 
 ## The headline experiment
 
@@ -1957,7 +1957,33 @@ Then they estimate the optimal allocation three ways. That's a strength: they do
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1 Approach 1 · Fig. 2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3, §4, App. B to G · The experiments</p>
+
+## Which experiments did they run?
+
+<table class="rules">
+  <tr><td>#</td><td>varied</td><td>runs</td><td>gives</td><td>figures</td></tr>
+  <tr><td>1</td><td>tokens, at fixed sizes</td><td>70M to 10B, 4 schedules each</td><td>the envelope: best size per budget</td><td>2, A5</td></tr>
+  <tr><td>2</td><td>size, at fixed compute</td><td>9 budgets, $6 \times 10^{18}$ to $3 \times 10^{21}$ FLOPs</td><td>a U per budget; its minimum</td><td>3</td></tr>
+  <tr><td>3</td><td>the big test</td><td>Chinchilla 70B on 1.4T vs Gopher 280B</td><td>better at the same compute</td><td>5, 6, 7</td></tr>
+  <tr><td>4</td><td>schedule length</td><td>cosine cycle 1 to 5x the run</td><td>too long hurts</td><td>A1</td></tr>
+  <tr><td>5</td><td>dataset</td><td>C4, GitHub: 4 IsoFLOP profiles</td><td>a near-equal split ($a$ = 0.50, 0.53)</td><td>A2</td></tr>
+  <tr><td>6</td><td>head to head</td><td>2.80B vs Kaplan's 4.74B at $10^{21}$</td><td>the smaller one wins</td><td>A4</td></tr>
+  <tr><td>7</td><td>optimiser</td><td>Adam vs AdamW, 417M to 1.4B</td><td>AdamW better</td><td>A6, A7</td></tr>
+</table>
+
+<p class="footnote">Hoffmann et al. 2022 · §3, §4, Apps. B, C, D.4, G. The numbering is ours. Approach 3 (Eq. 2, Fig. 4) is a fit to the final losses of 1 and 2, not new runs. IsoFLOP: fixed compute. Figures: the main ones</p>
+
+Note:
+The paper names three approaches, but only two of them are experiments; the third is a fit. So here is our list, in paper order, and the running header of each results slide says which one it comes from.
+Experiment 1 is Approach 1: a family of models from 70 million to over 10 billion parameters, each trained four times with cosine schedules of different lengths, so that the lower envelope of all the training curves gives the best model at each compute budget. Its envelope also shows the curvature in Appendix E.
+Experiment 2 is Approach 2, the IsoFLOP profiles: 9 fixed budgets from 6 times 10 to the 18 to 3 times 10 to the 21 FLOPs, model size varied up to 16 billion, the schedule matched to each run, and a parabola through each profile's final losses to find its best size. Approach 3, the parametric loss E plus A over N to the alpha plus B over D to the beta, is fitted to the final losses of experiments 1 and 2. Tables 2 and 3 and Figure 1 are read off these fits.
+Experiment 3 is the large-scale test: Chinchilla, 70 billion parameters on 1.4 trillion tokens, against Gopher, 280 billion on 300 billion, at the same compute, evaluated in Section 4.
+The rest are checks in the appendices. Experiment 4: the cosine cycle set to 1 to 5 times the run length; overestimating the length by more than 25% clearly hurts, which is why the main runs match the schedule to the run. Experiment 5: four IsoFLOP profiles each on C4 and GitHub code, which give a near-equal split again: the parameter exponent a is 0.50 on C4 and 0.53 on GitHub, against Kaplan's 0.73. Experiment 6: at 10 to the 21 FLOPs, the 2.80 billion model Approach 1 picks against the 4.74 billion model Kaplan's law picks, same depth-to-width ratio; theirs ends better. Experiment 7: Adam against AdamW, on 417 million and 1.4 billion models, plus a 680 million comparison of the Gopher and Chinchilla setups. AdamW wins, which matters for reading experiment 3, since Chinchilla switched to it.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 1, fixed sizes · §3.1 Approach 1 · Fig. 2</p>
 
 ## Which model is best at each budget?
 
@@ -1989,7 +2015,7 @@ Take the lower envelope, the best loss reached at each FLOP count, and note whic
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 1, fixed sizes · §3.1</p>
 
 ## Why train each size four times?
 
@@ -2021,7 +2047,7 @@ So for each size they train four runs with cosine schedules whose lengths span a
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2 Approach 2 · Fig. 3</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 2, IsoFLOP · §3.2 Approach 2 · Fig. 3</p>
 
 ## At a fixed budget, is there a best size?
 
@@ -2054,7 +2080,7 @@ Why this matters: the conclusion doesn't depend on the envelope trick. It's visi
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 2, IsoFLOP · §3.2</p>
 
 ## Why is each curve a U?
 
@@ -2082,7 +2108,7 @@ The minimum is where the gain from one more parameter exactly balances the cost 
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 Approach 3 · Eq. 2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 Approach 3 · Eq. 2</p>
 
 ## Can one equation predict the loss?
 
@@ -2113,7 +2139,7 @@ Because it's an explicit formula, you can do calculus on it: that's how the allo
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · App. D.2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · App. D.2</p>
 
 ## What does each term mean?
 
@@ -2146,7 +2172,7 @@ Two cautions. E is fitted and extrapolated, tied to this data and tokenizer, not
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · compared with Kaplan</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · compared with Kaplan</p>
 
 ## How is this different from Kaplan's $L(N,D)$?
 
@@ -2180,7 +2206,7 @@ Both are empirical assumptions that fit the measured range. They behave differen
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Eq. 4, derivation</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Eq. 4, derivation</p>
 
 ## Where is the optimum? Steps 1 and 2
 
@@ -2217,7 +2243,7 @@ So at the optimum the two penalties aren't equal; their ratio is alpha over beta
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Eq. 4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Eq. 4</p>
 
 ## Steps 3 and 4: the exponents
 
@@ -2251,7 +2277,7 @@ The reason for equal scaling is now visible: the two exponents are nearly the sa
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · consequence</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · consequence</p>
 
 ## Step 5: how does the best loss fall?
 
@@ -2284,7 +2310,7 @@ That's a real conceptual difference from Kaplan. Here the power law is in the lo
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Fig. 4 (left)</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Fig. 4 (left)</p>
 
 ## Reading the efficient frontier
 
@@ -2312,7 +2338,7 @@ The same frontier comes from the dual view: fix the compute and find the lowest 
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.4 · Table 2, Fig. 1</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiments 1 and 2, and the fit · §3.4 · Table 2, Fig. 1</p>
 
 ## Do the three methods agree?
 
@@ -2369,7 +2395,7 @@ The causes: rounded constants in the paper, and, as the original authors explain
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. C · Fig. A2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 5, other datasets · App. C · Fig. A2</p>
 
 ## Does it hold on other data?
 
@@ -2397,7 +2423,7 @@ Optional. They repeat Approach 2 on C4, web text, and on GitHub code. The expone
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.4 · Table 3</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the experiment 1 fit · §3.4 · Table 3</p>
 
 ## Where does "20 tokens per parameter" come from?
 
@@ -2434,7 +2460,7 @@ Three cautions. Equal exponents imply a constant ratio but not the value 20; tha
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.1 · Table 4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.1 · Table 4</p>
 
 ## The large-scale test: Chinchilla vs Gopher
 
@@ -2471,7 +2497,7 @@ As a validation it's sensible: closely related architectures at the same compute
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2 · Tables 6 to 9</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2 · Tables 6 to 9</p>
 
 ## What did it buy?
 
@@ -2510,7 +2536,7 @@ One more caution: in Tables 6 to 9 the outside models' scores are quoted from ea
 
 --
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2.2 · Fig. 6</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2.2 · Fig. 6</p>
 
 ## Better on which subjects?
 
@@ -2537,7 +2563,7 @@ Optional. The MMLU gain is broad but not universal: four subjects get worse, inc
 
 --
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2.1 · Fig. 5</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2.1 · Fig. 5</p>
 
 ## Language modelling on The Pile
 
@@ -2583,7 +2609,7 @@ Practice moved the same way: Llama 3's 405B saw 15.6 trillion tokens, and its sm
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §2 Related work · App. B, Fig. A1</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 4, schedule length · App. B · Fig. A1</p>
 
 ## Why did Kaplan disagree? 1. The schedule
 
@@ -2616,7 +2642,7 @@ The lesson: a scaling law can partly reflect how the training was organised, not
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §2 Related work · App. E, Fig. A5</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From experiment 1 · App. E · Fig. A5</p>
 
 ## 2. Which sizes went into the fit
 
@@ -2643,7 +2669,7 @@ If the true frontier bends, the exponent you measure depends on the range you me
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. D.4 · Fig. A4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 6, head to head · App. D.4 · Fig. A4</p>
 
 ## A direct test at $10^{21}$ FLOPs
 
