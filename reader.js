@@ -226,6 +226,24 @@ notesAll.addEventListener('click', () => {
   list.querySelectorAll('details.notes').forEach(d => { d.open = open; });
 });
 
+// copy the link to the week's markdown, the file the whole deck is built from (weeks/week-NN.md next to this page)
+const copyMd = document.getElementById('copy-md');
+copyMd.addEventListener('click', async () => {
+  const url = new URL(`weeks/week-${week}.md`, location.href).href;
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    // older phones or a non-https page: fall back to a hidden textarea and the old copy command
+    const area = document.createElement('textarea');
+    area.value = url; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
+    document.body.appendChild(area); area.select();
+    try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    area.remove();
+  }
+  if (!ok) { prompt('Copy this link:', url); return; }
+  copyMd.textContent = 'Copied ✓';
+  setTimeout(() => { copyMd.textContent = 'MD'; }, 1500);
+});
+
 // ---- go -----------------------------------------------------------------------------------------------------------
 (async () => {
   if (week === '00') { statusLine.textContent = 'No week given. Open this page from the list of weeks.'; return; }

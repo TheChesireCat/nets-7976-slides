@@ -22,7 +22,8 @@ body.reader button, body.reader select { font: inherit; color: inherit; }
 .bar select, .bar button, #resume {
   border: 1px solid #bbb; border-radius: 6px; background: #fff; padding: 4px 8px; font-size: 15px;
 }
-.bar select { max-width: 34vw; }
+.bar select { max-width: 25vw; }
+.bar button { white-space: nowrap; }
 .bar button[aria-pressed="true"] { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 #resume { display: block; margin: 10px auto 0; }
 #resume[hidden] { display: none; }

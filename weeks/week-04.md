@@ -1139,7 +1139,7 @@ The open question: does the model learn the task, or recognise it? The authors a
 <ol class="track"><li class="done">GPT-3 2020<span>few-shot learners</span></li><li class="now">Raschka 2025<span>architectures</span></li><li>PPO 2017<span>policy optimization</span></li><li>GRPO 2024<span>DeepSeekMath</span></li></ol>
 
 Note:
-Reading 2 of 4. Not a paper: a long blog post by Sebastian Raschka, first published in July 2025 and updated until April 2026, that draws about thirty open-weight models as block diagrams. The blog is organised by model; we reorganise it by change. Six changes, and for each one the same four questions: what is the change, which models use it, how does it help, and what are its costs and open questions.
+Reading 2 of 4. Not a paper: a long blog post by Sebastian Raschka, first published in July 2025 and updated until April 2026, that draws about thirty open-weight models as block diagrams. The blog is organised by model, 23 sections, and explains each change where a model first uses it; we reorganise it by change, taken in that same order. Six changes, and for each one the same four questions: what is the change, which models use it, how does it help, and what are its costs and open questions.
 
 ---
 
@@ -1175,16 +1175,40 @@ What the blog leaves out on purpose: data, training recipes and mostly benchmark
 ## Which six parts of GPT-3's block changed?
 
 <div class="rows">
-<div class="fig"><img src="img/week-04-raschka-block.svg" alt="Diagram: GPT-3's decoder block, token plus position, then LayerNorm, attention with 96 heads of 128, a residual add, LayerNorm, a feed-forward network from 12288 to 49152 and a residual add, repeated 96 times; six numbered marks: 1 keys and values shared or compressed, 2 the feed-forward network gated, 3 one dense feed-forward network replaced by many experts, 4 sliding windows, 5 norm placement, 6 positions"></div>
+<div class="fig"><img src="img/week-04-raschka-block.svg" alt="Diagram: GPT-3's decoder block, token plus position, then LayerNorm, attention with 96 heads of 128, a residual add, LayerNorm, a feed-forward network from 12288 to 49152 and a residual add, repeated 96 times; six numbered marks: 1 keys and values shared or compressed, 2 one dense feed-forward network replaced by many experts, 3 norm placement, 4 sliding windows, 5 positions, 6 the feed-forward network gated"></div>
 </div>
 
-<p class="footnote">Diagram ours, GPT-3 sizes from Brown et al. 2020 Table 2.1. LN: LayerNorm; FFN: feed-forward network; K, V: keys, values. Numbered in the order we go through them: each change gets what, who, how it helps, and costs</p>
+<p class="footnote">Diagram ours, GPT-3 sizes from Brown et al. 2020 Table 2.1. LN: LayerNorm; FFN: feed-forward network; K, V: keys, values. Numbered in the blog's order, next slide. Each change gets what, who, how it helps, and costs</p>
 
 Note:
 The map for the rest of the reading. GPT-3 175B is one block repeated 96 times: LayerNorm, attention with 96 heads of 128, each with its own keys and values, a residual add; LayerNorm, a feed-forward network four times as wide as the model, a residual add. Learned position vectors are added once at the input. GPT-3 already alternates full and "locally banded" attention layers, which matters for change 4.
 A count we use later: each block has four d-by-d attention matrices and two d-by-4d feed-forward matrices, 12 d squared, ignoring biases and norms. For GPT-3 that's 173.9 billion, and the feed-forward part alone is 116 billion. Two thirds of the weights are in the feed-forward networks, and every token uses all of them.
-The six changes, numbered as we take them. 1, keys and values: shared between heads or compressed, which shrinks the cache. 2, the feed-forward network gets a third, gating matrix. 3, the one feed-forward network becomes many experts, of which each token uses a few, which cuts arithmetic. 4, most layers look only at a window of recent tokens, which shrinks the cache at long context. 5, the norm moves, and queries and keys get their own, for training stability. 6, positions: rotations with a bigger base, or no position at all in some layers, for long context.
-Predict before we start: which of the six cuts arithmetic per token rather than cache memory? Change 3, the mixture of experts. Each change gets the same four slides: what it is, which models use it, how it helps, and what it costs or leaves open. Small extras such as dropped biases and bigger vocabularies are at the end.
+The six changes, numbered in the order the blog first explains them. 1, keys and values: shared between heads or compressed, which shrinks the cache. 2, the one feed-forward network becomes many experts, of which each token uses a few, which cuts arithmetic. 3, the norm moves, and queries and keys get their own, for training stability. 4, most layers look only at a window of recent tokens, which shrinks the cache at long context. 5, positions: rotations with a bigger base, or no position at all in some layers, for long context. 6, the feed-forward network gets a third, gating matrix; the blog mentions it in one line and gives it no section, so it comes last.
+Predict before we start: which of the six cuts arithmetic per token rather than cache memory? Change 2, the mixture of experts. Each change gets the same four slides: what it is, which models use it, how it helps, and what it costs or leaves open. Small extras such as dropped biases and bigger vocabularies are at the end.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · Outline · where the blog covers each change</p>
+
+## Where in the blog is each change?
+
+<table class="rules" style="font-size:21px">
+  <tr><td>change</td><td>first explained</td><td>with</td><td>comes back in</td></tr>
+  <tr><td>1 sharing keys and values</td><td>§1.1</td><td>DeepSeek V3</td><td>§8 Kimi K2, §17 Mistral 3, §21 GLM-5</td></tr>
+  <tr><td>2 mixture of experts</td><td>§1.2</td><td>DeepSeek V3</td><td>§6.2 Qwen3, §9.2 gpt-oss, §12.1, §13.2</td></tr>
+  <tr><td>3 where the norm goes</td><td>§2.1, §2.2</td><td>OLMo 2</td><td>§3.2 Gemma 3, §13.1 MiniMax</td></tr>
+  <tr><td>4 sliding windows</td><td>§3.1</td><td>Gemma 3</td><td>§9 gpt-oss, §19 MiMo, §23 Gemma 4</td></tr>
+  <tr><td>5 positions</td><td>§7.1</td><td>SmolLM3</td><td>§13.3 partial RoPE</td></tr>
+  <tr><td>6 gated feed-forward</td><td>intro, one line</td><td></td><td>no section: ours</td></tr>
+  <tr><td>beyond the six</td><td>§9.1, §9.3, §12, §14</td><td>gpt-oss, Qwen3-Next, Kimi Linear</td><td>one slide, at the end</td></tr>
+</table>
+
+<p class="footnote">Raschka 2025, version of 2 April 2026: 23 sections, one per model family, in release order</p>
+
+Note:
+The blog is a tour of models, not of changes: 23 numbered sections, from DeepSeek V3 in section 1 to Gemma 4 in section 23. Each technique is explained the first time a model in the tour uses it, as a subsection of that model. Multi-head latent attention and mixture of experts come with DeepSeek V3, the norm changes with OLMo 2, sliding windows with Gemma 3, and no positional embeddings with SmolLM3 in section 7. So our numbering is the blog's order, and the table tells you where to read along.
+Later sections are mostly "same as an earlier model, with these numbers changed": Kimi K2 and Mistral 3 reuse DeepSeek V3's architecture, gpt-oss, MiMo and Gemma 4 use windows like Gemma 3. That's why the six changes cover most of the blog.
+Two rows are ours. The gated feed-forward network is in every 2025 model but the blog only names it in its first paragraph, so we add it as change 6. And the newer ideas, width against depth, attention sinks, linear-attention hybrids, multi-token prediction, get one slide before the synthesis.
 
 ---
 
@@ -1216,7 +1240,7 @@ Count bytes against operations. A 16-bit weight is two bytes, used for two opera
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 1 of 6, sharing keys and values · What · Fig. 2</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.1 · Change 1 of 6, sharing keys and values · What · Fig. 2</p>
 
 ## Do the heads need their own keys and values?
 
@@ -1243,7 +1267,7 @@ DeepSeek went another way, multi-head latent attention: keep a key and value for
 
 --
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 1 of 6, sharing keys and values · What · Fig. 3 (sub-slide)</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.1 · Change 1 of 6, sharing keys and values · What · Fig. 3 (sub-slide)</p>
 
 ## How does MLA shrink the cache further?
 
@@ -1262,7 +1286,7 @@ DeepSeek went another way, multi-head latent attention: keep a key and value for
 <div class="fig"><img src="img/week-04-raschka-fig3-mla.png" alt="Raschka Figure 3, MLA and MHA panels: at inference step t the input is projected by W_dkv to a compressed key and value, which W_uk and W_uv expand to key and value, next to regular MHA with separate W_q, W_k, W_v; a note says the key idea reduces memory usage in the KV cache"></div>
 </div>
 
-<p class="footnote">Raschka 2025 · §1.1, Fig. 3; DeepSeek-V2 arXiv:2405.04434 §2.1.2 to §2.1.3. Sizes: DeepSeek-V3 arXiv:2412.19437 §4.2. RoPE: rotary position embedding (Week 3, change 6). 3.4x is our arithmetic at 131K tokens</p>
+<p class="footnote">Raschka 2025 · §1.1, Fig. 3; DeepSeek-V2 arXiv:2405.04434 §2.1.2 to §2.1.3. Sizes: DeepSeek-V3 arXiv:2412.19437 §4.2. RoPE: rotary position embedding (Week 3, change 5). 3.4x is our arithmetic at 131K tokens</p>
 
 Note:
 Optional depth, in five steps. Step 1, compress: one down-projection of each token's hidden state h to a small latent c, size 512 in DeepSeek-V3, and only c is cached. Step 2, expand: two up-projections rebuild keys and values for all 128 heads. The key projection has become a product of two thin matrices, the same shape as LoRA's B times A from Week 2, used here to shrink what's stored rather than what's trained.
@@ -1273,7 +1297,7 @@ Footnote detail: DeepSeek-V2 §2.1.2 to §2.1.3 says $W^{UK}$ "can be absorbed i
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 1 of 6, sharing keys and values · Who</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.1 · Change 1 of 6, sharing keys and values · Who</p>
 
 ## Who shares keys and values, and how much?
 
@@ -1312,7 +1336,7 @@ Footnote detail: arXiv numbers are Gemma 2 2408.00118, gpt-oss 2508.10925, Qwen3
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 1 of 6, sharing keys and values · How it helps</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.1 · Change 1 of 6, sharing keys and values · How it helps</p>
 
 ## How much cache does sharing save?
 
@@ -1339,7 +1363,7 @@ How it helps: the cache per token, for the whole model. GPT-3 stores 2.36 millio
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 1 of 6, sharing keys and values · Costs · DeepSeek-V2 Tables 8, 9</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.1 · Change 1 of 6, sharing keys and values · Costs · DeepSeek-V2 Tables 8, 9</p>
 
 ## Does sharing cost quality?
 
@@ -1367,7 +1391,7 @@ How it helps: the cache per token, for the whole model. GPT-3 stores 2.36 millio
 </div>
 </div>
 
-<p class="footnote">DeepSeek-V2 App. D, Tables 8 (dense 7B, 1.33T tokens) and 9 (MoE pairs); Gemma 2 Table 8. MMLU: a 57-subject multiple-choice exam. MoE: mixture of experts (change 3). Unmatched: our arithmetic from Table 9's cache row</p>
+<p class="footnote">DeepSeek-V2 App. D, Tables 8 (dense 7B, 1.33T tokens) and 9 (MoE pairs); Gemma 2 Table 8. MMLU: a 57-subject multiple-choice exam. MoE: mixture of experts (change 2). Unmatched: our arithmetic from Table 9's cache row</p>
 
 Note:
 Costs and open questions. Raschka says GQA "performs comparably to standard MHA", then prints a DeepSeek-V2 table where it doesn't. Two ablations disagree. DeepSeek-V2: three dense 7B models on 1.33 trillion tokens, identical except attention; MHA beats GQA beats MQA on every benchmark, 4 points on MMLU from GQA to MHA. Gemma 2: two 9B models, GQA 50.8 and MHA 50.3 on an average of four unnamed benchmarks. Gemma shares keys only between pairs of queries; DeepSeek's head count isn't stated; data, scale and benchmarks differ; neither has error bars. Sharing is sometimes cheap, not provably free.
@@ -1377,67 +1401,7 @@ Footnote detail: Gemma 2's benchmarks are unnamed.
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 2 of 6, gated feed-forward · What and who · OLMo 2 §3</p>
-
-## Why three matrices in a feed-forward network?
-
-<div class="cols">
-<div class="text">
-
-<div class="eq">$$\mathrm{SwiGLU}(x) = W_2\big(\mathrm{SiLU}(W_1 x) \odot W_3 x\big)$$</div>
-
-- one projection gates the other, feature by feature
-- 3 matrices of width $f$: $3df$ weights
-- same weights as GPT-3's $8d^2$ at $f = \tfrac{8}{3} d$
-- who: every 2025 model in the lineup; Gemma uses GeGLU
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Same size as GPT-3's?</p>
-<p class="a"><b>A.</b> 135.3M vs 134.2M per layer</p>
-
-</div>
-</div>
-
-<p class="footnote">OLMo 2 arXiv:2501.00656 §3 ("approximately $\frac{8}{3}d$ ... 11,008 for our 7B model"). SiLU$(z) = z\sigma(z)$, the sigmoid linear unit; GeGLU gates with GELU (Gaussian error linear unit) instead</p>
-
-Note:
-Change 2, the smallest. Raschka's first paragraph says "the more efficient SwiGLU has replaced activation functions like GELU". GPT-3's feed-forward network has two matrices with a GELU between them. A gated network computes two projections of the input and multiplies them element by element, so one acts as a learned, input-dependent gate on the other, then projects back: three matrices.
-To keep GPT-3's budget of 8 d squared, 3 times d times f equals 8 d squared, so the width is eight thirds of d instead of 4d. OLMo 2 7B: eight thirds of 4096 is 10,923, rounded up to a multiple of 128, 11,008, the number in their paper. Who: every 2025 model in the lineup; Gemma's variant gates with GELU instead of SiLU. It matters for change 3, because every expert is one of these gated networks.
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 2 of 6, gated feed-forward · How it helps, and costs</p>
-
-## What does the gate buy?
-
-<div class="cols">
-<div class="text">
-
-- claimed: better quality per weight
-- intuition: switch features on and off per token
-- cost: none in weights, at $f = \tfrac{8}{3}d$
-- one extra matrix product per layer
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Does any of our sources test it?</p>
-<p class="a"><b>A.</b> No: every lab inherits it as a default</p>
-
-</div>
-</div>
-
-<p class="footnote">Raschka 2025 · Introduction. The original evidence that gating helps (Shazeer 2020, "GLU Variants Improve Transformer") is cited widely but is not in our sources</p>
-
-Note:
-How it helps: the claim is better quality for the same number of weights, and the intuition is that the gate lets the layer switch features on and off for each token. The cost is small: at eight thirds of d the weights are the same as GPT-3's, so memory and arithmetic per token barely change; there are three matrix products instead of two, each narrower.
-What's open: none of the papers in our set ablates it. It's an inherited default, and the evidence people point to, Shazeer's 2020 note, isn't among our readings. And Raschka's "more efficient" isn't explained: at matched size it uses the same weights, not fewer. So this is the change we can say least about.
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 3 of 6, mixture of experts · What · Fig. 5</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.2 · Change 2 of 6, mixture of experts · What · Fig. 5</p>
 
 ## Does every token need the whole feed-forward network?
 
@@ -1456,13 +1420,13 @@ What's open: none of the papers in our set ablates it. It's an inherited default
 <p class="footnote">Raschka 2025 · §1.2, Fig. 5. MoE: mixture of experts. DeepSeek-V3 arXiv:2412.19437 §2.1.2, §4.2 ("1 shared expert and 256 routed experts")</p>
 
 Note:
-Change 3. Back to GPT-3's count: two thirds of its weights are in the feed-forward networks and every token uses all of them, the biggest single cost per token. Mixture of experts asks: does every token need the whole network, or could different tokens use different parts? Replace the one feed-forward network with many smaller ones, the experts, and add a router that picks a few for each token.
+Change 2. Back to GPT-3's count: two thirds of its weights are in the feed-forward networks and every token uses all of them, the biggest single cost per token. Mixture of experts asks: does every token need the whole network, or could different tokens use different parts? Replace the one feed-forward network with many smaller ones, the experts, and add a router that picks a few for each token.
 How the router chooses, in DeepSeek-V3: each routed expert has a learned vector; a token's affinity to an expert is a sigmoid of their dot product; keep the 8 highest, zero the rest, rescale the kept ones to sum to one, and use them as weights on the experts' outputs. The choice itself has no gradient, but the weights of the chosen experts do, so the router learns through them (that reasoning is ours). gpt-oss does the same with a softmax over its chosen four.
 DeepSeek V3 has 256 routed experts per layer plus one shared expert every token uses, so 9 experts run per token, and 37 of 671 billion weights are active. The sub-slide asks why so many small experts, and whether the shared one is worth it.
 
 --
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 3 of 6, mixture of experts · What · DeepSeekMoE Fig. 2 (sub-slide)</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.2 · Change 2 of 6, mixture of experts · What · DeepSeekMoE Fig. 2 (sub-slide)</p>
 
 ## Many small experts, and a shared one?
 
@@ -1492,7 +1456,7 @@ The shared expert: DeepSeekMoE's reason is "Knowledge Redundancy", common knowle
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 3 of 6, mixture of experts · Who</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.2 · Change 2 of 6, mixture of experts · Who</p>
 
 ## Who uses experts, and how many?
 
@@ -1516,7 +1480,7 @@ And not everyone: Gemma 3, OLMo 2, SmolLM3 and the six smaller Qwen3 sizes are d
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 3 of 6, mixture of experts · How it helps</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.2 · Change 2 of 6, mixture of experts · How it helps</p>
 
 ## What does a mixture of experts buy per token?
 
@@ -1552,7 +1516,7 @@ The qualification: this counts weight multiplies only. At long context attention
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 3 of 6, mixture of experts · Costs · gpt-oss §2.1</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §1.2 · Change 2 of 6, mixture of experts · Costs · gpt-oss §2.1</p>
 
 ## What does a mixture of experts not buy?
 
@@ -1583,124 +1547,7 @@ DeepSeek's balancing fix: a bias per expert, used only to choose; it wins most b
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 4 of 6, sliding windows · What · Longformer §3</p>
-
-## Does every layer need the whole context?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- local layer: sees only the last $w$ tokens
-- caches $w$ tokens, at any context length
-- a few global layers see everything
-- stacked windows reach about $\ell \times w$
-
-<p class="q" style="margin-top:14px"><b>Q.</b> Gemma 3: 5 local layers, $w$ = 1024?</p>
-<p class="a"><b>A.</b> About 5,120 tokens; further needs a global layer</p>
-
-</div>
-<div class="fig"><img src="img/week-04-raschka-masks.svg" alt="Diagram: three attention masks over 14 tokens: full causal for a global layer, a band of width 4 for a local layer, and the wider band two stacked local layers can reach, 7 tokens"></div>
-</div>
-
-<p class="footnote">Raschka 2025 · §3.1, Fig. 12 (the same mask). Longformer, Beltagy et al. 2020, arXiv:2004.05150 §3. Diagram ours. Local attention is also called sliding-window attention; global means full causal attention</p>
-
-Note:
-Change 4. Sharing keys and values made each cache entry smaller, but the cache still grows with every token of context. Does every layer need to see the whole context? A local layer lets each token attend only to the previous w tokens, so it only ever caches w tokens, whatever the context length. The middle mask is a window of 4.
-A model of only local layers can still carry information far by relaying it: each layer reaches w minus 1 further back, so two windows of 4 reach 7 tokens, the right-hand mask, and l layers reach about l times w, like stacking small filters in a convolutional network. Gemma 3 has 5 local layers of window 1024 between global ones, so about 5 thousand tokens. Anything further must go through a global layer, which is why models mix the two.
-Longformer §3: "the receptive field size at the top layer is $\ell \times w$".
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 4 of 6, sliding windows · Who · gpt-oss §2.2</p>
-
-## Who uses windows, and how many?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- GPT-3 already alternated: gpt-oss is "Following GPT-3"
-- new in 2025: the ratio and the width
-- Olmo 3*: 3 : 1, 4096; MiMo-V2-Flash*: 5 : 1, 128
-
-</div>
-<div class="text">
-
-- none: DeepSeek V3, Qwen3, Llama 4; switched off: Mistral Small 3.1*, MiniMax-M2*
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-raschka-swa.svg" alt="Diagram: twelve layers per model, black for global and grey for local: GPT-3 175B, Gemma 2 and gpt-oss-120b alternate one local to one global, with windows not stated, 4,096 and 128; Gemma 3 has five local layers per global one with window 1,024"></div>
-</div>
-
-<p class="footnote">GPT-3 §2.1 ("locally banded"); gpt-oss §2.2 ("the bandwidth is 128 tokens"); Gemma 2 §2; Gemma 3 arXiv:2503.19786 §2 ("5 local layers for every global layer"). * per Raschka. Diagram ours</p>
-
-Note:
-Who uses it. Not new: GPT-3 itself alternated dense and "locally banded" layers, after the 2019 Sparse Transformer, and the gpt-oss card says so: "Following GPT-3, attention blocks alternate between banded window and fully dense patterns", with a band of 128 tokens. Gemma 2 alternated one to one with 4096. What changed is the settings: Gemma 3 went to five local per global with 1024, Olmo 3 three to one, and MiMo, per Raschka, five to one with just 128.
-And a lot of models don't use it: DeepSeek V3, Qwen3 and Llama 4 have no windows, and Mistral Small 3.1 and MiniMax-M2 ship with them switched off. The costs slide asks why.
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 4 of 6, sliding windows · How it helps · Fig. 11</p>
-
-## How much cache does a window save?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\text{kept} = \frac{T + r\thinspace w}{(r+1)\thinspace T}$$</div>
-
-- $r$ local layers per global, context $T$
-- Gemma 3 at 32K: 0.193
-- at 128K: 0.173
-
-<p class="q"><b>Q.</b> Limit as $T$ grows?</p>
-<p class="a"><b>A.</b> $1/(r+1)$: 1/6 for Gemma 3</p>
-
-</div>
-<div class="fig"><img src="img/week-04-raschka-swafrac.png" alt="Illustration: share of a global-only KV cache kept against context length from 4K to 128K; Gemma 2's 1:1 with window 4096 falls toward a floor of one half, Gemma 3's 5:1 with window 1024 falls to 0.271, 0.193 and 0.173 at 8K, 32K and 128K, near its floor of one sixth"></div>
-</div>
-
-<p class="footnote">Illustration, our formula (one global layer caches $T$, each local layer $w$). Dashed: beyond Gemma 2's 8,192 global span, hypothetical. Gemma 3 Figs. 5, 6 measure the same saving on a 2B model: cache overhead 60% ▸ "less than 15%"</p>
-
-Note:
-How it helps. Compared with making every layer global, how much cache do you keep? Each global layer caches all T tokens, each local layer only w. With r local layers per global one, the kept share is T plus r w over r plus 1 times T. Gemma 3, five to one with 1024: 27% of the cache at 8 thousand tokens, 19% at 32 thousand, 17% at 128 thousand. As the context grows the local layers stop costing anything and the share falls to 1 over r plus 1, a sixth. That's why Gemma 3 went from one to one to five to one: at long context, the ratio matters far more than the window.
-Gemma 3 measures it on a 2B model at 32 thousand tokens: the cache adds 60% to memory with global layers only, "less than 15%" with windows. A small puzzle: they call that setting "1:3", and only three local per global reproduces their number with our formula (one local per three global would keep 76%); their own window plot's legend writes it "L:G=3:1".
-Footnote detail: Gemma 3's Fig. 6 is Raschka's Fig. 11.
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 4 of 6, sliding windows · Costs · Gemma 3 Figs. 3, 4</p>
-
-## What do windows cost?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- perplexity moves by about 0.03 at most
-- but the zero line is 1:1, not full attention; perplexity only, long-range recall untested
-
-</div>
-<div class="text">
-
-- latency: full attention has faster fused code, so Mistral, MiniMax switch windows off*
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-raschka-gemma3-fig34.png" alt="Gemma 3 Figures 3 and 4: left, change in perplexity against local:global ratio from 1:1 to 7:1 for 2B and 9B models, within about 0.03 of zero; right, change in perplexity against sliding window from 512 to 4096 for 2B models at L:G 1:1 and 3:1, within about 0.02 of zero at 1024"></div>
-</div>
-
-<p class="footnote">Gemma 3 §5.1, Figs. 3, 4; no error bars, no full-attention point. Perplexity: how surprised the model is by held-out text, lower is better. * Raschka §4. FlashAttention: the standard fused attention kernel</p>
-
-Note:
-Costs and open questions. Gemma 3's ablations: left, the ratio from one-to-one to seven-to-one at 2B and 9B; right, the window from 512 to 4096. The biggest change is about three hundredths of perplexity, and the curves wobble by about a hundredth, so that's near the noise. But read the zero lines: the ratio plot's is one-to-one, where half the layers are already local, and there is no full-attention point at all. And perplexity on typical text barely measures retrieving one fact from a hundred thousand tokens back, which a narrow window could hurt. Raschka's caption, "little to no impact", claims more than the plots show.
-The other cost is speed. Mistral Small 3.1 and MiniMax-M2 switch windows off. Raschka's guess, labelled as one: "while sliding window attention reduces memory usage, it doesn't necessarily reduce inference latency", because plain full attention runs on highly optimised kernels. "Efficient" can mean memory, latency or throughput, and a change that helps one may not help another. A third way to look less, DeepSeek V3.2's sparse attention, the blog leaves to a separate article.
-Footnote detail: Gemma 3 §5.1 calls the effect "minimal, even with 7-to-1". Raschka §4 says windows reduce memory but don't "necessarily reduce inference latency". The three goals are memory, latency and throughput.
-
----
-
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 5 of 6, where the norm goes · What and who · Figs. 8, 14</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §2.1, §2.2 · Change 3 of 6, where the norm goes · What and who · Figs. 8, 14</p>
 
 ## Where should the normalisation go?
 
@@ -1725,12 +1572,12 @@ Footnote detail: Gemma 3 §5.1 calls the effect "minimal, even with 7-to-1". Ras
 <p class="footnote">Raschka 2025 · §2.1, §3.2, Figs. 8, 14. Diagram ours, with each design's users: OLMo 2 §3, Gemma 2 §2, Gemma 3 §2, gpt-oss §2 ("Pre-LN placement"), Qwen3 §2. LN: LayerNorm</p>
 
 Note:
-Change 5. A block adds each sublayer's output to a running sum, the residual stream. Over dozens of blocks the numbers can drift, and gradients through all of them can grow or shrink. A norm rescales a vector to a fixed size; almost every model here uses RMSNorm, LayerNorm without subtracting the mean.
+Change 3. A block adds each sublayer's output to a running sum, the residual stream. Over dozens of blocks the numbers can drift, and gradients through all of them can grow or shrink. A norm rescales a vector to a fixed size; almost every model here uses RMSNorm, LayerNorm without subtracting the mean.
 Where to put it? Under each design, who uses it. The original Transformer normalised after adding: post-norm. GPT-2, GPT-3, gpt-oss and Qwen3 normalise the sublayer's input and add its raw output: pre-norm. OLMo 2 normalises the sublayer's output, still inside the residual branch. Gemma 2 and 3 do both, a sandwich. And a separate change, right: QK-norm, an RMSNorm on each head's query and key before they're compared, used by OLMo 2, Gemma 3 and Qwen3.
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 5 of 6, where the norm goes · How it helps · OLMo 2 Fig. 7</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §2.1, §2.2 · Change 3 of 6, where the norm goes · How it helps · OLMo 2 Fig. 7</p>
 
 ## What does each placement protect?
 
@@ -1761,7 +1608,7 @@ Footnote detail: OLMo 2's Fig. 7 is Raschka's Fig. 9. The placement intuition is
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 5 of 6, where the norm goes · How it helps · OLMo 2 §3</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §2.1, §2.2 · Change 3 of 6, where the norm goes · How it helps · OLMo 2 §3</p>
 
 ## Why normalise queries and keys?
 
@@ -1791,7 +1638,7 @@ Does Gemma 2 use QK-norm? No: Gemma 3 swapped soft-capping for it. OLMo 2 §3 sa
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 5 of 6, where the norm goes · Costs</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §2.1, §2.2 · Change 3 of 6, where the norm goes · Costs</p>
 
 ## What do the norm results not show?
 
@@ -1820,7 +1667,124 @@ And plenty of models stay with pre-norm, gpt-oss and Qwen3 among them. Gemma's s
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 6 of 6, positions · What · RoFormer §3.2 (Week 3)</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §3.1 · Change 4 of 6, sliding windows · What · Longformer §3</p>
+
+## Does every layer need the whole context?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- local layer: sees only the last $w$ tokens
+- caches $w$ tokens, at any context length
+- a few global layers see everything
+- stacked windows reach about $\ell \times w$
+
+<p class="q" style="margin-top:14px"><b>Q.</b> Gemma 3: 5 local layers, $w$ = 1024?</p>
+<p class="a"><b>A.</b> About 5,120 tokens; further needs a global layer</p>
+
+</div>
+<div class="fig"><img src="img/week-04-raschka-masks.svg" alt="Diagram: three attention masks over 14 tokens: full causal for a global layer, a band of width 4 for a local layer, and the wider band two stacked local layers can reach, 7 tokens"></div>
+</div>
+
+<p class="footnote">Raschka 2025 · §3.1, Fig. 12 (the same mask). Longformer, Beltagy et al. 2020, arXiv:2004.05150 §3. Diagram ours. Local attention is also called sliding-window attention; global means full causal attention</p>
+
+Note:
+Change 4. Sharing keys and values made each cache entry smaller, but the cache still grows with every token of context. Does every layer need to see the whole context? A local layer lets each token attend only to the previous w tokens, so it only ever caches w tokens, whatever the context length. The middle mask is a window of 4.
+A model of only local layers can still carry information far by relaying it: each layer reaches w minus 1 further back, so two windows of 4 reach 7 tokens, the right-hand mask, and l layers reach about l times w, like stacking small filters in a convolutional network. Gemma 3 has 5 local layers of window 1024 between global ones, so about 5 thousand tokens. Anything further must go through a global layer, which is why models mix the two.
+Longformer §3: "the receptive field size at the top layer is $\ell \times w$".
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §3.1 · Change 4 of 6, sliding windows · Who · gpt-oss §2.2</p>
+
+## Who uses windows, and how many?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- GPT-3 already alternated: gpt-oss is "Following GPT-3"
+- new in 2025: the ratio and the width
+- Olmo 3*: 3 : 1, 4096; MiMo-V2-Flash*: 5 : 1, 128
+
+</div>
+<div class="text">
+
+- none: DeepSeek V3, Qwen3, Llama 4; switched off: Mistral Small 3.1*, MiniMax-M2*
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-raschka-swa.svg" alt="Diagram: twelve layers per model, black for global and grey for local: GPT-3 175B, Gemma 2 and gpt-oss-120b alternate one local to one global, with windows not stated, 4,096 and 128; Gemma 3 has five local layers per global one with window 1,024"></div>
+</div>
+
+<p class="footnote">GPT-3 §2.1 ("locally banded"); gpt-oss §2.2 ("the bandwidth is 128 tokens"); Gemma 2 §2; Gemma 3 arXiv:2503.19786 §2 ("5 local layers for every global layer"). * per Raschka. Diagram ours</p>
+
+Note:
+Who uses it. Not new: GPT-3 itself alternated dense and "locally banded" layers, after the 2019 Sparse Transformer, and the gpt-oss card says so: "Following GPT-3, attention blocks alternate between banded window and fully dense patterns", with a band of 128 tokens. Gemma 2 alternated one to one with 4096. What changed is the settings: Gemma 3 went to five local per global with 1024, Olmo 3 three to one, and MiMo, per Raschka, five to one with just 128.
+And a lot of models don't use it: DeepSeek V3, Qwen3 and Llama 4 have no windows, and Mistral Small 3.1 and MiniMax-M2 ship with them switched off. The costs slide asks why.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §3.1 · Change 4 of 6, sliding windows · How it helps · Fig. 11</p>
+
+## How much cache does a window save?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="eq">$$\text{kept} = \frac{T + r\thinspace w}{(r+1)\thinspace T}$$</div>
+
+- $r$ local layers per global, context $T$
+- Gemma 3 at 32K: 0.193
+- at 128K: 0.173
+
+<p class="q"><b>Q.</b> Limit as $T$ grows?</p>
+<p class="a"><b>A.</b> $1/(r+1)$: 1/6 for Gemma 3</p>
+
+</div>
+<div class="fig"><img src="img/week-04-raschka-swafrac.png" alt="Illustration: share of a global-only KV cache kept against context length from 4K to 128K; Gemma 2's 1:1 with window 4096 falls toward a floor of one half, Gemma 3's 5:1 with window 1024 falls to 0.271, 0.193 and 0.173 at 8K, 32K and 128K, near its floor of one sixth"></div>
+</div>
+
+<p class="footnote">Illustration, our formula (one global layer caches $T$, each local layer $w$). Dashed: beyond Gemma 2's 8,192 global span, hypothetical. Gemma 3 Figs. 5, 6 measure the same saving on a 2B model: cache overhead 60% ▸ "less than 15%"</p>
+
+Note:
+How it helps. Compared with making every layer global, how much cache do you keep? Each global layer caches all T tokens, each local layer only w. With r local layers per global one, the kept share is T plus r w over r plus 1 times T. Gemma 3, five to one with 1024: 27% of the cache at 8 thousand tokens, 19% at 32 thousand, 17% at 128 thousand. As the context grows the local layers stop costing anything and the share falls to 1 over r plus 1, a sixth. That's why Gemma 3 went from one to one to five to one: at long context, the ratio matters far more than the window.
+Gemma 3 measures it on a 2B model at 32 thousand tokens: the cache adds 60% to memory with global layers only, "less than 15%" with windows. A small puzzle: they call that setting "1:3", and only three local per global reproduces their number with our formula (one local per three global would keep 76%); their own window plot's legend writes it "L:G=3:1".
+Footnote detail: Gemma 3's Fig. 6 is Raschka's Fig. 11.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §3.1 · Change 4 of 6, sliding windows · Costs · Gemma 3 Figs. 3, 4</p>
+
+## What do windows cost?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- perplexity moves by about 0.03 at most
+- but the zero line is 1:1, not full attention; perplexity only, long-range recall untested
+
+</div>
+<div class="text">
+
+- latency: full attention has faster fused code, so Mistral, MiniMax switch windows off*
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-raschka-gemma3-fig34.png" alt="Gemma 3 Figures 3 and 4: left, change in perplexity against local:global ratio from 1:1 to 7:1 for 2B and 9B models, within about 0.03 of zero; right, change in perplexity against sliding window from 512 to 4096 for 2B models at L:G 1:1 and 3:1, within about 0.02 of zero at 1024"></div>
+</div>
+
+<p class="footnote">Gemma 3 §5.1, Figs. 3, 4; no error bars, no full-attention point. Perplexity: how surprised the model is by held-out text, lower is better. * Raschka §4. FlashAttention: the standard fused attention kernel</p>
+
+Note:
+Costs and open questions. Gemma 3's ablations: left, the ratio from one-to-one to seven-to-one at 2B and 9B; right, the window from 512 to 4096. The biggest change is about three hundredths of perplexity, and the curves wobble by about a hundredth, so that's near the noise. But read the zero lines: the ratio plot's is one-to-one, where half the layers are already local, and there is no full-attention point at all. And perplexity on typical text barely measures retrieving one fact from a hundred thousand tokens back, which a narrow window could hurt. Raschka's caption, "little to no impact", claims more than the plots show.
+The other cost is speed. Mistral Small 3.1 and MiniMax-M2 switch windows off. Raschka's guess, labelled as one: "while sliding window attention reduces memory usage, it doesn't necessarily reduce inference latency", because plain full attention runs on highly optimised kernels. "Efficient" can mean memory, latency or throughput, and a change that helps one may not help another. A third way to look less, DeepSeek V3.2's sparse attention, the blog leaves to a separate article.
+Footnote detail: Gemma 3 §5.1 calls the effect "minimal, even with 7-to-1". Raschka §4 says windows reduce memory but don't "necessarily reduce inference latency". The three goals are memory, latency and throughput.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §7.1 · Change 5 of 6, positions · What · RoFormer §3.2 (Week 3)</p>
 
 ## How does RoPE turn position into distance?
 
@@ -1846,12 +1810,12 @@ And plenty of models stay with pre-norm, gpt-oss and Qwen3 among them. Gemma's s
 <p class="footnote">RoFormer, Su et al., arXiv:2104.09864 §3.2. RoPE: rotary position embedding. $R_m$: block-diagonal rotation by $m\theta_i$ on pair $i$. Wavelength $2\pi/\theta_i$; numbers ours</p>
 
 Note:
-Change 6, with a recap from Week 3. GPT-3 adds a learned vector per position, once, at the input, and has no vector for position 2049. RoPE instead rotates each pair of query and key dimensions, inside every attention layer, by an angle proportional to position, with frequencies falling from pair to pair. Rotations compose, R_m transposed times R_n is R of n minus m, so the score depends on the two positions only through their distance. With head size 128, the fastest pair turns once every six tokens, the slowest once per about 54 thousand at base 10,000.
+Change 5, with a recap from Week 3. GPT-3 adds a learned vector per position, once, at the input, and has no vector for position 2049. RoPE instead rotates each pair of query and key dimensions, inside every attention layer, by an angle proportional to position, with frequencies falling from pair to pair. Rotations compose, R_m transposed times R_n is R of n minus m, so the score depends on the two positions only through their distance. With head size 128, the fastest pair turns once every six tokens, the slowest once per about 54 thousand at base 10,000.
 Almost every 2025 model uses RoPE. The changes are in how: a bigger base, no position signal at all in some layers, or rotating only some dimensions of each head.
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 6 of 6, positions · Who</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §7.1 · Change 5 of 6, positions · Who</p>
 
 ## Who carries position where?
 
@@ -1882,7 +1846,7 @@ Footnote detail: Gemma 3 §2 says "from 10k to 1M on global self-attention layer
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 6 of 6, positions · How it helps · NoPE Fig. 3</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §7.1 · Change 5 of 6, positions · How it helps · NoPE Fig. 3</p>
 
 ## Why raise the base, or drop positions?
 
@@ -1913,7 +1877,7 @@ Footnote detail: the NoPE paper's Fig. 3 is Raschka's Fig. 23.
 
 ---
 
-<p class="eyebrow"><span class="paper">Raschka 2025</span> · Change 6 of 6, positions · Costs · NoPE §7</p>
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · §7.1 · Change 5 of 6, positions · Costs · NoPE §7</p>
 
 ## What is unproven about positions?
 
@@ -1939,6 +1903,66 @@ Footnote detail: the NoPE paper's Fig. 3 is Raschka's Fig. 23.
 Note:
 Costs and open questions. The NoPE evidence is small: 100-million-parameter models on toy tasks, where "longer" means 20 to 40 items, not 32 thousand to 128 thousand tokens. Raschka says it plainly: "it is unclear how well these findings generalize". The paper's three 1B models on code: Rotary's perplexity explodes past the training length, NoPE and ALiBi both reach about twice it, and beyond that ALiBi is steadier. So at 1B the advantage over ALiBi disappears, and models use NoPE cautiously, in some layers only.
 The tension: Rotary, which most 2025 models keep, was among the weakest in the toy test; nothing in our sources compares them at scale. Partial RoPE has no stated motive in a primary source except DeepSeek's; Raschka guesses that no rotation may be better than an extreme one never seen in training. And a flag: Gemma 3 trains at 32 thousand and says a scaling factor of 8 reaches 128 thousand, but 32 times 8 is 256.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · not a blog section · Change 6 of 6, gated feed-forward · What and who · OLMo 2 §3</p>
+
+## Why three matrices in a feed-forward network?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\mathrm{SwiGLU}(x) = W_2\big(\mathrm{SiLU}(W_1 x) \odot W_3 x\big)$$</div>
+
+- one projection gates the other, feature by feature
+- 3 matrices of width $f$: $3df$ weights
+- same weights as GPT-3's $8d^2$ at $f = \tfrac{8}{3} d$
+- who: every 2025 model in the lineup; Gemma uses GeGLU
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Same size as GPT-3's?</p>
+<p class="a"><b>A.</b> 135.3M vs 134.2M per layer</p>
+
+</div>
+</div>
+
+<p class="footnote">Ours: one line in the blog's introduction, no section. OLMo 2 arXiv:2501.00656 §3 ("approximately $\frac{8}{3}d$ ... 11,008 for our 7B model"). SiLU$(z) = z\sigma(z)$, the sigmoid linear unit; GeGLU gates with GELU (Gaussian error linear unit) instead</p>
+
+Note:
+Change 6, the smallest, and the one the blog never gives a section: we add it because every 2025 model has it. Raschka's first paragraph says "the more efficient SwiGLU has replaced activation functions like GELU". GPT-3's feed-forward network has two matrices with a GELU between them. A gated network computes two projections of the input and multiplies them element by element, so one acts as a learned, input-dependent gate on the other, then projects back: three matrices.
+To keep GPT-3's budget of 8 d squared, 3 times d times f equals 8 d squared, so the width is eight thirds of d instead of 4d. OLMo 2 7B: eight thirds of 4096 is 10,923, rounded up to a multiple of 128, 11,008, the number in their paper. Who: every 2025 model in the lineup; Gemma's variant gates with GELU instead of SiLU. Looking back at change 2: every expert is one of these gated networks.
+
+---
+
+<p class="eyebrow"><span class="paper">Raschka 2025</span> · not a blog section · Change 6 of 6, gated feed-forward · How it helps, and costs</p>
+
+## What does the gate buy?
+
+<div class="cols">
+<div class="text">
+
+- claimed: better quality per weight
+- intuition: switch features on and off per token
+- cost: none in weights, at $f = \tfrac{8}{3}d$
+- one extra matrix product per layer
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Does any of our sources test it?</p>
+<p class="a"><b>A.</b> No: every lab inherits it as a default</p>
+
+</div>
+</div>
+
+<p class="footnote">Raschka 2025 · Introduction. The original evidence that gating helps (Shazeer 2020, "GLU Variants Improve Transformer") is cited widely but is not in our sources</p>
+
+Note:
+How it helps: the claim is better quality for the same number of weights, and the intuition is that the gate lets the layer switch features on and off for each token. The cost is small: at eight thirds of d the weights are the same as GPT-3's, so memory and arithmetic per token barely change; there are three matrix products instead of two, each narrower.
+What's open: none of the papers in our set ablates it. It's an inherited default, and the evidence people point to, Shazeer's 2020 note, isn't among our readings. And Raschka's "more efficient" isn't explained: at matched size it uses the same weights, not fewer. So this is the change we can say least about.
 
 ---
 
@@ -2074,7 +2098,7 @@ Active shares, ours: 5.51% (DeepSeek-V3), 4.39% (gpt-oss-120b).
 <p class="footnote">Raschka 2025. Next: PPO and GRPO, the method DeepSeek-R1 used on top of DeepSeek-V3 (arXiv:2501.12948)</p>
 
 Note:
-Five things to keep. The 2025 block is still GPT's block; six parts changed, and each is easiest to understand as an answer to "what is expensive?". During decoding, the expensive thing is moving bytes, not doing arithmetic. Two numbers explain changes 1, 3 and 4: the KV cache per token and the active weights per token; compute those for a model and you know much of what its architecture is for. Total and active weights are different things: memory follows the total, arithmetic the active count. And the quality evidence for these changes is thin; the memory arithmetic is solid.
+Five things to keep. The 2025 block is still GPT's block; six parts changed, and each is easiest to understand as an answer to "what is expensive?". During decoding, the expensive thing is moving bytes, not doing arithmetic. Two numbers explain changes 1, 2 and 4: the KV cache per token and the active weights per token; compute those for a model and you know much of what its architecture is for. Total and active weights are different things: memory follows the total, arithmetic the active count. And the quality evidence for these changes is thin; the memory arithmetic is solid.
 The open question for the rest of the week: if the architecture changed this little, and even Raschka suspects the secret sauce is in training, what in training is doing the work? PPO and GRPO, the method R1 used on top of DeepSeek-V3, take up one answer. The R1 paper says it built "upon DeepSeek-V3-Base and employ Group Relative Policy Optimization (GRPO)", reading 4 of this week.
 
 
