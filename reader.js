@@ -7,7 +7,9 @@
 const list = document.getElementById('list');
 const statusLine = document.getElementById('status');
 const params = new URLSearchParams(location.search);
-const week = (params.get('week') || '').replace(/\D/g, '').padStart(2, '0');
+// a week number (6, 06) or a companion deck's id (04-rlhf, for week-04-rlhf.html)
+const weekMatch = (params.get('week') || '').toLowerCase().match(/^(\d{1,2})(-[a-z0-9]+)?$/);
+const week = weekMatch ? weekMatch[1].padStart(2, '0') + (weekMatch[2] || '') : '00';
 const storeKey = `reader:week-${week}`;
 const cards = [];   // { card, view, label } in reading order
 let margin = 0;     // the deck's reveal margin, as a fraction of the slide
