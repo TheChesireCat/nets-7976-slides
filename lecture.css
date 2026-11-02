@@ -308,3 +308,11 @@
 .reveal .frame .text ul + p.q, .reveal .frame .text ol + p.q { margin-top: 22px; }
 .reveal .frame .text ul + .eq, .reveal .frame .text ol + .eq { margin-top: 16px; }
 .reveal .frame .text table.rules + ul, .reveal .frame .text table.rules + ol { margin-top: 28px; }
+
+/* "where" legend under an equation or table: every symbol on the slide gets its name and meaning, at reading size
+   (the footnote is too small for this). Symbol left, definition right. */
+.reveal .frame dl.where { display: grid; grid-template-columns: fit-content(42%) 1fr; column-gap: 14px; row-gap: 3px; margin: 2px 0 12px 0; font-size: 21px; line-height: 1.3; text-align: left; }
+.reveal .frame dl.where dt { margin: 0; font-weight: 400; }
+.reveal .frame dl.where dd { margin: 0; }
+/* The equation read out in plain words, right under its legend. */
+.reveal .frame p.plain { font-size: 22px; margin: 0 0 12px 0; text-align: left; }
