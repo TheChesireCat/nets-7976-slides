@@ -2220,14 +2220,17 @@ Two notation warnings. The paper uses r t for both the reward and the probabilit
 <div class="cols">
 <div class="text">
 
+<p class="plain">In practice we do not add up future rewards equally, as in $\sum_t R_t$ on the last slide. We scale each later reward down, and that scaled sum is $G_t$.</p>
+
 <div class="eq">$$G_t = R_t + \gamma R_{t+1} + \gamma^2 R_{t+2} + \dots$$</div>
 
 <dl class="where">
-<dt>$G_t$</dt><dd>the <b>discounted return</b>: all reward from step $t$ on</dd>
+<dt>$G_t$</dt><dd>the <b>discounted return</b> from step $t$ on</dd>
 <dt>$\gamma$</dt><dd>the <b>discount factor</b>, between 0 and 1</dd>
 </dl>
 
 - A reward $k$ steps ahead counts $\gamma^k$ of one received now.
+- The objective becomes $J(\theta) = \mathbb{E}[G_0]$, the average scaled sum from the start.
 - The paper uses $\gamma = 0.99$ in every experiment.
 - Discounting cuts noise from far-off rewards, at the cost of some bias.
 
@@ -2243,7 +2246,7 @@ Two notation warnings. The paper uses r t for both the reward and the probabilit
 <p class="footnote">Schulman et al. 2017 · App. A, Tables 3 to 5. GAE (generalised advantage estimation, Schulman et al. 2015a): $\gamma$ is a way "to reduce variance ... at the cost of introducing bias". InstructGPT uses no discount, $\gamma$ = 1</p>
 
 Note:
-The discount factor. The return is the total reward from now on, and the goal is its expectation over episodes, tau being one run to the end. Every table in the paper uses a discount gamma of 0.99, so a reward 100 steps away counts about a third: gamma below 1 makes later rewards count less. But the GAE paper and later Andrychowicz et al. treat gamma as part of the algorithm, a knob that cuts variance at the cost of bias, not part of the goal; Andrychowicz et al. 2020 likewise treat the goal as undiscounted. That reading is what makes the paper's Eq. 1 come out exactly as printed.
+The discount factor. G t replaces the plain sum of rewards from the last slide: same rewards, but each one shrunk by gamma for every step it lies in the future. With gamma equal to 1 the two are the same thing. The return is the total reward from now on, and the goal is its expectation over episodes, tau being one run to the end. Every table in the paper uses a discount gamma of 0.99, so a reward 100 steps away counts about a third: gamma below 1 makes later rewards count less. But the GAE paper and later Andrychowicz et al. treat gamma as part of the algorithm, a knob that cuts variance at the cost of bias, not part of the goal; Andrychowicz et al. 2020 likewise treat the goal as undiscounted. That reading is what makes the paper's Eq. 1 come out exactly as printed.
 
 ---
 
