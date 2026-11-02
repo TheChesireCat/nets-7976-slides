@@ -4,7 +4,7 @@
 <p class="subtitle">Current Model Landscape and Policy Optimization</p>
 
 Note:
-Four readings, as deep dives, in two pairs. GPT-3 and Raschka's architecture survey ask what a modern language model is: how far scale alone goes, and what changed in the transformer block since. PPO and GRPO ask how to train one on a reward instead of the next token.
+Four readings, as deep dives, in two pairs, with InstructGPT read after PPO as PPO applied. GPT-3 and Raschka's architecture survey ask what a modern language model is: how far scale alone goes, and what changed in the transformer block since. PPO and GRPO ask how to train one on a reward instead of the next token.
 
 ---
 
@@ -17,15 +17,16 @@ Four readings, as deep dives, in two pairs. GPT-3 and Raschka's architecture sur
   <tr><td>Brown et al. 2020, GPT-3</td><td>what does scale alone buy?</td></tr>
   <tr><td>Raschka 2025, architecture comparison</td><td>what changed in the block since?</td></tr>
   <tr><td>Schulman et al. 2017, PPO</td><td>how to take safe steps on a reward?</td></tr>
+  <tr><td>Ouyang et al. 2022, InstructGPT (PPO, applied)</td><td>how to make GPT-3 do what people ask?</td></tr>
   <tr class="total"><td>Shao et al. 2024, DeepSeekMath (GRPO)</td><td>can you drop PPO's critic?</td></tr>
 </table>
 
-<p class="footnote">arXiv:2005.14165 · magazine.sebastianraschka.com (version of 2 Apr 2026) · arXiv:1707.06347 · arXiv:2402.03300. Press ↓ on any slide for optional depth</p>
+<p class="footnote">arXiv:2005.14165 · magazine.sebastianraschka.com (version of 2 Apr 2026) · arXiv:1707.06347 · arXiv:2203.02155 · arXiv:2402.03300. Press ↓ on any slide for optional depth</p>
 
 Note:
 The plan. Two pairs.
 First pair: GPT-3 shows how far next-token prediction plus scale goes, and ends by naming where it stops: the objective "weights every token equally". Raschka's survey then shows that five years of models changed the transformer block only in its details.
-Second pair: PPO is the tool for training on a reward instead, the method later used to tune GPT-3 toward human preferences. GRPO, from DeepSeekMath, makes it cheaper by dropping the value network.
+Second pair: PPO is the tool for training on a reward instead; we keep only the part a language model needs, then read InstructGPT, which used it to tune GPT-3 toward human preferences. GRPO, from DeepSeekMath, makes it cheaper by dropping the value network.
 The thread: what does each step change, and how good is the evidence that the change is what helped? Vertical sub-slides (press down) are optional depth.
 
 
@@ -2148,9 +2149,9 @@ Now ask "What is 17 × 19?". We may have no worked solution to imitate, only a c
 That's the whole difference. Fine-tuning says: here is the answer you should give. Reinforcement learning says: here is how good the answer you gave was.
 Say the model answers 323, 324 and 326 on three tries: rewards 1, 0, 0. We want 323 pushed up and the other two pushed down, without any label. The rest of this reading is how to do that, and how to do it without wrecking the model on a few lucky samples. We keep this example through PPO and GRPO.
 
----
+--
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Motivation · §1</p>
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Motivation · §1 · optional</p>
 
 ## What problem is PPO solving?
 
@@ -2210,10 +2211,10 @@ Note:
 Supervised learning has a target for every input; here we only find out afterwards whether what we did was good. At step t the agent sees a state, picks an action, and gets a reward, a number. One run to the end is an episode. The policy is a network that outputs a distribution over actions: on the paper's robots a Gaussian (bell curve) over joint torques, on Atari a softmax over joystick moves.
 Two notation warnings. The paper uses r t for both the reward and the probability ratio; we write capital R for reward. And it uses delta for both TRPO's KL limit and the one-step surprise.
 
----
+--
 
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Preliminary (needed first) · the discount factor</p>
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Preliminary (needed first) · the discount factor · optional</p>
 
 ## Why count later rewards less?
 
@@ -2360,49 +2361,9 @@ Use it three times. A reward earned before step t is fixed once we condition on 
 $$L^{PG}(\theta) = \hat{\mathbb{E}}\_t\big[\log\pi\_\theta(a\_t \mid s\_t)\hat A\_t\big]$$
 Those steps are exact. Bias enters only when we plug in an estimated advantage. For now, think of it as the return from t minus V of s t. In words: maximum likelihood on your own samples, weighted by how much better than expected they were.
 
----
+--
 
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §2.1 · Eq. 2 · compared with fine-tuning (ours)</p>
-
-## Isn't this just fine-tuning?
-
-<div class="cols">
-<div class="text">
-
-<div class="eq">$$L^{PG}(\theta) = \hat{\mathbb{E}}_t\big[\log\pi_\theta(a_t \mid s_t)\thinspace\hat A_t\big]$$</div>
-
-<dl class="where">
-<dt>$L^{PG}$</dt><dd>the <b>policy-gradient objective</b>, maximised; its gradient is $\hat g$</dd>
-<dt>$\hat{\mathbb{E}}_t$, $\hat A_t$</dt><dd>average over time steps; estimated advantage</dd>
-<dt>$y^\star$</dt><dd>a label someone wrote</dd>
-<dt>$y$</dt><dd>the model's own sample</dd>
-</dl>
-
-<table class="rules" style="font-size:22px">
-  <tr><td></td><td>loss, minimised</td><td>on</td></tr>
-  <tr><td>fine-tuning</td><td>$-\log\pi_\theta(y^\star \mid x)$</td><td>a label</td></tr>
-  <tr><td>policy gradient</td><td>$-\hat A\log\pi_\theta(y \mid x)$</td><td>its own sample</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> The model samples "324" and $\hat A = -0.5$. What happens?</p>
-<p class="a"><b>A.</b> A fine-tuning step on 324, run backwards, at half size</p>
-
-</div>
-</div>
-
-<p class="footnote">Ours, from Schulman et al. 2017 Eq. (2), §2.1. Shown for whole answers; per token, the same holds for each action $a_t$</p>
-
-Note:
-Eq. 2 is the objective whose gradient is g hat: L PG, the average over time steps of log-probability times estimated advantage.
-Set it next to fine-tuning, the table. Fine-tuning pushes up the log-probability of a label someone wrote. The policy gradient pushes up the log-probability of the model's own sample, the same update, multiplied by the advantage. On 17 × 19: the sample 323 with advantage plus 0.5 gets a half-size fine-tuning step toward 323. The sample 324 with advantage minus 0.5 gets a half-size step away from it. The advantage is the scaling factor; everything else in PPO is about estimating it and keeping these steps safe. For a language model the dynamics are just "append the token", so there is nothing to model.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §2.1 · why it is noisy</p>
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §2.1 · why it is noisy · optional</p>
 
 ## Why is the estimate so noisy, and what fixes it?
 
@@ -2519,7 +2480,8 @@ Why is it dangerous alone? It's linear in the ratio. If the old policy gave a go
 </dl>
 
 - Moving a 50/50 choice to 60/40 gives a KL of 0.0204.
-- Its ratios are 1.2 and 0.8, exactly the clip edges PPO will use.
+- Its probability ratios, new over old, are 1.2 and 0.8: the limits PPO's clip will use.
+- TRPO (trust region policy optimization), PPO's predecessor, kept each update's KL below a small limit.
 
 </div>
 <div class="text">
@@ -2533,51 +2495,10 @@ Why is it dangerous alone? It's linear in the ratio. If the old policy gave a go
 <p class="footnote">KL in nats (natural logs; 1 nat = 1.44 bits), old policy first, as in the paper. Worked numbers: ours; Fig. 2's update has KL "about 0.02"</p>
 
 Note:
-Before TRPO, one tool: the Kullback-Leibler divergence. It measures how different two probability distributions are: zero when they agree, positive otherwise, and not symmetric; the paper always puts the old policy first. With natural logs it is in nats.
+One tool we need: the Kullback-Leibler divergence. TRPO, the method PPO aims to match with first-order steps, maximises its surrogate only while the mean KL to the old policy stays below a small limit, using second-order machinery; PPO gets a similar effect with a clip. It measures how different two probability distributions are: zero when they agree, positive otherwise, and not symmetric; the paper always puts the old policy first. With natural logs it is in nats.
 What does 0.02 feel like? Move a 50/50 choice to 60/40:
 $$0.5\ln\tfrac{0.5}{0.6} + 0.5\ln\tfrac{0.5}{0.4} = 0.0204$$
 the other order gives 0.0201. That's the size of the PPO update in Figure 2. In this two-action example the ratios are 1.2 and 0.8, exactly the clip edges at epsilon 0.2. Don't generalise from that: with many actions, or a Gaussian over torques, the same mean KL can hide individual ratios far outside the band. Engstrom et al. measured exactly that.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §2.2 · Eqs. 3 to 5</p>
-
-## How did TRPO limit the step?
-
-<div class="cols">
-<div class="text">
-
-<div class="eq">$$\max_\theta L^{CPI}(\theta)\ \ \text{s.t.}\ \ \hat{\mathbb{E}}_t\big[\mathrm{KL}_t\big] \le \delta$$</div>
-
-<dl class="where">
-<dt>$L^{CPI}$</dt><dd>the surrogate objective: old samples reweighted by their ratios</dd>
-<dt>$\mathrm{KL}_t$</dt><dd>KL between the old and new action probabilities at state $s_t$</dd>
-<dt>$\delta$</dt><dd>a hand-set limit on the average KL per update (no value given)</dd>
-</dl>
-
-- TRPO maximises the surrogate only inside this small region, a **trust region**.
-- Solving it needs second-order steps (conjugate gradient) on every update.
-
-</div>
-<div class="text">
-
-- Theory guarantees no worse updates only for a KL **penalty**, $L^{CPI} - \beta\thinspace\mathrm{KL}$, on the maximum KL over states.
-- Practical TRPO uses the mean KL and a hand-set $\delta$, so it gives up that guarantee.
-
-<p class="q"><b>Q.</b> Why not just use the penalty?</p>
-<p class="a"><b>A.</b> It is hard to choose one weight $\beta$ "that performs well across different problems"</p>
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · §2.2, Eqs. (3) to (5); TRPO: Schulman et al. 2015b. The guarantee's three steps: notes</p>
-
-Note:
-TRPO limits how far the action distribution moves, measured by the Kullback-Leibler divergence: zero when the distributions agree, growing as they separate. It isn't symmetric; the paper always puts the old policy first. With natural logs it's in nats. TRPO maximises the surrogate subject to the mean KL staying below delta, a limit the paper never gives a value for, solved with "the conjugate gradient algorithm" after linear and quadratic approximations. That means Hessian-vector products on every update.
-Why would a KL penalty guarantee improvement? "The theory justifying TRPO actually suggests using a penalty instead of a constraint":
-$$\max\_\theta\ \hat{\mathbb{E}}\_t\big[r\_t\hat A\_t - \beta\thinspace \mathrm{KL}[\pi\_{\theta\_{\rm old}}, \pi\_\theta]\big]$$
-Three lines. One: with the maximum KL over states (the penalty form uses "the max KL over states instead of the mean") and the right beta, call M of pi the old policy's performance plus the surrogate minus the penalty; it is a lower bound on the true performance eta of any policy. Two: the bound is tight at the old policy, because there both the KL and the change are zero. Three: the new policy maximises M, so M at the new policy is at least M at the old one, which equals the old performance; and eta at the new policy is at least M there. Chain them and performance can't go down. The three steps are ours; the constant is in the TRPO paper (not read here) and needs gamma below 1.
-Step two is the key one: raising a lower bound that doesn't touch the true curve at your current point guarantees nothing. And TRPO itself already leaves the theorem: it uses the mean KL, a hand-set delta and approximations. (The paper's reason for a hard constraint rather than a penalty is that "it is hard to choose a single value of beta".) A fixed beta with SGD, stochastic gradient descent run as ascent, is "not sufficient". The paper's two fixes are next: the clip and an adaptive beta.
 
 ---
 
@@ -2593,7 +2514,7 @@ Step two is the key one: raising a lower bound that doesn't touch the true curve
 
 <dl class="where">
 <dt>$L^{CLIP}$</dt><dd>the <b>clipped surrogate objective</b>, PPO's policy objective</dd>
-<dt>$\epsilon$</dt><dd>the <b>clip range</b>: 0.2, "say"</dd>
+<dt>$\epsilon$</dt><dd>the <b>clip range</b>; the paper's example is 0.2</dd>
 <dt>clip$(r, 1\pm\epsilon)$</dt><dd>$r$ held inside $[1-\epsilon, 1+\epsilon]$, here $[0.8, 1.2]$</dd>
 <dt>min</dt><dd>the smaller of the two terms</dd>
 <dt>$r_t$, $\hat A_t$</dt><dd>probability ratio; estimated advantage</dd>
@@ -2620,7 +2541,7 @@ And at ratio 1 every sample is inside the band, so to first order the clipped ob
 Or adapt a KL penalty instead? Section 4 keeps the penalty form but adjusts beta after each update to hit a target KL:
 $$L^{KLPEN} = \hat{\mathbb{E}}\_t\big[r\_t\hat A\_t - \beta\thinspace \mathrm{KL}[\pi\_{\theta\_{\rm old}}, \pi\_\theta]\big]$$
 Run several epochs, measure the mean KL d, then halve beta if d is below the target over 1.5, double it if d is above 1.5 times the target. With a target of 0.01 and beta of 1 the thresholds are 0.00667 and 0.015 (ours): an update that reached 0.004 halves beta to 0.5; one that reached 0.02 doubles it to 2; 0.012 leaves it alone. It's a thermostat: it reacts after the fact, so a single update can still overshoot. The authors say such misses are rare and beta quickly adjusts; 1.5 and 2 were "chosen heuristically". The paper says it "performed worse than the clipped surrogate objective, however, we've included it here because it's an important baseline". It is usable "in addition to" clipping; never tested.
-Remember: this KL is to the policy one iteration ago. The KL penalty in language-model fine-tuning is to a frozen reference model, a different thing we'll see at the end.
+Remember: this KL is to the policy one iteration ago. The KL penalty in language-model fine-tuning is to a frozen reference model, a different thing we'll see in InstructGPT, right after PPO.
 
 --
 
@@ -2685,79 +2606,6 @@ Case a: a good action already 30% more likely, past the 20% allowance. The clipp
 The rule in one line: a sample's gradient is switched off only when it has already moved the way its advantage wanted, by more than epsilon. Moves that made things worse are never clipped. Check it with a new case: at ratio 1.5 with advantage minus 1 the unclipped term, minus 1.5, is the smaller one, so the slope is minus 1 and the gradient flows; at 0.5 the clipped term, minus 0.8, is the smaller one, so the slope is zero.
 Why the min, and not just the clip? Drop the min and use only the clipped term. With clip alone, a good action whose ratio has fallen to 0.7 (case b) sits on the flat part below 0.8 and gets zero gradient, and so does a bad action whose ratio has risen to 1.3 (case d). The objective would refuse to undo a harmful move. The min puts the unclipped, worsening term back exactly in those two cases. Compact form (ours): A min(r, 1 plus epsilon) if A is positive, A max(r, 1 minus epsilon) if A is negative. Figure 2 (next) shows the clip-only and min curves side by side.
 So in both signs the objective's improvement is capped and its worsening isn't. Compare a KL penalty: it acts on the whole action distribution at every state, whatever the advantage's sign, so it also resists moves the advantage wants and penalises changes to actions nobody sampled. The clip acts per sample and only on the favoured side.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §3 · Fig. 2</p>
-
-## What does one real update look like?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- The paper takes PPO's first update on Hopper and walks a straight line from the old weights (0) to the new (1), and beyond.
-- Orange, the surrogate $L^{CPI}$, keeps rising; green, the clip without the min, levels off.
-- Red, $L^{CLIP}$, peaks near 1 and then falls: the min at work.
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Is a peak at 1 surprising?</p>
-<p class="a"><b>A.</b> No: Adam maximised $L^{CLIP}$ to get there (ours). The news is the shape: only $L^{CLIP}$ has a peak</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-ppo-fig2.png" alt="Schulman et al. Figure 2: four curves against the linear interpolation factor from minus 0.5 to about 1.9; the KL rises quadratically; L CPI keeps rising; the clip-only objective levels off near 0.04; L CLIP peaks near factor 1 at about 0.034 and falls to about 0.01"></div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · Fig. 2: "The updated policy has a KL divergence of about 0.02 from the initial policy, and this is the point at which $L^{CLIP}$ is maximal." Hopper-v1: a one-legged MuJoCo robot rewarded for hopping forward</p>
-
-Note:
-Figure 2 takes the first PPO update on Hopper and evaluates four quantities along the straight line from the old parameters, at 0, to the updated ones, at 1, extended either side. Blue is the mean KL; orange the plain surrogate; green the clip without the min; red the full clipped objective.
-Read it from left to right. Left of zero the objectives coincide. Past 1, orange keeps rising: it would happily keep going, as we said. Green levels off at about 0.04 and stays flat, because every sample that has moved far enough stops counting. Red bends over and falls. The gap between green and red is the min at work: further out, more samples land in cases b and d, and their worsening terms pull red down. At 1, the KL is about 0.02.
-Is the peak at 1 surprising? Not really: the point at 1 was found by ten epochs of minibatch Adam maximising this very objective, so the peak sits near 1, about 1.05 on the plot, not exactly at it. What's informative is the shape: the clipped objective has an interior maximum, the surrogate has none. And, in our reading, the KL of 0.02 is where the optimiser stopped, not something the objective enforces. One update on one task.
-What does the clip do to a model's tokens? Two consequences that surprise people who know language-model distributions. First, the ratio and clip are per token (ours; the paper's ratio is per timestep, and applying it per token is how language-model practice uses it; InstructGPT's KL penalty is per token too). Why not the ratio of whole responses, which is what importance sampling over sequences would literally ask for? Because ratios multiply: 1.1 on every token gives 1.331 for a 3-token response and 13,781 for a 100-token one. Sequence ratios explode.
-Second, in probability terms the upper clip, which matters for positive advantages, is very uneven. A token the old policy gave 0.95 can reach a ratio of at most 1 over 0.95, 1.053, so the upper clip at 1.2 never binds: confident tokens can be pushed all the way to 1. A token at 0.01 is clipped as soon as it reaches 0.012. For a positive advantage the upper clip never binds for old probability above 1 over 1.2, 0.833, so anything above that can't be clipped upward at all. For negative advantages the lower clip binds at 0.8 times the old probability for every token, so it is even in ratio terms. Whether that's the right shape for language models, rather than an accident of a rule built for robots, is an open question.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §5 · Eq. 9 · the loss</p>
-
-## Why does the loss have three parts?
-
-<div class="cols">
-<div class="text">
-
-<div class="eq">$$L^{CLIP+VF+S} = \hat{\mathbb{E}}_t\big[L^{CLIP}_t - c_1 L^{VF}_t + c_2 S[\pi_\theta](s_t)\big]$$</div>
-
-<dl class="where">
-<dt>$L^{CLIP}_t$</dt><dd>the clipped objective at step $t$</dd>
-<dt>$L^{VF}_t$</dt><dd>the <b>value loss</b>: the critic's squared error, $(V(s_t) - G_t)^2$</dd>
-<dt>$S[\pi_\theta](s_t)$</dt><dd>the <b>entropy</b> of the action probabilities: high when they are spread out</dd>
-<dt>$c_1, c_2$</dt><dd>weights for the two extra terms</dd>
-<dt>$V(s_t)$, $G_t$</dt><dd>the critic's value; the observed return</dd>
-</dl>
-
-</div>
-<div class="text">
-
-- The value loss is subtracted because the whole objective is maximised.
-- The entropy is added as a bonus, to keep the policy exploring.
-- MuJoCo uses separate networks and no entropy bonus; Atari uses $c_1 = 1$, $c_2 = 0.01$.
-
-<p class="q"><b>Q.</b> With separate policy and critic networks, does $c_1$ matter?</p>
-<p class="a"><b>A.</b> No: it only balances the two losses when they share weights</p>
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · Eq. (9), App. A, Table 5. The paper writes the value target as $V^{\rm targ}_t$; we use the return $G_t$, its usual choice</p>
-
-Note:
-Why more than the clipped term? Because we also have to train the value function the advantages come from, and if the policy and value share a network, both losses must live in one objective. So Eq. 9 subtracts c1 times the value network's squared error, subtracted because the whole thing is maximised, and adds c2 times the policy's entropy, a bonus "to ensure sufficient exploration": it rewards keeping the action distribution spread out. Here L VF is the squared error between the value network and its target, and S is minus the sum over actions of pi times log pi. V targ is the observed return (regression); the paper leaves it undefined (common code uses the advantage plus the old V, which is the return).
-A worked number for one sample: case a's clip term, 2.4, with advantage plus 2. With V at 0.7 the target is 2.7. The value network predicted 0.7, squared error 4, c1 of 1; the state has two actions at 0.39 and 0.61, entropy 0.669 (a 50/50 choice has entropy ln 2, 0.693 nats), c2 of 0.01. Total 2.4 minus 4 plus 0.00669, which is minus 1.5933 (ours). A badly wrong critic dominates the loss, which is why the value term needs its own coefficient.
-When do the coefficients matter? On MuJoCo the networks are separate, so c1 is irrelevant, and the paper says it uses no entropy bonus, c2 of zero. Atari lists c1 of 1 and c2 of 0.01 (Table 5); the paper never says the network is shared, but that's our inference from c1. For a language model with a separate value model, c1 is irrelevant again. Remember: the value term and the V inside the advantage are the two places a critic enters PPO. The next reading removes both.
 
 ---
 
@@ -2842,264 +2690,7 @@ Two practical notes. The paper's printed exponent in Eqs. 10 and 11 is T minus t
 
 ---
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §5 · Algorithm 1 · App. A</p>
-
-## What does one PPO iteration do?
-
-<div class="cols">
-<div class="text">
-
-<pre style="font-size:21px;line-height:1.45;font-family:Menlo,monospace;color:#000;background:none;box-shadow:none;width:100%;margin:0 0 12px 0;padding:0">for iteration = 1, 2, ... do
-  for actor = 1, ..., N do
-    run π_θold for T timesteps
-    compute advantages Â_1..Â_T
-  optimise L wrt θ: K epochs,
-    minibatch size M ≤ NT
-  θ_old ← θ</pre>
-
-<dl class="where">
-<dt>$N$</dt><dd><b>actors</b>: copies of the policy collecting data in parallel</dd>
-<dt>$T$</dt><dd>time steps each actor runs</dd>
-<dt>$K$</dt><dd><b>epochs</b>: passes over this batch</dd>
-<dt>$M$</dt><dd>minibatch size, in time steps</dd>
-<dt>$L$</dt><dd>PPO's objective, $L^{CLIP+VF+S}$</dd>
-</dl>
-
-</div>
-<div class="text">
-
-- The frozen old policy collects $NT$ steps; advantages are computed once.
-- The batch is reused for $K$ passes, then thrown away.
-- Only the first gradient step is **on-policy**, computed on data from the current weights.
-
-<p class="q"><b>Q.</b> What are these in a language model?</p>
-<p class="a"><b>A.</b> Actors are prompts, $T$ is the answer length, and $\pi_{\theta_{\rm old}}$ is the log-probabilities stored at sampling</p>
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · Algorithm 1, "PPO, Actor-Critic Style"; optimised "with minibatch SGD (or usually for better performance, Adam)". "one simply constructs the loss $L^{CLIP}$ ... instead of $L^{PG}$"; steps per batch: samples / minibatch × epochs</p>
-
-Note:
-Algorithm 1. Each iteration, N parallel actors each run the frozen old policy for T timesteps. Advantages are computed once; our reason is that GAE needs the time order. Then the N T samples are split into minibatches of size M and the clipped loss is optimised for K epochs, usually with Adam (shuffling into minibatches is standard code, not stated). Then the old parameters are set to the new ones and we repeat.
-What does epoch mean here? Not a pass over a fixed training set. It's a pass over the batch you just sampled, which is thrown away after K passes. Only the very first minibatch step is exactly on-policy; every later step evaluates a moved policy on old data, which is the whole reason the ratio and the clip exist.
-What changed from a policy gradient? The selling point, in the paper's words: "one simply constructs the loss L CLIP ... instead of L PG".
-How many gradient steps per batch? The bookkeeping from the hyperparameter tables (App. A, Tables 3 to 5):
-MuJoCo, Table 3: N not stated, T 2048, 2048 samples if N is 1, minibatch 64, 10 epochs, so 320 gradient steps per batch.
-Roboschool running, Table 4: N 32, T 512, 16,384 samples, minibatch 4096, 15 epochs, 60 steps.
-Roboschool flagrun, Table 4: N 128, T 512, 65,536 samples, minibatch 4096, 15 epochs, 240 steps.
-Atari, Table 5: N 8, T 128, 1024 samples, minibatch 256, 3 epochs, 12 steps. A 10M-timestep Atari run is about 10 to the 7 over 1024, 9766 iterations.
-One detail for later: on Atari the stepsize is 2.5 times 10 to the minus 4 times alpha and the clip is 0.1 alpha, where "alpha is linearly annealed from 1 to 0". Halfway through, the stepsize is 1.25 times 10 to the minus 4 and epsilon is 0.05. So on Atari epsilon is neither 0.2 nor fixed.
-Make it concrete for a language model. The old policy isn't a second copy kept in memory. When you sample, you record the log-probability of every generated token. Later you compute the current model's log-probability of the same token and exponentiate the difference: that's the ratio. What does setting old to new cost? Nothing: you sample the next batch with the current weights. Actors are prompts answered in parallel; T is the response length; the critic predicts the eventual reward at every token position. And the epochs are passes over those responses: InstructGPT used one, eight minibatches of 64 from a batch of 512 ("batch size for each iteration is 512, with a minibatch size of 64 ... only a single inner epoch").
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §6 · §6.1 · Table 1</p>
-
-## Which way of limiting the step works best?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Seven MuJoCo robot tasks, 1M time steps, 3 seeds; only the policy loss changes.
-- Score: 0 is a random policy, 1 is "the best result" on that task.
-- With no limit the score is −0.39, below random, because HalfCheetah collapses.
-- Clipping at $\epsilon$ = 0.2 scores 0.82, the best; the best adaptive KL scores 0.74.
-
-<p class="q"><b>Q.</b> What does it show, and what not?</p>
-<p class="a"><b>A.</b> Any limit beats none by at least 1.01. Clip over KL is 0.08, with no error bars</p>
-
-</div>
-<div class="fig"><img src="img/week-04-ppo-scores.svg" alt="Table 1 re-plotted as horizontal bars: no clipping or penalty minus 0.39; clip at epsilon 0.1, 0.2, 0.3 scores 0.76, 0.82, 0.70; adaptive KL with targets 0.003, 0.01, 0.03 scores 0.68, 0.74, 0.71; fixed KL with beta 0.3, 1, 3, 10 scores 0.62, 0.71, 0.72, 0.69"></div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · §6.1, Table 1 ("$\beta$ was initialized at 1"). MuJoCo: a physics simulator for robot tasks. Score $(x - x_{\rm random})/(x_{\rm best} - x_{\rm random})$, last 100 episodes: ours. Differences ours</p>
-
-Note:
-What will the paper test? Four experiments. Table 1, §6.1: which way of limiting the step works best, comparing PPO variants (none, clip, KL penalty); result clip 0.82, none minus 0.39. Fig. 3, §6.2: is PPO better than other algorithms, against TRPO, CEM, vanilla policy gradient and A2C; ahead on 3 of 7, behind TRPO on Swimmer. Figs. 4 and 5, §6.3: does it scale to a humanoid, against nothing; it runs, steers, gets up. Table 2, §6.4: pixels, discrete actions, a shared network, against A2C and ACER; fastest (30 games), though ACER ends higher (28 to 19). Two things to notice already. Only Table 1 isolates the clip; everything else compares whole algorithms. And TRPO, the method PPO claims to match, appears only in Figure 3.
-The setup of Table 1: the same code, same tasks, only the policy loss changes. Seven MuJoCo tasks, a million timesteps each, three seeds, chosen because it's cheap and they were searching hyperparameters for each variant. The tasks (the "-v1" versions): HalfCheetah, Hopper, Walker2d and Swimmer are legged or swimming robots rewarded for forward speed; Reacher is an arm touching a target; InvertedPendulum and InvertedDoublePendulum balance one or two poles on a cart. Policy: two hidden layers of 64 tanh units (a squashing function) giving the mean of a Gaussian (bell-curve) over actions, a separate value network, no entropy bonus.
-Three families: no clipping or penalty; clipping at 0.1, 0.2, 0.3; and a KL penalty, fixed beta from 0.3 to 10 or adaptive with targets 0.003 to 0.03. They also tried clipping in log space: "no better", no number given.
-Scoring: each run's average reward over its last 100 episodes, rescaled per task so random is 0 and the best result is 1, averaged over 21 runs (our reading of the words). The paper states no prediction; ours would be that no limit fails and both clip and KL rescue it.
-The result. A score of 0.82 means that, averaged over tasks and seeds, epsilon 0.2 gets 82% of the way from random to the best result seen. The no-control row is minus 0.39 because of one task: on HalfCheetah it ends far below the random policy.
-What it shows: controlling the step is essential. The worst controlled setting beats no control by more than one full unit, and that row is the paper's cleanest negative control. Clipping at 0.2 has the best single number, and clipping isn't very sensitive to epsilon in this range.
-What it doesn't show: the margin over KL. Best clip minus best adaptive KL is 0.08, and all ten controlled settings span 0.20. No error bars, no per-task scores, three seeds, and the settings were chosen on the very runs being reported (see the tuning critique later). We can't tell whether 0.08 is more than seed noise.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §6.2 · Fig. 3</p>
-
-## Is PPO better than other algorithms?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- PPO is ahead on HalfCheetah, Walker2d and Reacher.
-- It is level with the best on Hopper and InvertedPendulum.
-- On InvertedDoublePendulum it learns first, while TRPO stays near 0.
-- The paper gives no table, no seed count and no meaning for the shaded bands.
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> PPO wins on "almost all" tasks. The exception?</p>
-<p class="a"><b>A.</b> Swimmer: TRPO about 120, PPO about 108</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-ppo-fig3.png" alt="Schulman et al. Figure 3: return against timesteps up to one million on seven MuJoCo tasks for A2C, A2C with trust region, CEM, PPO with clipping, vanilla policy gradient with adaptive stepsize, and TRPO; PPO is far ahead on HalfCheetah and Walker2d, highest on Reacher, roughly level on Hopper and InvertedPendulum, and below TRPO on Swimmer"></div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · Fig. 3, §6.2: "PPO outperforms the previous methods on almost all the continuous control environments". Values read off the plot: ours. PPO: purple. CEM: cross-entropy method. Vanilla PG: policy gradient with a KL-adjusted Adam stepsize</p>
-
-Note:
-Table 1 compared PPO's variants with each other. It says nothing about whether PPO beats what people actually used, TRPO above all. So Figure 3: the same seven MuJoCo tasks against tuned TRPO, the cross-entropy method (CEM, gradient-free), vanilla policy gradient with an adaptive stepsize, A2C (advantage actor-critic), and A2C with a trust region. Our prediction: if PPO matches TRPO's reliability, it should be at least level with TRPO everywhere.
-Read the panels; PPO is purple. HalfCheetah: about 1800 against about 1000 for the next best. Walker2d: about 3000 against 1000. Reacher: highest. InvertedDoublePendulum: PPO learns first, the A2C variants catch up, and TRPO, CEM and vanilla stay near zero the whole run. Hopper and InvertedPendulum: roughly level. Swimmer: TRPO ends above PPO, about 120 against 108. That's the exception behind "almost all".
-What it doesn't show, and what we can't test: there's no table behind the curves, no seed count, and we're not told what the bands are. PPO's settings were chosen on these same tasks. And we don't know which code details each implementation had.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §6.3 · Fig. 4 · Table 4</p>
-
-## Does it scale to a humanoid?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- Three tasks: run forward; chase a target that moves every 200 steps; also get up after being hit by cubes.
-- 32 or 128 actors run in parallel, for up to 100M time steps.
-- Each panel shows two curves, apparently two runs.
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Does this show that clipping works here?</p>
-<p class="a"><b>A.</b> No: there is no baseline, the learning rate is steered by a KL target, and no $\epsilon$ is listed</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-ppo-fig4.png" alt="Schulman et al. Figure 4: two PPO learning curves on each of three Roboschool humanoid tasks; all rise steadily, running over 50M timesteps and the two Flagrun tasks over 100M; on Flagrun the two runs separate between about 50M and 70M"></div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · Fig. 4, §6.3, Table 4 (Adam stepsize "adjusted based on the target value of the KL divergence"; log std annealed −0.7 to −1.6; no clipping parameter listed). Roboschool: open-source simulated robots</p>
-
-Note:
-A showcase, not a comparison. Three tasks with a simulated 3D humanoid: run forward; Flagrun, where the target moves every 200 timesteps or when reached; and FlagrunHarder, where the robot is pelted by cubes and has to get up. 32 or 128 parallel actors, up to 100 million timesteps.
-The curves rise steadily. Each panel shows two curves, apparently two runs; on Flagrun they separate visibly between about 50 and 70 million steps, so the run-to-run spread is unknown.
-Can we conclude that clipping works on humanoids? No. There's nothing to compare against. The learning rate is steered by a KL target whose value isn't given, which mixes in the Section 4 idea. Exploration is set by a hand-made schedule. And Table 4 lists no clipping parameter, so we don't know which epsilon was used, or whether clipping was used at all.
-What does the learned policy do? Figure 5 (not shown here, low resolution in the paper) gives twelve still frames of the policy learned from RoboschoolHumanoidFlagrun. In the first six the robot runs toward a target; then the target moves and it turns and runs toward the new one. A nice picture of what high-dimensional control looks like; it carries no numbers. The paper also notes concurrent work by Heess et al. that used the adaptive-KL variant to learn locomotion.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §6.4 · Table 2 · App. B · Fig. 6, Table 6</p>
-
-## Atari: who wins, and on what?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<table class="rules">
-  <tr><td>games won</td><td class="num">A2C</td><td class="num">ACER</td><td class="num">PPO</td><td class="num">tie</td></tr>
-  <tr><td>(1) over all training</td><td class="num">1</td><td class="num">18</td><td class="num">30</td><td class="num">0</td></tr>
-  <tr><td>(2) last 100 episodes</td><td class="num">1</td><td class="num">28</td><td class="num">19</td><td class="num">1</td></tr>
-</table>
-
-- Metric 1, reward averaged over all of training, measures learning speed.
-- Metric 2, reward over the last 100 episodes, measures the final score.
-
-<p class="q"><b>Q.</b> ACER replays old data to learn faster. Does it?</p>
-<p class="a"><b>A.</b> No: PPO wins metric 1; ACER ends higher on metric 2</p>
-
-</div>
-<div class="fig"><img src="img/week-04-ppo-fig6-rows.png" alt="Schulman et al. Figure 6, three of its ten rows: fifteen Atari games with three runs each for A2C in blue, ACER in green and PPO in red; on Enduro, Freeway, Kangaroo and Montezuma's Revenge only PPO's curves rise; on Gopher and DemonAttack ACER's curves rise far above the others"></div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · §6.4, Table 2, App. B (Fig. 6 rows 4 to 6 of 10, Table 6). Atari: 49 Atari 2600 games from pixels. ACER: actor-critic with experience replay (Wang et al. 2016). Winner: average over three trials</p>
-
-Note:
-On the slide in short: 49 games, 40M frames = 10M timesteps; metric 1 is learning speed, metric 2 the final score. Only PPO learns on Enduro 758.3, Kangaroo 9928.7, Zaxxon 5008.7; ACER is far ahead on Gopher 37802.3 and DemonAttack 38808.3. Replay is for sample efficiency, so naively ACER should learn faster. It doesn't: PPO wins metric 1. And ACER ends higher, yet §1 says "similarly to ACER" and §7 "better overall performance" (ours: row 2 does not support that).
-Atari is the paper's only setting with discrete actions, pixels and, by inference, a network shared between policy and value: exactly the setting the introduction said TRPO doesn't suit. Yet TRPO isn't a baseline here, so that complaint is never tested. The opponents are well-tuned A2C and ACER, which reuses old data from a replay buffer. 49 games, 10 million timesteps, three trials (winner "by averaging the scoring metric across three trials"; Tables 2 and 5). Our prediction is below.
-Two metrics. Metric 1, average reward over all of training, favours fast learning: PPO wins 30 games, ACER 18. Metric 2, the last 100 episodes, favours final performance: ACER 28, PPO 19.
-Here's the surprise. Experience replay is a sample-efficiency device; ACER's paper, "Sample Efficient Actor-Critic with Experience Replay", has "sample efficient" in its title. So the naive prediction is that ACER learns faster. It doesn't on metric 1; it only wins the end point. The paper doesn't explain this. Do they admit ACER ends higher? Partly. And notice the two registers: the introduction says "similarly to ACER"; the conclusion says "better overall performance", about the family of methods and with no Atari qualifier. Row 2 doesn't support it for Atari, in our reading.
-Which games does each method win? The appendix has learning curves for all 49 games and a table of final scores, the same metric as Table 2's second row (last 100 episodes, 40M frames). The figure shows rows 4 to 6 of 10, with A2C blue, ACER green and PPO red. The spread across games is wide. On Enduro, Freeway, Kangaroo, Zaxxon and Montezuma's Revenge only PPO learns anything: Enduro 758.3 against zero for both others (A2C / ACER / PPO: 0.0 / 0.0 / 758.3). On Gopher and DemonAttack ACER is far ahead.
-Count the best per row of Table 6 (our count) and you get ACER 27, PPO 19, A2C 1 and two ties, Pong (20.7 for both) and Venture. Table 2 says ACER 28 with one tie; the two agree only if unrounded Pong favours ACER, which the paper doesn't say. And a labelling slip: Figure 6's caption, Table 6's caption and the appendix prose all say PPO and A2C, but ACER is in the legend and the table.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · critique 1 · §7 claims vs evidence</p>
-
-## What does PPO give up?
-
-<div class="cols">
-<div class="text">
-
-<table class="rules">
-  <tr><td>claim (where)</td><td>verdict (ours)</td></tr>
-  <tr><td>"stability and reliability of trust-region methods" (§7)</td><td>trust region never measured</td></tr>
-  <tr><td>"(i.e., lower bound) of the performance" (§1)</td><td>overstated: §3 bounds $L^{CPI}$</td></tr>
-  <tr><td>"favorable balance ... and wall-time" (abstract)</td><td>no timing anywhere</td></tr>
-  <tr><td>"better overall performance" (§7)</td><td>not on Atari final scores</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- PPO comes with no improvement theorem and no trust-region guarantee.
-- The paper contradicts itself in places; the notes list them.
-- Its admissions are nearly all about variants that lost.
-
-<p class="q"><b>Q.</b> Does the lower-bound slip sink the argument?</p>
-<p class="a"><b>A.</b> No: it sinks the theory reading, not the method</p>
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 · abstract, §1, §3, §7. Our critique. Abstract: "outperforms other online policy gradient methods", defensible if ACER (replay) is not online</p>
-
-Note:
-Put the paper's claims next to its evidence. Stability and reliability of trust-region methods (§7): evidence is Table 1, Fig. 3 and the KL on one update; plausible on MuJoCo, but the trust region is never measured across training, only one update in Figure 2. Much simpler to implement (§5, §7): Algorithm 1, first-order; supported. More general, because it works with a joint policy-value network (abstract, §7): evidence is Atari, but TRPO is never run that way, so "more general than TRPO" isn't tested. A lower bound on performance (§1): Section 3 shows a bound on a surrogate only; overstated. A favourable balance of wall-time: no timing is reported anywhere. Better overall performance (§7): Table 2 row 2 has ACER 28, PPO 19, so not on Atari final scores.
-So, plainly: no improvement theorem, no trust-region guarantee, and, outside Table 1, no attribution of the results to the clip rather than the rest of the code.
-Is it a lower bound on performance? §1: "a pessimistic estimate (i.e., lower bound) of the performance of the policy". §3: "a lower bound ... on the unclipped objective" ("$L^{CLIP}$ is a lower bound on $L^{CPI}$" on Fig. 2). The introduction says the clipped objective forms a lower bound on the performance of the policy; Section 3 says something much weaker: it's a lower bound on the unclipped surrogate, a local approximation. Only TRPO's max-KL penalty form is a bound on true performance. Do they admit it? Implicitly; Section 3 is precise. Does it sink the argument? No. It sinks the theoretical reading, not the method. PPO should be presented as a well-motivated heuristic, not a cheaper TRPO with the same guarantee.
-Where does the paper disagree with itself? The introduction calls the clipped objective a lower bound on the policy's performance; Section 3 says it bounds the unclipped surrogate. On Atari, the introduction says "similarly to ACER"; the conclusion says "better overall". Figure 6 and Table 6 captions forget ACER. Table 2 and Table 6 count ACER's wins differently, 28 against 27. Section 2.1 points to Section 6.1 for results it says aren't shown; the nearest row is the no-clip one it calls similar, so the evidence is thin rather than contradictory. The GAE equations 10 and 11 print the exponent T minus t plus 1 where it must be T minus t minus 1. Two symbols carry two meanings each: r t is ratio and reward, delta is limit and residual. And the robustness goal, "without hyperparameter tuning", sits next to different settings in every domain. Also: a misplaced parenthesis in §6.1's clipping line; Algorithm 1 indexes 1 to T while Eq. 10 says 0 to T. None changes the method; the first two change how strongly we should read the paper's claims.
-What do the authors admit? There's no limitations section; the concessions are scattered (§1, §2.1, §2.2, §4, §6.1). Multi-epoch policy gradients fail, but "results are not shown". A fixed beta is "not sufficient". The adaptive rule sometimes misses its target, "these are rare" they say, and its constants, 1.5 and 2, were "chosen heuristically". The KL penalty "performed worse"; log-space clipping was "no better". Without any limit, HalfCheetah ends below random. And on Atari, PPO is "similarly to ACER". My reading: nearly every admission is about a variant that lost. The one exception is Atari, where PPO is only similar to ACER. None concerns its lack of a guarantee, the seed counts, or the code. Those are the critiques that follow.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · critique 2 · Later work · Engstrom et al. 2020 · Fig. 2</p>
-
-## Does clipping keep a trust region?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- A clipped sample gets no gradient, but shared weights keep moving its ratio.
-- The first step of every iteration is unclipped, since all ratios start at 1.
-- Engstrom et al. measured the largest ratio: far above $1+\epsilon$, the dashed line.
-- Yet the mean KL between successive policies stays small, below TRPO's 0.07.
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Do they admit it? Does it sink the argument?</p>
-<p class="a"><b>A.</b> No. Partly: PPO acts like a trust region, but not by the stated mechanism</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-ppo-engstrom-fig2.png" alt="Engstrom et al. Figure 2, Humanoid-v2: left, mean reward against iterations for TRPO, PPO and PPO-M; middle, the maximum probability ratio climbs to between about 2.5 and 17 for all three, far above the dashed 1 plus epsilon line; right, mean KL between successive policies stays between about 0.02 and 0.065"></div>
-</div>
-
-<p class="footnote">Engstrom et al. 2020 (ICLR) · arXiv:2005.12729 · Fig. 2, §4, Humanoid-v2 (MuJoCo: a simulated 3D humanoid). PPO-M: PPO without the code-level optimizations. "all three algorithms fail to maintain a ratio-based trust region"</p>
-
-Note:
-Our critique, from Eq. (7) and Fig. 2. Clipping zeroes a sample's gradient once its ratio has moved enough. But the parameters are shared, so other samples' gradients keep moving it; nothing stops the ratio leaving the band. And the first step of every iteration is exactly the unclipped step, since all ratios start at 1. The only KL measurement in the paper is one update in Figure 2, whose peak is near-guaranteed by construction. It bounds neither the ratio nor the KL. Do they admit it? No. Does it sink the argument? Partly.
-Do the ratios stay in the band? Engstrom and colleagues measured what the PPO paper didn't. On Humanoid, for agents "trained with optimal parameters", the maximum ratio climbs far above 1 plus epsilon, the dashed line (middle panel), for PPO and for PPO-Minimal, both trained directly with the clip. Yet the mean KL between successive policies (right panel) stays small, well under TRPO's bound of 0.07.
-Their explanation: the first step is the unclipped step, so how far PPO moves depends on the optimiser and the learning rate, not on the objective. So PPO behaves like a trust-region method, for reasons that aren't the stated mechanism.
-
----
-
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · critique 3 · Later work · Engstrom et al. 2020, Andrychowicz et al. 2020</p>
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · critique · Later work · Engstrom et al. 2020, Andrychowicz et al. 2020</p>
 
 ## Is it the clip, or the code?
 
@@ -3138,163 +2729,797 @@ Were the settings tuned on the test? Every family's best row in Table 1 is the m
 Robust "without hyperparameter tuning"? The stated goal (§1) is "robust (i.e., successful on a variety of problems without hyperparameter tuning)". But each domain has its own settings (Tables 3 to 5): epsilon 0.2 fixed on MuJoCo; on Atari, 0.1 times a schedule that anneals to zero, along with the learning rate; on Roboschool, a KL-steered learning rate, a hand-set exploration schedule and no epsilon listed in Table 4; and between 3 and 15 epochs. Do they admit it? No. Does it sink the argument? No. But "robust" should be read as "works with sensible per-domain defaults", not one setting everywhere.
 What would convince us the clip is the mechanism? Our proposal, the cheapest decisive experiment. One: fix every code-level detail. Two: change only the policy loss: clip, nothing, KL penalty. Three: choose hyperparameters on held-out tasks, not the evaluation tasks. Four: many seeds with intervals. Five: log the ratio range and the KL across all of training, not one update. Has it been done? Nearly: Engstrom et al. ran close to this, at least 80 agents per number. Their answer: the recipe works; removing the clip with the details on costs between nothing and about 13%; and without the details, PPO against TRPO ranges from 56 worse to 99 better (PPO-M minus TRPO: −56, +99, +88, Tables 2 and 3). So the clip's specific contribution is small and depends on the task.
 
----
+--
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Later work · Ouyang et al. 2022</p>
 
-## What changes when the policy is a language model?
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §6 · Table 1, Fig. 3, Fig. 4, Table 2 · optional</p>
+
+## What did PPO show on robots and Atari?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- RLHF has three stages: supervised fine-tuning (SFT), a reward model (RM) trained on human rankings, then PPO.
-- Each token's reward is a KL penalty; the RM's score is added at the last token.
-- The critic is a 6B model started from the RM; clip 0.2, 1 epoch, no discount.
+- On 7 MuJoCo robot tasks any step limit beats none; clipping at $\epsilon$ = 0.2 scores best, 0.82.
+- Against TRPO and others it leads on 3 of 7 tasks, ties or learns first on 3, and trails on Swimmer.
+- It trains a simulated humanoid to run and steer, with nothing to compare against.
+- On 49 Atari games it wins 30 on reward over all of training; ACER wins on final score, 28 to 19.
 
-<p class="q"><b>Q.</b> Two KLs: which is which?</p>
-<p class="a"><b>A.</b> PPO's is to $\pi_{\theta_{\rm old}}$, one iteration ago: a step size. RLHF's is to the frozen SFT model: a leash on drift</p>
+<p class="q"><b>Q.</b> Which result isolates the clip?</p>
+<p class="a"><b>A.</b> Only Table 1; the others compare whole algorithms</p>
 
 </div>
-<div class="fig"><img src="img/week-04-ppo-instructgpt-fig2.png" alt="InstructGPT Figure 2: three steps; collect demonstrations and fine-tune GPT-3 with supervised learning; collect rankings of several outputs and train a reward model; sample a new prompt, generate an output with the policy, score it with the reward model and update the policy with PPO"></div>
+<div class="fig"><img src="img/week-04-ppo-scores.svg" alt="Table 1 re-plotted as horizontal bars: no clipping or penalty minus 0.39; clip at epsilon 0.1, 0.2, 0.3 scores 0.76, 0.82, 0.70; adaptive KL with targets 0.003, 0.01, 0.03 scores 0.68, 0.74, 0.71; fixed KL with beta 0.3, 1, 3, 10 scores 0.62, 0.71, 0.72, 0.69"></div>
 </div>
 
-<p class="footnote">Ouyang et al. 2022 · arXiv:2203.02155 · Fig. 2, App. C. RLHF: reinforcement learning from human feedback. 256k episodes over about 31k prompts</p>
+<p class="footnote">Schulman et al. 2017 · §6.1 to §6.4, Table 1 (re-plotted), Fig. 3, Fig. 4, Table 2. MuJoCo: a robot physics simulator. Score: 0 a random policy, 1 the best result (ours). $\epsilon$: the clip range. TRPO: trust region policy optimization. Atari: video games played from pixels. ACER: actor-critic with experience replay</p>
 
 Note:
-What happens when the policy is a large language model? InstructGPT's recipe, RLHF: supervised fine-tuning on human demonstrations, a reward model trained on human rankings, then PPO against that reward model. The environment is a bandit: a prompt, a response, a reward, done. Inside, PPO runs per token: each token's reward is a KL term to the supervised model, plus the reward model's score at the last token, and GAE with no discount spreads the score back.
-The settings: beta 0.02, clip 0.2, a single inner epoch, no discount, 256 thousand episodes over about 31 thousand prompts, and a 6-billion-parameter value network started from the reward model, for policies of every size.
-The machinery carries over almost unchanged, but the costs grow: the critic is itself a 6B language model, trained to predict a reward that appears only at the last token. That's what the next reading targets. For scale, InstructGPT reports 60 petaflop/s-days for its 175B PPO run with pretraining mix, against 3,640 for pretraining GPT-3.
-Two KLs: which is which? The point students most often confuse. PPO's own KL, and its clip, are to the policy one iteration ago: a step-size control. The RLHF KL is to the frozen supervised model: a leash on total drift, so the model stays close to fluent text and doesn't exploit the reward model's blind spots. Ouyang et al.: "a per-token KL penalty from the SFT model at each token to mitigate over-optimization of the reward model"; best beta "around 0.01 and 0.02".
+Optional: the paper's four experiments in one slide. Table 1, section 6.1: the same code on seven MuJoCo robot tasks, a million timesteps, three seeds, only the policy loss changing. Scores are rescaled so a random policy is 0 and the best result 1. With no limit the score is minus 0.39, below random, because HalfCheetah collapses; clipping at 0.2 scores 0.82, the best; the best adaptive KL 0.74. Any limit beats none by more than one full unit, the paper's cleanest negative control. The clip's margin over the KL, 0.08, has no error bars, and the settings were chosen on the very runs reported.
+Figure 3, section 6.2: against TRPO, the cross-entropy method, vanilla policy gradient and A2C. PPO is ahead on HalfCheetah, Walker2d and Reacher, level on Hopper and InvertedPendulum, first to learn InvertedDoublePendulum, and behind TRPO on Swimmer, about 120 to 108. No table, no seed count.
+Section 6.3: a simulated humanoid learns to run, chase a moving target and get up when knocked down; a showcase with no baseline, a KL-steered learning rate and no epsilon listed.
+Section 6.4, Atari, 49 games from pixels: PPO wins 30 on reward averaged over training, a measure of learning speed; ACER, which replays old data, wins 28 to 19 on the final score. Only Table 1 isolates the clip; everything else compares whole algorithms, each with its own code.
+
 
 ---
 
+<!-- .slide: class="cover divider" -->
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Later work · Ouyang et al. 2022 · Eq. 2</p>
+<p class="kicker">Reading 3 of 4, applied</p>
+<h1>Ouyang et al. 2022</h1>
+<p class="subtitle">Training language models to follow instructions with human feedback (InstructGPT)</p>
+<p class="question">How do you make GPT-3 do what people ask?</p>
+<ol class="track"><li class="done">GPT-3 2020<span>few-shot learners</span></li><li class="done">Raschka 2025<span>architectures</span></li><li class="now">PPO 2017<span>applied: InstructGPT 2022</span></li><li>GRPO 2024<span>DeepSeekMath</span></li></ol>
 
-## What does InstructGPT maximise?
+Note:
+PPO, applied. Ouyang, Wu, Jiang, Almeida, Wainwright and colleagues at OpenAI, March 2022. We read only the main paper, sections 1 to 5.
+GPT-3, this week's first reading, does many tasks from a prompt, but ask it something in plain words and it often doesn't do what you asked. This paper turns it into a model that does, with three steps: people write good answers and the model is fine-tuned on them; people rank model answers and a reward model learns to predict the ranking; then PPO pushes the model toward a high reward, with a penalty for drifting.
+The twist: the algorithm we just read is the least discussed part of the paper. PPO is cited, not studied. The hard questions are about people and data. And our next reading, GRPO, starts from exactly this pipeline and asks which part can go.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · Abstract, §1 · Fig. 1</p>
+
+## Why is a bigger GPT-3 not a better assistant?
+
+<div class="cols wide-text">
+<div class="text">
+
+- GPT-3 learned to predict "the next token on a webpage", not to follow instructions.
+- The paper calls that objective **misaligned**; the aim is **helpful**, **honest** and **harmless** answers.
+- The **win rate** is how often labelers prefer a model's answer to the 175B SFT model's.
+- At 175B, by eye, the win rates are GPT-3 0.24, SFT 0.50 and PPO-ptx 0.66.
+
+<p class="q"><b>Q.</b> 1.3B InstructGPT beats 175B GPT-3. Does that need RL?</p>
+<p class="a"><b>A.</b> Not against plain GPT-3: 1.3B SFT already scores 0.35, above its 0.24</p>
+
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig1.png" alt="Ouyang et al. Figure 1: win rate against the 175B SFT model by model size, 1.3B, 6B and 175B, for five models. GPT is lowest, rising from about 0.14 to 0.24; GPT prompted from about 0.23 to 0.41; SFT from 0.35 to 0.50; PPO and PPO-ptx highest, from about 0.53 to 0.63 and 0.66"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · arXiv:2203.02155 · Fig. 1 (error bars: 95% confidence intervals); readings by eye: ours. B: billion parameters. SFT: supervised fine-tuning on human-written answers. PPO-ptx: PPO plus pretraining updates, the model the paper calls InstructGPT</p>
+
+Note:
+What goes wrong with GPT-3? It can produce answers that are "untruthful, toxic, or simply not helpful". The diagnosis is the objective: it was trained on "predicting the next token on a webpage from the internet", which is different from "follow the user's instructions helpfully and safely". The paper calls the objective misaligned, and borrows three words for the goal from Askell et al.: helpful, honest, harmless.
+Figure 1 is the whole paper in one plot. Model size on the x-axis; on the y-axis the win rate against one fixed baseline, the 175B SFT model: how often labelers prefer a model's answer to the baseline's on the same prompt. 0.5 means as good as the baseline, which is why SFT sits at exactly 0.5 at 175B. Five lines: GPT-3; GPT-3 prompted, with a few-shot prefix to put it into instruction mode; SFT; PPO; PPO-ptx.
+Read it by eye. GPT-3 0.14, 0.19, 0.24 across the sizes; SFT 0.35, 0.40, 0.50; PPO-ptx 0.53, 0.55, 0.66. Two things to notice. Fine-tuning on demonstrations alone already beats unprompted GPT-3 at every size, though 1.3B SFT, 0.35, is still below 175B prompted GPT-3, 0.41. And RL adds a second, somewhat smaller step: the 1.3B PPO models, about 0.53, are level with the 175B SFT model.
+Three different measures will come up: this win rate against the baseline; head-to-head preferences between two models, such as 175B InstructGPT preferred to 175B GPT-3 85 plus or minus 3 percent of the time, and to few-shot GPT-3 71 plus or minus 4; and Likert scores, an absolute 1 to 7 rating. Prompting GPT-3 well closes some of the gap, not most of it.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §5.1 · cost</p>
+
+## What did RLHF cost?
 
 <div class="cols">
 <div class="text">
 
-<div class="eq">$$\max\ \mathbb{E}\Big[r_\theta(x,y) - \beta\log\frac{\pi^{\rm RL}(y \mid x)}{\pi^{\rm SFT}(y \mid x)}\Big]$$</div>
-
-<dl class="where">
-<dt>$r_\theta(x, y)$</dt><dd>the <b>reward model</b>'s score for answer $y$ to prompt $x$ (not a ratio)</dd>
-<dt>$\pi^{\rm RL}$</dt><dd>the policy being trained</dd>
-<dt>$\pi^{\rm SFT}$</dt><dd>the frozen fine-tuned model it started from</dd>
-<dt>$\beta$</dt><dd>the KL weight, 0.02</dd>
-<dt>$\mathbb{E}$</dt><dd>the average over prompts $x$ and the policy's answers $y$</dd>
-</dl>
-
-<p class="plain">In words: get a high reward-model score without drifting far from the fine-tuned model.</p>
+- Training the 175B SFT model took 4.9 petaflop/s-days.
+- Training the 175B PPO-ptx model took 60 petaflop/s-days.
+- Pretraining GPT-3 took 3,640, so the final RL run is about 1.6% of it (ours).
+- By preference, RLHF beat "a 100x model size increase".
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> The SFT model gives a token 0.5, the policy 0.6. Its penalty?</p>
-<p class="a"><b>A.</b> $0.02 \times \ln(0.6/0.5) = 0.0036$</p>
+<p class="q"><b>Q.</b> Is 1.6% the whole cost?</p>
+<p class="a"><b>A.</b> No: data collection and experimental runs are not in the 60; the paper only says "a fraction"</p>
 
 </div>
 </div>
 
-<p class="footnote">Ouyang et al. 2022 · Eq. 2 (pretraining term dropped), App. C. Averaged over answers, the log-ratio term is the KL from $\pi^{\rm SFT}$. Worked numbers: ours</p>
+<p class="footnote">Ouyang et al. 2022 · §5.1. One petaflop/s-day: $10^{15}$ operations a second for a day, about $8.6 \times 10^{19}$ operations. 60 / 3,640: ours</p>
 
 Note:
-InstructGPT's Eq. 2, without its pretraining term: maximise the reward model's score minus beta times the log-ratio of the RL policy to the frozen SFT model. Averaged over answers, that log-ratio is the KL between them, so beta sets how far the policy may drift. Note the clash of letters: r theta here is the reward model, not PPO's ratio.
-Worked numbers (ours, beta 0.02). A token the policy raised to 0.6 from the reference's 0.5 costs 0.02 times log 1.2, 0.0036. But a token it lowered to 0.4 gets a per-token reward of plus 0.0045: a bonus. So can the per-token "penalty" be negative? Yes; only its expectation is a KL, never negative. And with one epoch of eight minibatches, where can the clip bind? Not on the first minibatch (ratio 1); at most the other seven. How much it binds in RLHF is not measured in anything we read.
+Optional. The cost claim is one of the paper's lessons for alignment research. Training the 175B SFT model took 4.9 petaflop/s-days and the 175B PPO-ptx model 60, against 3,640 for GPT-3. The final RL run alone is about 1.6 percent of pretraining compute. The paper's own wording is broader, "a fraction of what was spent to train GPT-3", and covers data collection and experimental runs, which aren't given in petaflop/s-days.
+Their conclusion: RLHF made the models more helpful than "a 100x model size increase", so "increasing investments in alignment of existing language models is more cost-effective than training larger models", "at least for our customers' natural language task distribution".
 
----
+--
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Summary · §6 with Engstrom et al. 2020</p>
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5, §3.6 · Table 3 · how it is judged</p>
 
-## What do the experiments establish?
+## What is it compared with, and how is it judged?
 
 <div class="cols">
 <div class="text">
 
-<table class="rules">
-  <tr><td>level</td><td>claim</td><td>evidence</td></tr>
-  <tr><td>with a control</td><td>multi-epoch updates need step control</td><td>Table 1: −0.39 vs 0.62 to 0.82</td></tr>
-  <tr><td>no uncertainty</td><td>clip slightly above KL</td><td>0.82 vs 0.74, 3 seeds, tuned on test</td></tr>
-  <tr><td>whole algorithms</td><td>fast and competitive</td><td>Fig. 3, Table 2</td></tr>
-  <tr><td>not established</td><td>trust region, guarantee, wall-time, clip as cause</td><td>later work: clip's share is small</td></tr>
+- Baselines: GPT-3, GPT-3 with a prefix of worked examples ("prompted"), SFT, and GPT-3 tuned on FLAN or T0.
+- **Helpful** is labeler preference; **honest** becomes truthfulness, since beliefs can't be seen.
+- **Harmless** uses proxies: inappropriate, denigrating, sexual or violent outputs, and toxicity benchmarks.
+- The RM score picked the SFT checkpoint, GPT-3's prefix and the FLAN and T0 checkpoints.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Which prompts are fairer to GPT-3?</p>
+<p class="a"><b>A.</b> Those users sent to GPT-3. InstructGPT's own prompts "likely" disadvantage it</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5, §3.6, Table 3 (per-output metadata: a 1 to 7 quality score and binary flags). RM: the reward model. FLAN, T0: public NLP datasets phrased as instructions, about 1M examples each</p>
+
+Note:
+Optional. What is it compared with? GPT-3; GPT-3 prompted, with a few-shot prefix found, the footnote says, in a one-hour "prefix-finding competition" between two authors, judged by reward-model score ("DA won"); the SFT model; and 175B GPT-3 fine-tuned on FLAN and on T0, two big collections of public NLP tasks phrased as instructions.
+How is "aligned" measured? Helpful: labeler preference, the main metric, with the caveat that labelers aren't the users and may misread intent. Honest can't be measured, because we can't see the model's beliefs; they measure truthfulness instead, made-up facts on closed-domain tasks and TruthfulQA, and say "this only captures a small part of what is actually meant by truthfulness". Harmless: proxies, because harm depends on how an output is used. Table 3 lists what labelers record per output: a 1 to 7 quality score and binary flags such as fails to follow the instruction, hallucination, inappropriate for a customer assistant, denigrates a protected class.
+Notice what picks the checkpoints: the reward-model score picks the final SFT model, the GPT-3 prefix and the FLAN and T0 checkpoints. Every tuned baseline is selected with the same reward model InstructGPT is trained to maximise (our observation). The final judges are still people.
+Two prompt sets: prompts sent to InstructGPT models, which the paper says "likely" disadvantage GPT-3, and prompts sent to plain GPT-3, written for it. The second is the fairer test for the GPT-3 comparison (ours).
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.4, §4.1 · Fig. 3</p>
+
+## Do held-out labelers agree?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- Columns: prompts sent to GPT-3 (left) or to InstructGPT (right).
+- Rows: **held-out labelers**, who wrote no training data (top), and training labelers.
+- Every panel keeps the order: GPT-3 lowest, SFT next, PPO and PPO-ptx on top.
+- On GPT-3's prompts, PPO-ptx is "slightly worse at larger model sizes" (by eye, below PPO).
+
+<p class="q"><b>Q.</b> Is this strong evidence?</p>
+<p class="a"><b>A.</b> Partly: the paper calls it "preliminary", and the held-out labelers came from the same vendors</p>
+
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig3.png" alt="Ouyang et al. Figure 3: four panels of win rate against 175B SFT by model size. Columns: GPT distribution and Instruct distribution; rows: held-out workers and training workers. In every panel GPT is lowest, SFT in the middle near 0.4 to 0.5, PPO and PPO-ptx highest near 0.5 to 0.7; GPT prompted appears only in the Instruct distribution panels"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.4, §4.1, Fig. 3 (win rate against 175B SFT). GPT-3 prompted is omitted on the left: those prompts "are already designed to perform well for GPT-3"</p>
+
+Note:
+Optional. Figure 3 splits Figure 1 four ways. Left column, prompts that users sent to plain GPT-3; right column, prompts sent to InstructGPT models. Top row, held-out labelers, who never wrote training data and weren't screened; bottom row, the training labelers.
+The order is the same in every panel: GPT-3 lowest, SFT in the middle, PPO and PPO-ptx on top. On GPT-3's own prompts the results "do not change significantly", "though our PPO-ptx models perform slightly worse at larger model sizes". The sizes do differ between labeler sets: on InstructGPT prompts at 1.3B, by eye, SFT scores about 0.46 with held-out labelers against 0.35 with training labelers, and PPO about 0.66 against 0.53.
+How strong is it? The paper calls it a "preliminary experiment", and the held-out labelers came from the same vendors. More work is needed, they say, on broader groups and on inputs "where humans disagree about the desired behavior".
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §1, §4.1 · Fig. 5</p>
+
+## Why not just fine-tune on public NLP tasks?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- FLAN and T0 fine-tune GPT-3 on public NLP datasets phrased as instructions.
+- They beat GPT-3, match GPT-3 prompted, and fall below SFT.
+- Head to head, 175B InstructGPT beats FLAN 78 ± 4% and T0 79 ± 4% of the time.
+- Classification and QA are about 18% of API use; generation and brainstorming about 57%.
+
+<p class="q"><b>Q.</b> So is public data useless?</p>
+<p class="a"><b>A.</b> No: the broadest model "would combine both types of datasets"</p>
+
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig5.png" alt="Ouyang et al. Figure 5: Likert scores from 1 to 7 on the InstructGPT prompt distribution: GPT about 2.6, GPT prompted 3.5, SFT 4.1, PPO-ptx 4.8, FLAN 3.4, T0 3.3"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §4.1, Fig. 5 (Likert score: a 1 to 7 quality rating), Table 1. FLAN: Wei et al. 2021; T0: Sanh et al. 2021 (the T0++ variant)</p>
+
+Note:
+Optional. The cheap alternative was already published: FLAN and T0 fine-tune on many public NLP datasets, each phrased as an instruction. Figure 5, Likert scores, by eye: GPT-3 2.6, GPT-3 prompted 3.5, SFT 4.1, PPO-ptx 4.8, FLAN 3.4, T0 3.3. FLAN and T0 beat plain GPT-3, are "on par with GPT-3 with a well-chosen prompt", and fall below SFT. Head to head, 175B InstructGPT is preferred to FLAN 78 plus or minus 4 percent of the time and to T0 79 plus or minus 4.
+Why? Public datasets favour tasks with automatic scores, classification and QA, about 18 percent of what API customers use the models for, while open-ended generation and brainstorming are about 57 percent. And public datasets struggle to match the diversity of real requests. Their conclusion isn't that public data is useless: the broadest model "would combine both types of datasets". Our caveat: FLAN and T0 here get no RL step, so this compares data and method at once.
+The introduction also quotes win rates "vs. our baseline" without naming it, 73.4 for InstructGPT against 26.8 for T0 and 29.8 for FLAN. They don't fit Figure 1, so we use the head-to-head numbers.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.1, §3.2 · Fig. 2</p>
+
+## What are the three steps?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- Step 1, **SFT**: fine-tune GPT-3 on answers labelers wrote.
+- Step 2, **reward model** (RM): a model learns to predict labelers' rankings.
+
+</div>
+<div class="text">
+
+- Step 3, **RL**: PPO pushes the SFT model toward a high RM score.
+- Data: about 13k prompts for SFT, 33k for the RM, 31k unlabelled for PPO.
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig2.png" alt="Ouyang et al. Figure 2: three steps. Step 1: a prompt, Explain the moon landing to a 6 year old, a labeler writes the desired output, and the data fine-tunes GPT-3 into an SFT model. Step 2: several model outputs A to D for the same prompt, a labeler ranks them D above C above A equal to B, and the ranking trains a reward model. Step 3: a new prompt, Write a story about frogs, the PPO policy writes an output, the reward model gives a reward r k, and the reward updates the policy"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.1, §3.2, Fig. 2 (blue arrows: data used to train a model). SFT: supervised fine-tuning. RL: reinforcement learning. RLHF: reinforcement learning from human feedback</p>
+
+Note:
+Why three steps instead of one? Our framing: each fixes what the previous one leaves. Step 1, supervised fine-tuning: labelers write the answer they'd want, and GPT-3 is fine-tuned on those answers with the ordinary next-token loss. That teaches the shape of following an instruction, but each prompt gets one written answer, and writing good answers is slow.
+Step 2: sample several answers to one prompt, labelers rank them, and a reward model learns "to predict the human-preferred output". In Figure 2 the labeler ranks D above C above A, with A and B tied. A ranking also says which answers are bad, which a demonstration never does.
+Step 3: "We use the output of the RM as a scalar reward" and fine-tune the SFT model with PPO to maximise it. Steps 2 and 3 "can be iterated continuously"; in practice most comparison data came from the SFT policies.
+How much data? About 13 thousand training prompts for SFT, 33 thousand for the reward model, each with several ranked answers, and 31 thousand for PPO, with no human labels at all, because the reward model supplies the reward.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §2, §3.1 · what came before</p>
+
+## Where does the method come from?
+
+<div class="cols">
+<div class="text">
+
+- RLHF was "originally developed for training simple robots in simulated environments and Atari games".
+- It was then used to fine-tune language models to summarise text.
+- This paper applies it to "a broad distribution of language tasks".
+- FLAN and T0 took another route: fine-tune on public tasks phrased as instructions.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Which papers does the method follow?</p>
+<p class="a"><b>A.</b> Ziegler et al. 2019 and Stiennon et al. 2020 (§3.1)</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §2, §3.1. RLHF: Christiano et al. 2017; summarisation: Ziegler et al. 2019, Stiennon et al. 2020. Instruction tuning: FLAN (Wei et al. 2021), T0 (Sanh et al. 2021)</p>
+
+Note:
+Optional. Two lines of work meet here. RLHF itself was "originally developed for training simple robots in simulated environments and Atari games", Christiano et al. 2017, then used to fine-tune language models to summarise, Ziegler et al. 2019 and Stiennon et al. 2020. This paper is "a direct application of RLHF to aligning language models on a broad distribution of language tasks", and its methodology follows Ziegler and Stiennon.
+The other line is instruction tuning on public NLP datasets: FLAN and T0 fine-tune on many tasks, each prefixed with an instruction, and the model improves on held-out tasks. That's the cheap alternative the results compare against.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · Step 1, SFT</p>
+
+## Step 1: why fine-tune past the point of overfitting?
+
+<div class="cols">
+<div class="text">
+
+- SFT trains for 16 epochs on about 13k labeler-written demonstrations.
+- Validation loss starts to overfit after 1 epoch.
+- More epochs still raise the RM score and human preference.
+- So the final SFT model is chosen by RM score, not by validation loss.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> How can a worse loss give better answers?</p>
+<p class="a"><b>A.</b> Our guess: the loss scores one labeler's exact words; preference scores whether the answer is good</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5. Epoch: one pass over the training data. RM: reward model. The same was seen by Wu et al. 2021</p>
+
+Note:
+Optional. The recipe: 16 epochs, a cosine learning-rate decay, residual dropout 0.2. The surprise, in their words: "our SFT models overfit on validation loss after 1 epoch; however, we find that training for more epochs helps both the RM score and human preference ratings, despite this overfitting." So they choose the final SFT model by reward-model score on validation.
+Why could that be? The paper doesn't explain; our guess. Validation loss measures how well the model predicts the exact tokens one labeler wrote. Preference measures whether the answer is good. A model can settle more firmly into a good style while getting worse at predicting one person's wording. Next-token loss is the wrong yardstick for an assistant.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.2 to §3.4 · Table 1</p>
+
+## Where do the prompts and labels come from?
+
+<div class="cols">
+<div class="text">
+
+<table class="rules" style="font-size:20px">
+  <tr><td>use case</td><td class="num">%</td></tr>
+  <tr><td>Generation</td><td class="num">45.6</td></tr>
+  <tr><td>Open QA</td><td class="num">12.4</td></tr>
+  <tr><td>Brainstorming</td><td class="num">11.2</td></tr>
+  <tr><td>Chat</td><td class="num">8.4</td></tr>
+  <tr><td>Rewrite</td><td class="num">6.6</td></tr>
+  <tr><td>Summarization</td><td class="num">4.2</td></tr>
+  <tr><td>Classification</td><td class="num">3.5</td></tr>
+  <tr><td>Other</td><td class="num">3.5</td></tr>
+  <tr><td>Closed QA</td><td class="num">2.6</td></tr>
+  <tr><td>Extract</td><td class="num">1.9</td></tr>
 </table>
 
 </div>
 <div class="text">
 
-- It has a real negative control: without any limit the score falls to −0.39.
-- It keeps the losing KL penalty as a fully swept baseline.
-- One loss works on robots, a humanoid and Atari; Fig. 2 is a clever diagnostic.
-- It is a few lines of code, one reason it spread.
+- Prompts come from the OpenAI API Playground, sent to an early instruction model.
+- Train and test are split **by user**, so test prompts come from unseen customers.
+- About 40 screened contractors write and rank the answers.
+- Two training labelers agree on 72.6 ± 1.5% of comparisons.
 
-<p class="q"><b>Q.</b> Most and least convincing?</p>
-<p class="a"><b>A.</b> Most: Table 1, remove the clip and it fails (one task). Least: clip vs KL, 0.08, three seeds</p>
+<p class="q"><b>Q.</b> What were labelers told to rank first?</p>
+<p class="a"><b>A.</b> Helpfulness in the training data; truthfulness and harmlessness in the final evaluations</p>
 
 </div>
 </div>
 
-<p class="footnote">Our summary and assessment of Schulman et al. 2017 · Table 1, §4, §6, Fig. 2; Engstrom et al. 2020</p>
+<p class="footnote">Ouyang et al. 2022 · §3.2 to §3.4, Table 1 (use cases of the reward-model prompts). Over 96% English. Labelers: Upwork and Scale AI. QA: question answering</p>
 
 Note:
-Sort the claims by how much evidence stands behind them. With a control: multi-epoch updates without step control fail, and clipping or a KL penalty fixes it. Observed but without uncertainty: clipping scores a little above the best KL setting, on three seeds tuned on the same runs. Whole-algorithm comparisons: PPO learns fast and competes on MuJoCo and Atari, but those can't separate the loss from the code (loss and code not separated). Not established by the paper: a trust region across training, any improvement guarantee, wall-time, or that the clip is what makes PPO work; later work says its share is small.
-Why is this a strong paper? It would be easy to read the last few slides as a takedown. They aren't. The paper has a real negative control: the same algorithm with the clip removed fails below random. It keeps the losing method, the KL penalty, as a fully swept baseline. One core loss, with per-domain settings, works across continuous robots, a 3D humanoid and pixel games. Figure 2, a line search through parameter space with four objectives on one axis, shows in one picture why the min matters. And it's a few lines of code on a standard policy gradient, first-order only, which is surely one reason it was adopted so widely, including for language models.
+Why does the prompt distribution matter? Because "aligned" is only ever measured on some distribution of requests. Prompts come from the OpenAI API Playground, sent to an earlier InstructGPT model trained only on demonstrations; customers were told their prompts might be used. They dedupe prompts with a long shared prefix, keep at most 200 per user, and split train, validation and test by user, so the test set comes from customers never seen in training. The very first model needed prompts nobody had sent yet, so labelers wrote them: plain tasks, few-shot examples, and tasks based on API waitlist applications.
+Table 1 shows what people asked for: generation 45.6 percent, open QA 12.4, brainstorming 11.2, down to extraction at 1.9. A task can be a direct instruction ("Write a story about a wise frog"), a few examples to imitate, or the start of a text to continue; labelers "do their best to infer the intent of the user".
+Who labels? About 40 contractors, chosen by a screening test for labelers "sensitive to the preferences of different demographic groups" and "good at identifying outputs that were potentially harmful", and, section 5.3 adds, for agreement with the researchers. Two training labelers agree 72.6 plus or minus 1.5 percent of the time; held-out labelers 77.3. On more than a quarter of comparisons, two trained people pick differently (ours: 100 minus 72.6).
+And the instruction worth stopping on: for training data, labelers put helpfulness first; in the final evaluations, truthfulness and harmlessness first, "since this is what we really care about". The model is trained toward one priority and judged on another.
 
 ---
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Next reading</p>
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · Eq. 1 · Step 2, the reward model</p>
 
-## What will the next reading change?
+## Step 2: how do you turn rankings into a reward?
+
+<div class="eq">$$\mathrm{loss}(\theta) = -\frac{1}{\binom K2}\,E_{(x,y_w,y_l)\sim D}\Big[\log\sigma\big(r_\theta(x,y_w) - r_\theta(x,y_l)\big)\Big]$$</div>
 
 <div class="cols">
 <div class="text">
 
-- GRPO keeps PPO's clipped ratio.
-- It drops the value network, the critic.
-- It gets the baseline from a group of answers to the same prompt instead.
+<dl class="where">
+<dt>$x$</dt><dd>the prompt</dd>
+<dt>$y_w$, $y_l$</dt><dd>the preferred answer (winner) and the other (loser)</dd>
+<dt>$r_\theta(x,y)$</dt><dd>the <b>reward model</b>'s score for answer $y$; $\theta$ its weights</dd>
+<dt>$\sigma(z)$</dt><dd>the logistic function, $1/(1+e^{-z})$</dd>
+<dt>$K$</dt><dd>answers ranked for this prompt, 4 to 9; $\binom K2$ the pairs</dd>
+<dt>$D$, $E$</dt><dd>the comparison dataset, and the average over it</dd>
+</dl>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Why look at the critic?</p>
-<p class="a"><b>A.</b> In RLHF it is a 6B model that must predict a reward given only at the last token</p>
+<p class="plain">In words: the chance a labeler prefers $y_w$ is $\sigma$ of the score gap; the loss is minus its log.</p>
+
+- Only score gaps matter, so scores are shifted until demonstrations average 0.
+
+<p class="q"><b>Q.</b> The winner scores 1.0 above the loser. What is the loss?</p>
+<p class="a"><b>A.</b> $\sigma(1) = 0.731$, so $-\ln 0.731 = 0.313$; equal scores give 0.693 (ours)</p>
 
 </div>
 </div>
 
-<p class="footnote">Forward pointer only; the comparison table comes with the GRPO reading (Shao et al. 2024). Critic size: Ouyang et al. 2022, App. C</p>
+<p class="footnote">Ouyang et al. 2022 · §3.5, Eq. 1, after Stiennon et al. 2020: the gap is "the log odds that one response will be preferred". The RM is the SFT model with a scalar output instead of its unembedding layer</p>
 
 Note:
-A one-line preview of the next reading. It keeps PPO's clipped ratio and removes the value network, getting the baseline from a group of sampled responses instead. We looked at the cost on the InstructGPT slide: the critic is as large as the policy. The side-by-side comparison belongs with that reading.
+Why rankings? The paper's stated reason is speed: showing 4 to 9 answers at once is "to speed up comparison collection". Our addition: comparisons need no shared scale between labelers, which scores out of 10 would. So the data is comparisons, and the model has to turn them into a score.
+The reward model is the SFT model with its unembedding layer, the layer that turns the last hidden state into scores over the vocabulary, replaced by a single output: it reads a prompt and an answer and returns one number. The loss: for each pair, the probability that the labeler prefers the winner is modelled as sigma of the score difference, and the loss is minus the log of that probability. Following Stiennon et al., "the difference in rewards represents the log odds that one response will be preferred to the other".
+Worked numbers, ours. Winner 1.0 above the loser: sigma of 1 is 0.731, loss 0.313. Equal: sigma 0.5, loss 0.693. Wrong way round by 1.0: sigma 0.269, loss 1.313.
+Only differences matter: "the RM loss is invariant to shifts in reward". Add 5 to every score and nothing changes. So before RL they shift the scores until the labelers' own demonstrations average 0; a positive reward then means better than a typical human-written answer (our reading).
 
----
+--
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · one batch element per prompt</p>
 
-## What to keep from PPO
+## Why train all of a prompt's pairs together?
 
 <div class="cols">
 <div class="text">
 
-- The policy gradient is log-likelihood times advantage; a baseline makes it usable.
-- Reusing a batch is the danger: the ratio is only trustworthy near the old policy.
-- The clip caps improvement, never worsening; that is what the min does.
-- PPO is a strong recipe, not a proven mechanism.
+- Ranking $K$ answers gives $\binom K2$ pairs: 6 for $K$ = 4, 36 for $K$ = 9.
+- Shuffled as separate pairs, each answer is "used for $K-1$ separate gradient updates".
+- Then "a single pass over the dataset caused the reward model to overfit".
+- One batch element per prompt needs one forward pass per answer: 9, not 36.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Why does Eq. 1 divide by $\binom K2$?</p>
+<p class="a"><b>A.</b> Our reading: so each prompt counts once, however many pairs it gives</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5 and its footnote. $K$: answers ranked for one prompt; $\binom K2$: pairs among them. Forward pass: one run of the model on one input</p>
+
+Note:
+Optional. A labeler who ranks K answers produces K choose 2 pairs: 6 for K equals 4, 36 for 9. Each answer appears in K minus 1 of them. Shuffle every pair into one big dataset and each answer is "used for K-1 separate gradient updates" within an epoch, and "a single pass over the dataset caused the reward model to overfit".
+The fix: keep all the pairs of one prompt together as one batch element. That needs "a single forward pass of the RM for each completion (rather than K choose 2 forward passes for K completions)", 9 instead of 36 at K equals 9, and because it no longer overfits, it gives "much improved validation accuracy and log loss". Our reading: that's also why Eq. 1 divides by K choose 2. The same instinct as splitting train and test by user: correlated data is grouped by its source.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5, §4.1 · reward model accuracy</p>
+
+## Does the reward model predict new labelers?
+
+<div class="cols">
+<div class="text">
+
+- Labelers are split into 5 groups; each RM trains on 4 and is tested on the fifth.
+- On a held-out group the RM is right 69.6 ± 0.9% of the time.
+- On the groups it trained on it is right 72.4 ± 0.4%.
+- Only 6B RMs are used: 175B RM training "could be unstable".
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Is 69.6% good?</p>
+<p class="a"><b>A.</b> For scale (ours): two training labelers agree 72.6% of the time, a different measure</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5, §4.1. RM: reward model. "5 RMs (with 3 different seeds)", by 5-fold cross-validation over labeler groups</p>
+
+Note:
+Optional. How good does the reward model get? They split the labelers into five groups, train on four and test on the fifth, five reward models with three seeds. On the held-out group it predicts preferences 69.6 plus or minus 0.9 percent of the time, against 72.4 plus or minus 0.4 on the groups it trained on. A small drop: it generalises to new labelers from the same pool. For scale, and it's a different measure: two training labelers agree with each other 72.6 percent of the time.
+Why only 6B? "this saves a lot of compute", and 175B reward-model training "could be unstable and thus was less suitable to be used as the value function during RL". One 6B reward model serves every policy size. Keep that last phrase: the value function starts from the reward model.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · Eq. 2 · Step 3, RL</p>
+
+## Step 3: what does PPO maximise here?
+
+<div class="eq">$$\mathrm{objective}(\phi) = E\Big[r_\theta(x,y) - \beta\log\frac{\pi_\phi^{\rm RL}(y\mid x)}{\pi^{\rm SFT}(y\mid x)}\Big] + \gamma\,E_{x\sim D_{\rm pretrain}}\big[\log\pi_\phi^{\rm RL}(x)\big]$$</div>
+
+<div class="cols">
+<div class="text">
+
+<dl class="where">
+<dt>$\pi_\phi^{\rm RL}$</dt><dd>the <b>policy</b> being trained; $\phi$ its weights</dd>
+<dt>$\pi^{\rm SFT}$</dt><dd>the SFT model, which stays fixed</dd>
+<dt>$x$, $y$</dt><dd>a prompt and the policy's answer; in the last term $x$ is pretraining text</dd>
+<dt>$r_\theta(x,y)$</dt><dd>the reward model's score</dd>
+<dt>$\beta$</dt><dd>the <b>KL coefficient</b>: the strength of the leash</dd>
+<dt>$\gamma$</dt><dd>the weight on GPT-3's pretraining data $D_{\rm pretrain}$</dd>
+<dt>$E$</dt><dd>the average over prompts and the policy's answers</dd>
+</dl>
+
+</div>
+<div class="text">
+
+<p class="plain">In words: score high, stay near the SFT model, and keep modelling ordinary text.</p>
+
+- With $\gamma$ = 0 the model is called PPO; with it, PPO-ptx, "InstructGPT".
+- It is a **bandit**: one prompt, one answer, one reward, then the episode ends.
+
+<p class="q"><b>Q.</b> Why the KL term?</p>
+<p class="a"><b>A.</b> It stops "over-optimization of the reward model": answers the RM scores high that people would not like</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5, Eq. 2. The log ratio, averaged over the policy's answers, is the KL divergence (PPO section). This $\gamma$ is not PPO's discount factor. The main paper gives no values for $\beta$ or $\gamma$</p>
+
+Note:
+How do you make the language model an RL agent? The paper calls it, using the RL word for a problem with one action, one reward and no later states, "a bandit environment which presents a random customer prompt and expects a response to the prompt. Given the prompt and response, it produces a reward determined by the reward model and ends the episode."
+Why a penalty? The reward model is only an approximation of the labelers, and a policy pushed hard against it will find answers it scores high that people wouldn't like. So they add "a per-token KL penalty from the SFT model at each token to mitigate over-optimization of the reward model".
+Read Eq. 2 term by term. First, the reward model's score of the policy's answer. Second, beta times the log ratio of the policy's probability of that answer to the SFT model's: averaged over the policy's answers, that's the KL divergence from the PPO section, here to the fixed SFT model, not to the previous policy. Third, gamma times the log-likelihood of GPT-3's pretraining text, so the model doesn't forget how to model ordinary text; careful, this gamma is a weight, not the discount factor. With gamma zero the models are "PPO"; with the term, "PPO-ptx", and "InstructGPT refers to the PPO-ptx models". The main paper gives no values for beta or gamma.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · the four models · Later: Shao et al. 2024</p>
+
+## How many models does RLHF run?
+
+<div class="cols">
+<div class="text">
+
+- Our count from §3.5: during RL four models run, the policy, the value model, the reward model and the SFT model.
+- Two of them are trained: the policy and the value model.
+- "The value function is initialized from the RM", so it is 6B at every policy size (ours).
+- For the 175B policy that is 29 times smaller, not of "comparable size", as GRPO will say.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> How many jobs does the SFT model do?</p>
+<p class="a"><b>A.</b> Four: the policy's start, the KL anchor, the RM's start, and the 175B win-rate baseline (ours)</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5, Eq. 2. Value model: PPO's critic, which predicts the reward from a partial answer. GRPO: Shao et al. 2024 §4.1.1, the next reading; its Fig. 4 draws this four-model setup</p>
+
+Note:
+Optional. Count the models during RL, from Eq. 2 and section 3.5: the policy, trained; the value model PPO needs, trained; the reward model; and the SFT model the KL is measured against. Four models, two trained. That is the top row of GRPO's Figure 4, next reading.
+The reward model is 6B and "The value function is initialized from the RM", so the value model is 6B for every policy size: the same size as the 6B policy, larger than the 1.3B one, and 29 times smaller than the 175B one. GRPO will say the value model is "typically another model of comparable size as the policy model"; for InstructGPT's largest model it is not.
+One model, four jobs: the SFT model is where the policy starts, what the KL is measured against, the starting point of the reward model, and at 175B the baseline of every win rate.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §3.5 · per-token reward (our reading)</p>
+
+## How does one end-of-answer reward reach each token?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\log\frac{\pi^{\rm RL}(y\mid x)}{\pi^{\rm SFT}(y\mid x)} = \sum_t \log\frac{\pi^{\rm RL}(y_t\mid x, y_{\lt t})}{\pi^{\rm SFT}(y_t\mid x, y_{\lt t})}$$</div>
+
+<dl class="where">
+<dt>$y_t$</dt><dd>token $t$ of the answer; $y_{\lt t}$ the tokens before it</dd>
+<dt>$\pi^{\rm RL}$, $\pi^{\rm SFT}$</dt><dd>the policy and the fixed SFT model</dd>
+<dt>$\beta$</dt><dd>the KL coefficient, the penalty's weight</dd>
+</dl>
+
+<p class="plain">In words: the answer's KL penalty is a sum of penalties, one at every token.</p>
+
+</div>
+<div class="text">
+
+- Our reading: the reward model's score arrives once, at the last token.
+- The **critic** (value model) starts as the reward model, judging half-written answers.
+- GAE (generalised advantage estimation) then gives each token an **advantage**, how much better than expected it was (ours).
+
+<p class="q"><b>Q.</b> A token has probability 0.6 under the policy, 0.5 under SFT. Its penalty at $\beta$ = 0.1?</p>
+<p class="a"><b>A.</b> $0.1 \times \ln 1.2 = 0.018$; at 0.4 it is $-0.022$, a small bonus (ours)</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §3.5: "a per-token KL penalty from the SFT model at each token". The main paper doesn't say how the advantage is computed; the GAE step is our reading of the PPO section. $\beta$ = 0.1 is illustrative, not the paper's</p>
+
+Note:
+PPO, from the last section, needs an advantage for every token. The paper gives one reward per answer. How does it reach each token? The main paper doesn't say; it states only the per-token KL penalty and that "The value function is initialized from the RM". Here is our reading, using the PPO section.
+First, the penalty. An answer's probability is the product of its tokens' probabilities, so its log is a sum, and the answer-level log ratio in Eq. 2 is a sum of per-token log ratios. That's how "a per-token KL penalty" and Eq. 2 say the same thing. Worked number, with an illustrative beta of 0.1, not the paper's value: a token with probability 0.6 under the policy and 0.5 under SFT costs 0.1 times log 1.2, 0.018; at 0.4 the term is minus 0.022, a small bonus. Summed over an answer, long drifts add up.
+Second, the reward model's score arrives once, at the last token. The value model, starting from the reward model's own judgement, predicts that final score from each half-written answer. GAE then combines the final score, the per-token penalties and the value model's guesses into a per-token advantage, exactly the machinery of the last two PPO slides.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §1, §4.2 · Figs. 6, 7</p>
+
+## Is it more truthful, and less toxic?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- On **TruthfulQA**, PPO answers are more truthful and informative unprompted: "small but significant".
+- By eye at 175B that is about 1.5 times GPT-3; the introduction says "about twice".
+
+</div>
+<div class="text">
+
+- Asked to be respectful, InstructGPT is less toxic; unasked, "This advantage disappears".
+- Asked to be toxic, it is "much more toxic" than GPT-3; bias doesn't improve.
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig6-fig7.png" alt="Ouyang et al. Figures 6 and 7 side by side. Left, TruthfulQA: percentage truthful (gray) and truthful and informative (coloured) for GPT, SFT, PPO and PPO-ptx at three sizes, with a QA prompt and an Instruction plus QA prompt; PPO's gray bars reach about 90 percent with the instruction. Right, toxicity of 175B GPT, SFT and PPO-ptx, human ratings and Perspective API scores, with no prompt and with a respectful prompt; with the respectful prompt SFT and PPO-ptx are lower than GPT"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §1, §4.2, Figs. 6, 7; readings: ours. <b>TruthfulQA</b>: questions where common misconceptions give false answers. Toxicity: RealToxicityPrompts: web sentence openings, many toxic, rated by people and the Perspective API classifier</p>
+
+Note:
+Truthfulness, Figure 6, human evaluations. TruthfulQA is a set of questions written so that common misconceptions give false answers. Gray bars truthful; coloured bars truthful and informative; three bars per model for the three sizes. Section 4.2 calls PPO's gain "small but significant", with no instruction to be truthful. By eye at 175B with the plain QA prompt: truthful about 39 percent for PPO against 25 for GPT-3, truthful and informative 31 against 20. That's about 1.5 times for PPO, 1.4 to 1.45 for PPO-ptx. The introduction says "about twice as often"; the acknowledgements thank two people for "pointing out the fact that the automatic TruthfulQA metrics were overstating the gains of our PPO models", which may be where the bigger number came from (our guess). One exception the paper names: the 1.3B PPO-ptx is slightly worse than same-size GPT-3, visible in the gray bars, 27 against 32. And with an instruction to say "I have no comment", PPO "err[s] on the side of being truthful and uninformative": about 92 percent truthful, but only about 25 truthful and informative.
+Toxicity, Figure 7: 1,729 prompts from RealToxicityPrompts, sentence beginnings from the web, many toxic, three 175B models, rated by people and by the Perspective API, an automatic classifier. With a respectful instruction, InstructGPT is less toxic than GPT-3; the introduction says about 25 percent fewer toxic outputs, and Figure 7's subset shows, by eye, about 19 percent fewer by human rating and 16 by Perspective. Without the instruction, "This advantage disappears". Told to be toxic, InstructGPT is "much more toxic than those from GPT-3": it follows instructions, including bad ones. With the respectful prompt SFT is the least toxic, but it has "the lowest continuity and is the least preferred".
+Bias, Winogender and CrowS-Pairs, measured by the entropy of the model's choice between two sentences: "our models are not less biased than GPT-3", and asked to be respectful PPO-ptx shows lower entropy, "and thus higher bias". "The pattern of the bias is not clear." So following instructions better is not the same as being safer.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §4.1 · Fig. 4</p>
+
+## What else do labelers see change?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- InstructGPT attempts the correct instruction and meets explicit constraints more often.
+- It makes up facts on closed-domain tasks less: 21% against GPT-3's 41%.
+
+</div>
+<div class="text">
+
+- By eye, SFT makes up the fewest, about 8%; PPO-ptx about 16%.
+- Their error bars overlap, so that gap is a hint, not a finding (ours).
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-igpt-fig4.png" alt="Ouyang et al. Figure 4: four bar panels for GPT, GPT prompted, SFT, PPO and PPO-ptx. Attempts correct instruction rises from about 0.70 to 0.93. Follows explicit constraints rises from about 0.22 to 0.43. Hallucinations: GPT about 0.44, GPT prompted 0.28, SFT 0.08, PPO 0.21, PPO-ptx 0.16. Uses language appropriate for customer assistant rises from about 0.81 to 0.90"></div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §1, §4.1, Fig. 4 (share of outputs, all sizes pooled); readings: ours. Closed-domain: the answer should use only the input, as in summarisation. The 21% is the PPO bar</p>
+
+Note:
+Optional. Figure 4 is the metadata labelers recorded, pooled over sizes. Compared with GPT-3, the PPO models are more appropriate for a customer assistant, follow explicit constraints more often ("Write your answer in 2 paragraphs or less"), attempt the correct instruction more often, and make up facts less often on closed-domain tasks, where the answer should use only the input: 21 percent against 41 in the text.
+Now read the hallucination panel again, by eye: GPT-3 about 0.44, GPT-3 prompted 0.28, SFT about 0.08, PPO 0.21, PPO-ptx 0.16. As point estimates, RL makes up less than GPT-3 but more than the SFT model it started from. The text doesn't mention it. The SFT and PPO-ptx error bars overlap, and the paper's 21 percent is the PPO bar, so for InstructGPT itself this is a hint, not a finding. A question the paper doesn't ask: does optimising against a learned reward trade some faithfulness for preference?
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §1, §4.2 · PPO-ptx</p>
+
+## What is the alignment tax, and why doesn't a bigger KL pay it?
+
+<div class="cols">
+<div class="text">
+
+- After RL, PPO models fall below GPT-3 on SQuADv2, DROP, HellaSwag and translation.
+- The paper calls this an **alignment tax**: alignment costs capability.
+- PPO-ptx "even surpasses GPT-3 on HellaSwag", but DROP, SQuADv2 and translation still lag.
+- A bigger KL coefficient "never fully recovers on DROP and SQuAD", and lowers the reward.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Why would pretraining data work where the KL fails?</p>
+<p class="a"><b>A.</b> Our reading: the KL only acts on answers to API prompts; reading and translation live on other inputs</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §1, §4.2; tuned on "SQuADv2 and DROP (the datasets we used for testing)". SQuADv2, DROP: reading comprehension. HellaSwag: common-sense sentence endings. WMT 2015: a machine-translation benchmark, French to English</p>
+
+Note:
+What goes wrong? After RL the PPO models get worse than GPT-3 on several public datasets: SQuADv2 and DROP, reading comprehension; HellaSwag, picking the sensible ending of a sentence; and WMT 2015 French to English translation. The paper calls it an alignment tax, and cares because a high tax "incentivizes the use of models that are unaligned but more capable".
+Two ways to pay it. The obvious one: tighten the leash, a bigger beta. The paper's: PPO-ptx, the gamma term, which keeps up the log-likelihood of GPT-3's pretraining text during RL. PPO-ptx "mitigates these performance regressions on all datasets, and even surpasses GPT-3 on HellaSwag", but "still lags behind GPT-3 on DROP, SQuADv2, and translation". A bigger KL coefficient instead "leads to significant decreases in validation reward and never fully recovers on DROP and SQuAD"; anchoring the KL to GPT-3 instead "gives similar results". And labeler preference barely moves: "Adding updates on the pretraining mix during PPO does not lead to large changes in labeler preference."
+Why might the pretraining term work where the KL doesn't? Our reading: the KL only acts on the policy's own answers to API prompts, and reading comprehension and translation live on other inputs, which the KL never visits. The pretraining term touches those directly.
+A detail: the coefficient was chosen to fix the regressions "on SQuADv2 and DROP (the datasets we used for testing)", so (our reading) that part is in-sample; HellaSwag and translation, not used for tuning, are the out-of-sample evidence.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §4.3 · Figs. 8, 9</p>
+
+## Where does it generalise, and where does it fail?
+
+<table class="rules" style="font-size:20px">
+  <tr><td>prompt</td><td>GPT-3 175B</td><td>InstructGPT 175B</td></tr>
+  <tr><td>in French: a short story about a frog who travels in time to ancient Greece</td><td>three more story prompts</td><td>the story, in French</td></tr>
+  <tr><td>"What is the purpose of the list C in the code below?"</td><td>options A to D</td><td>an answer that "isn't quite correct"</td></tr>
+  <tr><td>"Why is it important to eat socks after meditating?"</td><td>a mock Q and A on enlightenment</td><td>accepts the premise, lists theories</td></tr>
+  <tr><td>"What happens if you fire a cannonball directly at a pumpkin at high speeds?"</td><td>"A pumpkin is a strong magnet"</td><td>hedges: "no way to accurately predict"</td></tr>
+</table>
+
+<p class="q" style="margin-top:16px"><b>Q.</b> Why does it hedge?</p>
+<p class="a"><b>A.</b> They "suspect" labelers were told to reward epistemic humility, and the reward model learned it</p>
+
+<p class="footnote">Ouyang et al. 2022 · §4.3, Fig. 8 (generalisation) and Fig. 9 (simple mistakes); prompts cherry-picked, outputs not; abridged. "We do not track these behaviors quantitatively"</p>
+
+Note:
+Figure 8, generalisation. Asked in French for a short story about a frog who travels back in time to ancient Greece, GPT-3 lists more story prompts; InstructGPT writes the story, in French. Asked what a list called C does in a short Python function, GPT-3 offers multiple-choice options; InstructGPT answers, though "its answer here isn't quite correct", and GPT-3 does answer the question "about 50% of the time". Code and non-English prompts are a "tiny minority" of the fine-tuning data. Two caveats from the paper: "We do not track these behaviors quantitatively", and InstructGPT "often produces an output in English even when the instruction is in another language".
+Figure 9, simple mistakes. "Why is it important to eat socks after meditating?" InstructGPT accepts the false premise and explains. The cannonball and the pumpkin: InstructGPT hedges at length; the caption says "it's likely that the pumpkin would completely explode". A third failure: several constraints at once, "list 10 movies made in the 1930's set in France".
+Why? Suspicions, not findings: "We suspect that behavior (2) emerges partly because we instruct labelers to reward epistemic humility", which "gets picked up by our reward model"; false premises because there are "few prompts in the training set that assume false premises". Both "could be dramatically reduced with adversarial data collection". What it suggests, our reading: the reward model can pass on the labelers' instructions, quirks included.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §5.2</p>
+
+## Who are we aligning to?
+
+<div class="cols">
+<div class="text">
+
+- The labelers: about 40, "mostly English-speaking people living in the United States or Southeast Asia".
+- The researchers, who wrote the labeling instructions.
+- The customers whose prompts make up the data.
+- API users from a waitlist whose "initial seeds" were OpenAI employees.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Could one model be aligned to everyone?</p>
+<p class="a"><b>A.</b> "it is impossible"; they suggest models conditioned on a group's preferences</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §5.2. Labelers agree with each other about 73% of the time. API: the OpenAI programming interface through which customers sent prompts</p>
+
+Note:
+This is the section the paper is most careful in. The model is aligned to four groups. One, the training labelers: about 40 people, "mostly English-speaking people living in the United States or Southeast Asia", agreeing with each other about 73 percent of the time. Two, the researchers, who wrote the labeling instructions and answered edge cases in a shared chat room. Three, the customers whose prompts make up the data, who may not have their end users' well-being in mind; their example is a customer that wants to maximise time on a platform. Four, API users picked from a waitlist whose "initial seeds" were OpenAI employees, "biasing the ultimate group toward our own networks".
+"It is impossible that one can train a system that is aligned to everyone's preferences at once." Their suggested path: models that can be conditioned on the preferences of a group.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · §5.3 to §5.5 · limitations</p>
+
+## What do the authors admit?
+
+<div class="cols">
+<div class="text">
+
+- "most comparisons are only labeled by 1 contractor for cost reasons".
+- The models are "neither fully aligned nor fully safe".
+- "Perhaps the greatest limitation": they follow instructions even when that could cause harm.
+- The pretraining mix "does not completely mitigate performance regressions".
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> What would they try next?</p>
+<p class="a"><b>A.</b> Adversarial data collection, refusals, and richer feedback than comparisons, such as edits</p>
+
+</div>
+</div>
+
+<p class="footnote">Ouyang et al. 2022 · §5.3, §5.4, §5.5. Adversarial data collection: labelers hunt for the worst outputs, which are then labeled and added</p>
+
+Note:
+Optional. In their words. About 40 contractors, "clearly not representative", and the data almost entirely English. "most comparisons are only labeled by 1 contractor for cost reasons"; with repeats you could see where people disagree, and averaging may not be what you want when one group is most affected. The models are "neither fully aligned nor fully safe", and "Perhaps the greatest limitation": they "follow the user's instruction, even if that could lead to harm in the real world". The pretraining mix "does not completely mitigate performance regressions", and "may make certain undesirable behaviors more likely".
+Open directions they name: adversarial data collection, refusals, other algorithms such as expert iteration or behaviour cloning on comparisons, and richer feedback than comparisons, such as edits and critiques. And broader impacts: better instruction following also makes models "easier to misuse"; serving through an API allows restrictions and monitoring, at the cost of "increased centralization of power".
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · our critique · Figs. 1, 3, §3.4, §3.5, §4.2</p>
+
+## Can we trust the headline?
+
+<div class="cols">
+<div class="text">
+
+- "1.3B beats 175B" compares a tuned small model with an unprompted large one.
+- SFT alone beats unprompted GPT-3; the RL step adds 33k ranked prompts to SFT's 13k.
+- Labels put helpfulness first, and harmlessness is where the results are weakest.
+- The RM picks the baselines, PPO-ptx was tuned on two test sets, and run counts aren't given.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Does it sink the argument?</p>
+<p class="a"><b>A.</b> No: the gains are large and judged by people. It bounds them to this data, these labelers and these instructions</p>
+
+</div>
+</div>
+
+<p class="footnote">Our critique of Ouyang et al. 2022; each point in full in the notes. RM: reward model. Test sets: SQuADv2 and DROP (§4.2)</p>
+
+Note:
+Four objections, each tested against the paper's own words.
+One, is "1.3B beats 175B" fair? It compares a fine-tuned small model with an unprompted big one, on prompts written for InstructGPT, which the paper says "likely" disadvantage GPT-3. But the gap holds "even when we add a few-shot prompt to GPT-3", and on prompts written for GPT-3 (Figure 3, left), though there PPO-ptx is "slightly worse at larger model sizes". A qualifier: 1.3B SFT is below 175B prompted GPT-3; it takes the RL step for the small model to pass it. Doesn't sink it; it reframes it: the claim is about fitting a model to the task distribution, not about parameters.
+Two, is it the algorithm or the data? SFT learns from about 13 thousand demonstrations; the RL stage rests on a reward model trained on about 33 thousand ranked prompts, several answers each, then optimises on 31 thousand more, unlabelled. The main paper never gives SFT as much human signal, so the SFT to PPO gap mixes RL with more and different human data. The paper doesn't claim the gap is algorithmic; the attribution stays open.
+Three, trained for one thing, graded on another. Training labels put helpfulness first; final evaluations truthfulness and harmlessness. The weak results are the harmlessness ones: toxicity gains need a respectful instruction, bias doesn't improve, and the "greatest limitation" is following harmful instructions, which the training priority leaves untouched. On the other side, the final evaluations weigh truthfulness and harm, and Figure 4 shows default gains. The same pool also trains and judges, selected partly for agreeing with the researchers; held-out labelers and the 69.6 percent reward-model result answer this in part, but the experiment is "preliminary".
+Four, what is tuned on what, and how many runs? The reward-model score picks the SFT checkpoint, GPT-3's prefix and the FLAN and T0 checkpoints; the pretraining coefficient was tuned on SQuADv2 and DROP, "the datasets we used for testing". The error bars are 95 percent confidence intervals, without saying over what, and the main paper doesn't say how many training runs stand behind each point. For 85 and 71 percent that hardly matters; for PPO against PPO-ptx, it does.
+Do they admit these? Most of them, in sections 3.6, 5.2 and 5.3. Does any sink the argument? No. They bound it: aligned to this data, these labelers and these instructions, as section 5.2 says itself.
+
+---
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · Summary</p>
+
+## What to keep from InstructGPT
+
+<div class="cols">
+<div class="text">
+
+- RLHF is three steps: demonstrations, a reward model learned from rankings, then PPO with a leash.
+- A reward model turns rankings into scores: the logistic $\sigma$ of the winner's score minus the loser's, $r_w - r_l$.
+- The KL to the SFT model guards the reward; pretraining updates guard capabilities.
+- "Aligned" always means aligned to someone: here, about 40 labelers and one team's instructions.
 
 </div>
 <div class="text">
 
 <p class="q"><b>Open question</b></p>
-<p class="a">If the clip doesn't keep updates small and the critic is the costliest part, how much of PPO does a language model need?</p>
+<p class="a">How much of RLHF's gain is the algorithm, and how much the extra human data?</p>
 
 </div>
 </div>
 
-<p class="footnote">Schulman et al. 2017. Next reading: GRPO</p>
+<p class="footnote">Ouyang et al. 2022. Next: Shao et al. 2024 keep this pipeline and drop the value model</p>
 
 Note:
-Four ideas. First, the policy gradient is maximum likelihood on your own samples weighted by advantage, and the baseline is what makes it usable: it keeps the gradient unbiased and can remove most of its variance. Second, reusing a batch is where the danger is: the importance ratio lets you evaluate a new policy on old data, but only nearby, and PPO is a cheap way to stay nearby. Third, the clip is asymmetric on purpose, and the min makes it safe: it caps the reward for moving further in a sample's favoured direction and never hides a move that made things worse. Fourth, the evidence supports PPO as a strong recipe, not a mechanism: the experiments can't separate the clip from the code, and later work says the code mattered as much or more.
-And the question to carry into GRPO: if the clip isn't what keeps updates small, and the value network is the most expensive part, how much of PPO does a language model actually need?
+Four ideas. RLHF is three steps: demonstrations, rankings turned into a reward model, and PPO against that reward with a leash to the SFT model. A reward model turns comparisons into scores through sigma of the winner's score minus the loser's; only differences matter. The KL to the SFT model guards against over-optimising an imperfect reward, but it doesn't protect capabilities on other inputs, which is why PPO-ptx exists. And "aligned" always means aligned to someone: about 40 labelers, a research team's instructions and a customer distribution.
+Open questions: how much of the gain is the algorithm and how much the extra human data; can the reward model be trusted far from the SFT model's answers; and which parts of the four-model pipeline are necessary. The next reading answers that last one for the value model.
+
+--
+
+<p class="eyebrow"><span class="paper">Ouyang et al. 2022</span> · compared with Schulman et al. 2017</p>
+
+## How do PPO and InstructGPT differ?
+
+<table class="rules">
+  <tr><td></td><td>PPO (Schulman et al. 2017)</td><td>InstructGPT (Ouyang et al. 2022)</td></tr>
+  <tr><td>reward</td><td>from the environment: a simulator, a game score</td><td>from a learned 6B reward model</td></tr>
+  <tr><td>episode</td><td>many steps</td><td>one prompt, one answer</td></tr>
+  <tr><td>leash</td><td>the clip (a KL to the previous policy in one variant)</td><td>a per-token KL to the SFT model, plus PPO's update</td></tr>
+  <tr><td>value model</td><td>a small network</td><td>6B, started from the reward model</td></tr>
+  <tr><td>what is studied</td><td>the algorithm</td><td>the data and the people</td></tr>
+</table>
+
+<p class="footnote">Our summary of Schulman et al. 2017 and Ouyang et al. 2022 §3.5. KL: Kullback-Leibler divergence. SFT: the supervised fine-tuned model</p>
+
+Note:
+Optional. Side by side. PPO's paper gets its reward from an environment; InstructGPT's comes from a learned 6B reward model. PPO's episodes run many steps; InstructGPT's is one prompt, one answer. PPO's leash is the clip, with a KL to the previous policy in one variant; InstructGPT adds a per-token KL to the fixed SFT model. PPO's value network is small; InstructGPT's is 6B, started from the reward model. And what each paper studies: PPO the algorithm, InstructGPT the data and the people.
 
 
 
@@ -3481,7 +3706,7 @@ The paper never puts a number on the burden, so here is our accounting, in GB, f
 </div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §4.1.1 (quote). The weight is ours, from GAE (Schulman et al. 2015b; PPO section, Eq. 11). DeepSeek-R1 later compares $\lambda$ = 0.95 with 1 (critique 1)</p>
+<p class="footnote">Shao et al. 2024 · §4.1.1 (quote). The weight is ours, from GAE (Schulman et al. 2015a; PPO section, Eq. 11). DeepSeek-R1 later compares $\lambda$ = 0.95 with 1 (critique 1)</p>
 
 Note:
 On the slide in short: under GAE the final reward reaches token t's advantage with weight gamma lambda to the power T minus t; for token 5 of 500 at lambda 0.95 that is effectively zero.
