@@ -3319,22 +3319,22 @@ The historical twist: GRPO is one subsection of a paper whose other half is abou
 
 ## What did a 7B open model reach, and how?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
-- Base: 500B tokens, 56% new math corpus
-- Instruct: 776K worked solutions
-- RL: GRPO on about 144K questions
-- MATH: 36.2% ▸ 46.8% ▸ 51.7%
+- **DeepSeekMath-Base** is a code model trained on 500B more tokens, 56% from a new math corpus.
+- **Instruct** is Base after supervised fine-tuning on 776K worked solutions.
+- **RL** is Instruct after reinforcement learning with GRPO on about 144K questions.
+- On MATH the three score 36.2% ▸ 46.8% ▸ 51.7%.
 
 <p class="q"><b>Q.</b> Are the three numbers comparable?</p>
-<p class="a"><b>A.</b> Not quite: Base is few-shot (Table 2); the other two are Table 5 chain-of-thought runs, prompting not stated</p>
+<p class="a"><b>A.</b> Not quite: Base is tested few-shot, the other two with chain of thought</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-fig1.png" alt="Figure 1 of the paper: MATH top-1 accuracy of open models against release date, from LLaMA1-65B at about 10.6% in early 2023 up to Qwen-72B at about 35.2%, then a red star for DeepSeekMath-7B at about 51.7% in January 2024, just under dashed lines for Gemini-Ultra and GPT-4 API and above a GPT-4 early version line"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · arXiv:2402.03300 · Abstract; Tables 2, 5; Fig. 1. SFT: supervised fine-tuning; RL: reinforcement learning; GRPO: Group Relative Policy Optimization. <b>MATH</b>: competition math problems; top-1: one answer, no tools, no voting</p>
+<p class="footnote">Shao et al. 2024 · arXiv:2402.03300 · Abstract; Tables 2, 5; Fig. 1. GRPO: Group Relative Policy Optimization. <b>MATH</b>: competition math problems; top-1: one answer, no tools, no voting. Few-shot: solved examples in the prompt</p>
 
 Note:
 The model is built in three stages, and each has its number. DeepSeekMath-Base 7B is DeepSeek-Coder-Base-v1.5 7B trained on another 500B tokens, 56% from a new math corpus mined from Common Crawl: 36.2% on MATH, few-shot. Supervised fine-tuning (SFT) on 776K worked solutions gives DeepSeekMath-Instruct: 46.8%. Reinforcement learning (RL) with GRPO on about 144K questions gives DeepSeekMath-RL: 51.7%, close to GPT-4 and Gemini Ultra at the time. Self-consistency over 64 samples reaches 60.9%.
@@ -3351,16 +3351,16 @@ The paper has two halves, and we take them in order. The data half comes first: 
 <div class="points">
 <div class="text">
 
-- fastText classifier, seeded with OpenWebMath, recalls pages from 40B deduplicated
-- domains with over 10% collected
-- humans label math URL paths ▸ new seeds
-- stop after 4 rounds: 35.5M pages, 120B tokens
+- A **fastText classifier**, trained on OpenWebMath pages, picks math pages out of 40B web pages.
+- A web domain counts as math-related if over 10% of its pages were picked.
+- Humans mark the URL paths there that hold math; missed pages become new training examples.
+- After 4 rounds the loop stops, at 35.5M pages and 120B tokens.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Better corpus, or just a bigger one?</p>
-<p class="a"><b>A.</b> Better per token: at 1.3B and 150B tokens, MATH 13.6% vs Proof-Pile-2 11.2%, and ahead already at 50B tokens</p>
+<p class="q"><b>Q.</b> Is it a better corpus, or just a bigger one?</p>
+<p class="a"><b>A.</b> Better per token: a 1.3B model trained on 150B tokens scores 13.6% on MATH against Proof-Pile-2's 11.2%, and leads already at 50B</p>
 
 </div>
 </div>
@@ -3396,13 +3396,13 @@ The confound is repetition. In 150B tokens MathPile is seen 16.85 times, the new
 </div>
 <div class="text">
 
-- start: a code model; mix 56% corpus, 20% code, 10% arXiv
-- "outperforming" (§1) vs "comparable" (§1.1)
-- math training kept general ability: BBH +4.3 over final Coder (ours), but code falls
-- Instruct: 776K examples, MATH 46.8%
+- Base starts from a code model; its data is 56% new corpus, 20% code and 10% arXiv, among others.
+- The paper says "outperforming" Minerva in §1 but "comparable" in §1.1.
+- Math training kept general ability: BBH rose 4.3 over the final code model (ours), but code fell.
+- **Instruct** fine-tunes Base on 776K worked solutions; it scores 46.8% on MATH.
 
 <p class="q"><b>Q.</b> Which wording does the table support?</p>
-<p class="a"><b>A.</b> "Comparable": behind on OCW, MMLU-STEM</p>
+<p class="a"><b>A.</b> "Comparable": Minerva is still ahead on OCW and MMLU-STEM</p>
 
 </div>
 </div>
@@ -3426,13 +3426,13 @@ Two claims in the introduction don't match Table 5 (our checks). "Beats all 7B c
 <div class="points">
 <div class="text">
 
-- PPO: 4 models, 2 trained; value model "comparable size" to the policy
-- reward arrives at the last token: it reaches token 5 of 500 with weight $9 \times 10^{-12}$ (ours)
-- GRPO: $G$ answers per question, baseline their mean reward
-- 3 models, 1 trained
+- PPO for language models runs 4 models; 2 are trained.
+- The **value model**, or critic, guesses the final score from a half-written answer.
 
 </div>
 <div class="text">
+
+- GRPO uses the mean reward of $G$ answers as the baseline: 3 models, 1 trained.
 
 <p class="q"><b>Q.</b> How much memory does the critic cost?</p>
 <p class="a"><b>A.</b> At 7B, about 252 GB ▸ 140 GB (ours)</p>
@@ -3442,17 +3442,54 @@ Two claims in the introduction don't match Table 5 (our checks). "Beats all 7B c
 <div class="fig"><img src="img/week-04-grpo-fig4.png" alt="Figure 4 of the paper. Top, PPO: the policy model writes output o; a frozen reference model and a frozen reward model give a KL-penalised reward r; a trained value model gives v; GAE turns r and v into the advantage A. Bottom, GRPO: the policy writes o1 to oG; the frozen reward model scores them r1 to rG; a group computation gives A1 to AG; the KL to the reference model goes straight to the policy"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §4.1.1, Fig. 4 (yellow: trained, blue: frozen; the paper's $r$ is our $R$, a reward). $G$: group size. GAE: generalised advantage estimation; $\lambda$: its credit decay. Memory is ours: 16 bytes per trained parameter, 2 per frozen one</p>
+<p class="footnote">Shao et al. 2024 · §4.1.1, Fig. 4 (yellow: trained, blue: frozen; the paper's $r$ is our $R$, a reward). $G$: the group size. GAE: generalised advantage estimation; $\lambda$: its credit decay (PPO section). Memory is ours: 16 bytes per trained parameter, 2 per frozen one</p>
 
 Note:
 No re-teaching of PPO; just the diff. Top row: PPO as used for language models, four models. The policy and the value model are trained; the reward model and the frozen reference model are not. The advantage comes from GAE, which needs the value model's prediction at every token. The KL to the reference sits inside the reward, token by token, following InstructGPT. Careful: that KL anchors to the frozen starting model, not to the previous policy as in the PPO paper's penalty variant. Same letter beta, different job.
 The paper's two arguments against the value model: it is "typically another model of comparable size as the policy model", a "substantial memory and computational burden"; and "usually only the last token is assigned a reward score", which makes a per-token value hard to train. Bottom row, GRPO: sample a group of G answers, score them, and let the group's own mean be the baseline. Three models, one trained. The caption's "significantly reducing training resources" is never measured.
 The paper never puts a number on the burden, so here is our accounting, in GB, for a 7B model. Training a model with mixed-precision Adam costs about 16 bytes per parameter: weights, gradients, optimiser state. A frozen model needs only its 16-bit (bf16) weights, 2 bytes. PPO: policy trained 112, value trained 112, reward plus reference frozen 28, total 252. GRPO: policy 112, no value model, frozen 28, total 140 (assuming the same 7B reward model): 44% less, before activations and the generation cache.
+
+---
+
+
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.1 · the last-token reward (ours)</p>
+
+## Why is a critic hard to train on one final score?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$(\gamma\lambda)^{T-t} = 0.95^{495} \approx 9\times 10^{-12}$$</div>
+
+<dl class="where">
+<dt>$\gamma$</dt><dd>the discount factor, 1 here</dd>
+<dt>$\lambda$</dt><dd>GAE's credit decay, commonly 0.95</dd>
+<dt>$T$, $t$</dt><dd>the last token (500) and this token (5)</dd>
+</dl>
+
+<p class="plain">In words: this is how much of the final reward reaches token 5's advantage under GAE.</p>
+
+- Everything else token 5 learns comes from the value model's guess.
+- With $\lambda$ = 1 the weight is 1, and the value model is only a baseline.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> The paper's words: "usually only the last token is assigned a reward score." Why does that hurt?</p>
+<p class="a"><b>A.</b> The critic must judge every half-written answer from one final number</p>
+
+</div>
+</div>
+
+<p class="footnote">Shao et al. 2024 · §4.1.1 (quote). The weight is ours, from GAE (Schulman et al. 2015b; PPO section, Eq. 11). DeepSeek-R1 later compares $\lambda$ = 0.95 with 1 (critique 1)</p>
+
+Note:
+On the slide in short: under GAE the final reward reaches token t's advantage with weight gamma lambda to the power T minus t; for token 5 of 500 at lambda 0.95 that is effectively zero.
 The second argument is the deeper one. Recall GAE: the advantage is a discounted sum of surprises, discounted by lambda, with gamma equal to 1. The reward arrives at the last token. For token 5 of a 500-token answer, with the common lambda of 0.95, the reward reaches its advantage with weight 0.95 to the 495th, about 9 times 10 to the minus 12. Effectively zero. Everything token 5 learns about the final score comes through the value model's guess from a half-written solution. At lambda equal to 1 the weight is 1 and the reward reaches every token: final reward plus later KL penalties, minus the value of the state, so the value model is just a baseline. Keep this for DeepSeek-R1's PPO comparison later.
 
 ---
 
-<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.1, §4.1.2 · Steps 1 and 2</p>
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.1, §4.1.2 · Step 1 · the baseline</p>
 
 ## Why can a group replace the critic?
 
@@ -3461,27 +3498,115 @@ The second argument is the deeper one. Recall GAE: the advantage is a discounted
 
 <div class="eq">$$\mathbb E\big[b\thinspace \nabla\log\pi_\theta(o)\big] = b\thinspace \nabla\textstyle\sum_o \pi_\theta(o) = b\thinspace \nabla 1 = 0$$</div>
 
-- any baseline $b$ that ignores the sampled answer is free
-- PPO learns $b$; GRPO: $b$ = group mean
-- every token gets the answer's $R - b$: REINFORCE, not a shortcut
-- the mean includes answer $i$: only a factor $(G-1)/G$ = 0.984 at $G$ = 64
+<dl class="where">
+<dt>$o$</dt><dd>an answer the policy samples</dd>
+<dt>$\pi_\theta(o)$</dt><dd>the policy's probability of $o$; $\theta$ its weights</dd>
+<dt>$\nabla$</dt><dd>the gradient with respect to $\theta$</dd>
+<dt>$b$</dt><dd>the <b>baseline</b>: any number that does not depend on $o$</dd>
+<dt>$\mathbb E$</dt><dd>the average over sampled answers</dd>
+</dl>
+
+<p class="plain">In words: subtracting the same $b$ from every reward leaves the average gradient unchanged.</p>
+
+- The policy gradient pushes up each answer in proportion to $R - b$, its reward minus the baseline.
+- PPO learns $b$ with a value model; GRPO uses the group's mean reward.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> 17 × 19, four answers: 323, 323, 323, 326, rewards $(1,1,1,0)$. What does the mean 0.75 change?</p>
-<p class="a"><b>A.</b> Weights $(1,1,1,0)$ become $(0.25, 0.25, 0.25, -0.75)$: the wrong answer is pushed down, not ignored</p>
+<p class="q"><b>Q.</b> Four answers to 17 × 19: 323, 323, 323, 326, so rewards $R = (1,1,1,0)$. What does the mean, 0.75, change?</p>
+<p class="a"><b>A.</b> The weights $(1,1,1,0)$ become $(0.25, 0.25, 0.25, -0.75)$: the wrong answer is now pushed down, not ignored</p>
 
 </div>
 </div>
 
-<p class="footnote">Derivation and worked group: ours, from Shao et al. 2024 §4.1.1, §4.1.2, Eq. 3. $R$: an answer's reward; $b$: baseline; $G$: group size. REINFORCE: Williams 1992, the plain policy gradient</p>
+<p class="footnote">Derivation and worked group: ours, from Shao et al. 2024 §4.1.1, §4.1.2. $R$: an answer's reward, here from a checker (1 right, 0 wrong)</p>
 
 Note:
 Why can you replace the value model at all? Because it is only a baseline. Start from the plain policy gradient from the PPO section, known as REINFORCE: the gradient of the objective is the expectation over sampled answers of (R of o minus b) times the gradient of log pi of o; that is, push up the log-probability of each sampled answer in proportion to its reward. You may subtract any baseline b that doesn't depend on the sampled answer. The proof is the equation on the slide: the expectation of b times the gradient of log pi is b times the gradient of the sum of the probabilities, which is the gradient of 1, which is zero.
 So the baseline is free in expectation, and it changes what each answer gets. Take 0/1 rewards and a group with three right, one wrong: four tries at 17 × 19, answering 323, 323, 323 and 326. No baseline: weights 1, 1, 1, 0, and the wrong answer is simply ignored. That is rejection sampling fine-tuning (RFT: fine-tune on your own correct answers), and its online version, which we meet again in the unified view. Subtract the group mean of 0.75 and the wrong answer gets minus 0.75: it is pushed down. PPO learns the baseline with a network; GRPO estimates it by sampling.
+
+---
+
+
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.1, §4.1.2 · Step 2 · from answers to tokens</p>
+
+## Why can every token share one advantage?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\nabla\log\pi_\theta(o) = \sum_{t=1}^{\lvert o\rvert}\nabla\log\pi_\theta(o_t \mid q, o_{\lt t})$$</div>
+
+<dl class="where">
+<dt>$q$</dt><dd>the question</dd>
+<dt>$o_t$</dt><dd>token $t$ of answer $o$; $o_{\lt t}$ the tokens before it</dd>
+<dt>$\lvert o\rvert$</dt><dd>the answer's length in tokens</dd>
+</dl>
+
+<p class="plain">In words: an answer's log-probability is the sum of its tokens', so every token gets the answer's weight $R - b$.</p>
+
+</div>
+<div class="text">
+
+- Giving every token one number, called <b>outcome supervision</b>, is exactly REINFORCE with a baseline.
+- The group mean includes answer $i$'s own reward; that only scales the gradient by $(G-1)/G$, 0.984 at $G$ = 64.
+- GRPO's real departures are dividing by the answer's length and by the group's std.
+
+<p class="q"><b>Q.</b> Is one advantage per answer a shortcut?</p>
+<p class="a"><b>A.</b> No: it is the exact policy gradient for a reward given to the whole answer</p>
+
+</div>
+</div>
+
+<p class="footnote">Derivation: ours, from Shao et al. 2024 §4.1.1, Eq. 3. $R$: reward; $b$: baseline; $G$: group size; std: standard deviation. <b>REINFORCE</b>: Williams 1992, the plain policy gradient from the PPO section</p>
+
+Note:
+On the slide in short: an answer's probability is a product over its tokens, so its log-probability and its gradient are sums over tokens. Each token therefore carries the answer's weight, reward minus baseline.
 Step two goes from whole answers to tokens. An answer's probability is the product of its token probabilities, so its log is a sum, and so is its gradient: the gradient of log pi of o is the sum over t of the gradient of log pi of o_t given the question and the earlier tokens. Substitute into the policy gradient: every token of the answer is weighted by the same number, the answer's reward minus the baseline. So giving every token one advantage, which GRPO calls outcome supervision, is not a cheap approximation. It is exactly REINFORCE with a baseline.
 GRPO's loss then carries two weights REINFORCE doesn't have: it divides each answer's gradient by its length, so a token in a long answer counts less (the paper's own PPO objective, Eq. 1, already has this length average); and it divides by the group's standard deviation. One more check: the group mean includes answer i's own reward. Write it out and that only rescales the true gradient by G minus 1 over G, 0.984 at G equals 64. So the mean is not the real worry. The std division is the real departure, because the std depends on answer i itself. Both weights come back under later work (Dr. GRPO). Hold on to both.
+
+---
+
+
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.1 · Eq. 3 · the objective, symbol by symbol</p>
+
+## What is GRPO's objective?
+
+<div class="eq">$$\mathcal J_{\rm GRPO} = \mathbb E\Big[\frac1G\sum_{i=1}^G\frac{1}{\lvert o_i\rvert}\sum_{t=1}^{\lvert o_i\rvert}\Big(\min\big[r_{i,t}\hat A_{i,t},\ \mathrm{clip}(r_{i,t}, 1-\epsilon, 1+\epsilon)\hat A_{i,t}\big] - \beta\thinspace \mathbb D_{\rm KL}[\pi_\theta \Vert \pi_{\rm ref}]\Big)\Big]$$</div>
+
+<div class="cols">
+<div class="text">
+
+<dl class="where">
+<dt>$G$</dt><dd>the <b>group size</b>: answers sampled per question, 64</dd>
+<dt>$o_i$</dt><dd>answer $i$; $\lvert o_i\rvert$ its length in tokens</dd>
+<dt>$r_{i,t}$</dt><dd>the <b>probability ratio</b>, new policy over the one that sampled, for token $t$ of answer $i$</dd>
+<dt>$\epsilon$</dt><dd>the <b>clip range</b></dd>
+<dt>$\hat A_{i,t}$</dt><dd>the estimated <b>advantage</b> of that token</dd>
+</dl>
+
+</div>
+<div class="text">
+
+<dl class="where">
+<dt>$\beta$</dt><dd>the weight on the KL penalty, 0.04</dd>
+<dt>$\mathbb D_{\rm KL}$</dt><dd>the <b>KL divergence</b>: how far apart two distributions are</dd>
+<dt>$\pi_{\rm ref}$</dt><dd>the frozen <b>reference model</b>, at first the Instruct model</dd>
+<dt>$\mathbb E$</dt><dd>the average over questions and sampled groups</dd>
+<dt>$\mathcal J_{\rm GRPO}$</dt><dd>the <b>objective</b>, which training maximises</dd>
+</dl>
+
+</div>
+</div>
+
+<p class="plain">In words: PPO's clipped objective, averaged over the $G$ answers and their tokens, minus a penalty for drifting from the reference.</p>
+
+<p class="footnote">Shao et al. 2024 · Eq. 3, §4.2. The paper writes $r$ for rewards and leaves the ratio unnamed; we keep the PPO section's letters: $R$ reward, $r$ ratio</p>
+
+Note:
+Read Eq. 3 one symbol at a time before reading it as a diff of PPO. G answers are sampled for each question; each answer o i has its own length; for every token there is a ratio, an advantage and a KL term, averaged first over the answer's tokens and then over the group.
+Same letters as the PPO section. The ratio is r, now indexed by answer i and token t; the reward is capital R. The paper writes rewards with lowercase r and never names the ratio, so its equations look different from ours; the content is the same. Other new symbols: G is the group size, 64 in the paper; u, introduced with the KL estimator, is the reference model's probability of the sampled token divided by the policy's.
 
 ---
 
@@ -3489,67 +3614,94 @@ GRPO's loss then carries two weights REINFORCE doesn't have: it divides each ans
 
 ## What does GRPO change in PPO's objective?
 
-<div class="eq">$$\mathcal J_{\rm GRPO} = \mathbb E\Big[\frac1G\sum_{i=1}^G\frac{1}{\lvert o_i\rvert}\sum_{t=1}^{\lvert o_i\rvert}\Big(\min\big[r_{i,t}\hat A_{i,t},\ \mathrm{clip}(r_{i,t}, 1-\epsilon, 1+\epsilon)\hat A_{i,t}\big] - \beta\thinspace \mathbb D_{\rm KL}[\pi_\theta \Vert \pi_{\rm ref}]\Big)\Big]$$</div>
-
-<div class="rows">
-<div class="points">
+<div class="cols">
 <div class="text">
 
-1. clipped term: PPO's, unchanged
-2. average over $G$ answers (the token average is already in PPO's Eq. 1)
-
-</div>
-<div class="text">
-
-<ol start="3">
-<li>$\hat A_{i,t}$ from the group, no GAE</li>
-<li>KL to $\pi_{\rm ref}$: out of the reward, into the loss</li>
+<ol>
+<li>The clipped term is PPO's, unchanged, now indexed by answer $i$ and token $t$.</li>
+<li>The average over the $G$ answers to one question is new; the token average is already in PPO's Eq. 1.</li>
+<li>The advantage $\hat A_{i,t}$ comes from the group's rewards, with no value model and no GAE.</li>
+<li>The KL penalty to $\pi_{\rm ref}$ moves out of the reward and into the loss.</li>
 </ol>
 
 </div>
-</div>
-</div>
+<div class="text">
 
 <p class="q"><b>Q.</b> The clip and the KL both keep the model close. Close to what?</p>
-<p class="a"><b>A.</b> Clip: the policy that sampled this batch. KL: the frozen reference, for the whole run</p>
+<p class="a"><b>A.</b> The clip: to the policy that sampled this batch, for one update. The KL: to the frozen reference, for the whole run</p>
 
-<p class="footnote">Shao et al. 2024 · Eq. 1, Eq. 3. $r_{i,t}$: ratio of $\pi_\theta$ to the sampling policy for token $t$ of answer $i$; $\hat A_{i,t}$: its advantage; $\pi_{\rm ref}$: frozen reference model; $\beta$: KL weight; $\epsilon$: clip width</p>
+</div>
+</div>
+
+<p class="footnote">Shao et al. 2024 · Eq. 1, Eq. 3. $r_{i,t}$: probability ratio; $\hat A_{i,t}$: advantage; $\pi_{\rm ref}$: frozen reference model; GAE: generalised advantage estimation (PPO section)</p>
 
 Note:
 Read Eq. 3 as a diff of PPO's clipped objective. One: the min and clip are exactly PPO's, now indexed by answer and token. Two: an average over G answers to the same question. That is the new part; the average over each answer's own tokens is already in the paper's PPO objective, Eq. 1, so it is not new here, though it comes back as a length bias later. Three: the advantage comes from the group's rewards, not from GAE and a value model. Four: the KL penalty to the reference model leaves the reward and enters the loss. The paper's reason (§4.1.1) is that this avoids "complicating the calculation of" the advantage; our reading is that the advantage is one number per answer, and a per-token penalty inside it would break that.
-Same letters as the PPO section. The ratio is r, now indexed by answer i and token t; the reward is capital R. The paper writes rewards with lowercase r and never names the ratio, so its equations look different from ours; the content is the same. Other new symbols: G is the group size, 64 in the paper; u, introduced with the KL estimator, is the reference model's probability of the sampled token divided by the policy's.
 The authors add a nice argument for groups: reward models are trained on comparisons between answers to the same question, so they are better at saying which of two siblings is better than at absolute scores across questions. GRPO only ever compares siblings.
 Two leashes, as in the PPO section. The clip compares the current model with the one that sampled this batch, so it limits each update. The KL compares it with a frozen reference, the supervised model, so it limits total drift over the whole run. GRPO keeps both; only the KL moves, from the reward into the loss.
 
 ---
 
-<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.2 · outcome supervision · the std (ours)</p>
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.2 · outcome supervision</p>
 
 ## How does a group grade its own answers?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
 <div class="eq">$$\hat A_{i,t} = \frac{R_i - \mathrm{mean}(R_1..R_G)}{\mathrm{std}(R_1..R_G)}$$</div>
 
-- a z-score within each question, same number on every token of answer $i$
-- rare right answer: big push
-- the std rescales: 1 right of 64 ×8.06, 32 right ×2
-- Dr. GRPO drops the std and the length average
+<dl class="where">
+<dt>$R_i$</dt><dd>answer $i$'s reward, from the reward model</dd>
+<dt>mean, std</dt><dd>the average and <b>standard deviation</b> of the $G$ rewards</dd>
+<dt>$\hat A_{i,t}$</dt><dd>the advantage, the same for every token $t$ of answer $i$</dd>
+</dl>
 
-<p class="q"><b>Q.</b> All 64 answers equal?</p>
-<p class="a"><b>A.</b> std = 0, so $0/0$: not handled</p>
+<p class="plain">In words: a <b>z-score</b>, how far answer $i$ sits above or below its siblings, in standard deviations.</p>
+
+- A rare right answer gets a big push; a common one gets a nudge.
+
+<p class="q"><b>Q.</b> What if all 64 answers get the same reward?</p>
+<p class="a"><b>A.</b> Then std = 0 and the formula is $0/0$</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-adv.svg" alt="Illustration: two groups of four answers with 0/1 rewards. Hard question, one right: the right answer gets +1.73, each wrong one -0.58. Easy question, three right: each right answer +0.58, the wrong one -1.73"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §4.1.2. Illustration and std costs: ours, 0/1 rewards, population std (the paper doesn't say which). Std: standard deviation. Dr. GRPO: Liu et al. 2025, arXiv:2503.20783</p>
+<p class="footnote">Shao et al. 2024 · §4.1.2, outcome supervision. Illustration: ours, 0/1 rewards, population std (the paper doesn't say which)</p>
 
 Note:
 Now the formula. A reward model scores each of the G answers. Subtract the group mean, so the advantages sum to zero; divide by the group's standard deviation, so every group's advantages have spread 1; and give that number to every token of the answer. It is a z-score within each question: for a network-science audience, standardisation within strata, each question its own stratum. The paper's rewards come from a reward model, so they are graded.
 A worked group with 0/1 rewards. Hard question, one of four right: mean 0.25, std 0.433, so the right answer gets plus 1.73 and each wrong one minus 0.58. Easy question, three right: the signs flip, plus 0.58 each and minus 1.73 for the one wrong answer. Do the advantages sum to zero? Yes: 1.732 minus 3 times 0.577 is about 0, exactly the square root of 3 minus 3 over the square root of 3. A rare right answer on a hard question gets a big push; common outcomes get a nudge. With graded scores, say 0.9, 0.2, 0.4, 0.7, the advantages are plus 1.30, minus 1.30, minus 0.56, plus 0.56: both above-average answers are pushed up, the better one more. The sample std instead of the population std gives +1.5 and -0.5 on the hard question.
-What does dividing by the std cost? The paper gives no reason for the std and doesn't discuss its costs. It is attractive because the advantage then ignores the reward model's scale, and every group ends with the same sum of squared advantages, equal to G. But it has two costs (ours). First, questions are reweighted by difficulty. With 64 answers and one right, the std is 0.124, so the centred rewards are multiplied by 8.06; with half right (32), the std is 0.5, by 2. Take a question's weight as the sum of the absolute advantages. Compared with the plain policy gradient, which only centres, the half-right question carried 16 times the hard question's total weight (32 against 1.97); after the std it carries 4 times (64 against 15.9). The std boosts the near-impossible question four times more. Second, noise is amplified: four near-identical reward-model scores, 0.80, 0.81, 0.80, 0.81, get a std of 0.005, a factor 200, and advantages of minus 1 and plus 1, as if one answer were right. And if all answers get the same reward the formula is zero over zero, which the paper doesn't discuss. Which std, population or sample? Not stated either.
+
+---
+
+
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §4.1.2 · the std's costs (ours) · Later work: Liu et al. 2025</p>
+
+## What does dividing by the std cost?
+
+<div class="cols">
+<div class="text">
+
+- The std reweights questions by difficulty: with 1 right of 64, rewards are multiplied by 8.06; with 32 right, by 2.
+- It amplifies noise: near-equal scores look like right and wrong answers.
+- The paper gives no reason for the std and does not discuss its costs.
+- **Dr. GRPO** drops the std and the length average; long wrong answers then mostly stop growing.
+
+</div>
+<div class="text">
+
+<p class="q"><b>Q.</b> The reward model scores four answers 0.80, 0.81, 0.80, 0.81. What are the advantages?</p>
+<p class="a"><b>A.</b> The std is 0.005, so $-1, +1, -1, +1$: as if two were right and two wrong</p>
+
+</div>
+</div>
+
+<p class="footnote">Std costs: ours, 0/1 rewards, population std. Dr. GRPO: Liu et al. 2025, "Understanding R1-Zero-Like Training", arXiv:2503.20783. Length average: the $1/\lvert o_i\rvert$ in Eq. 3</p>
+
+Note:
+What does dividing by the std cost? The paper gives no reason for the std and doesn't discuss its costs. It is attractive because the advantage then ignores the reward model's scale, and every group ends with the same sum of squared advantages, equal to G. But it has two costs (ours). First, questions are reweighted by difficulty. With 64 answers and one right, the std is 0.124, so the centred rewards are multiplied by 8.06; with half right (32), the std is 0.5, by 2. Take a question's weight as the sum of the absolute advantages. Compared with the plain policy gradient, which only centres, the half-right question carried 16 times the hard question's total weight (32 against 1.97); after the std it carries 4 times (64 against 15.9). The std boosts the near-impossible question four times more. Second, noise is amplified: four near-identical reward-model scores, 0.80, 0.81, 0.80, 0.81, get a std of 0.005, a factor 200, and advantages of minus 1 and plus 1, as if two answers were right and two wrong. And if all answers get the same reward the formula is zero over zero, which the paper doesn't discuss. Which std, population or sample? Not stated either.
 Later work (Liu et al. 2025, "Understanding R1-Zero-Like Training", §3) found "an optimization bias in GRPO, which artificially increases response length (especially for incorrect outputs)". It comes from exactly the two extras: the length average and the std. The length average spreads a wrong answer's negative advantage over its tokens, so a 1,000-token wrong answer is pushed down ten times less per token than a 100-token one (minus 0.01 against minus 0.001 per token in our toy): if you are going to be wrong, be long. The std gives larger weight to questions the model almost always or almost never solves, our 16-fold to 4-fold. Their fix, Dr. GRPO, removes both, which recovers PPO's objective with a Monte Carlo return and an unbiased baseline. What does training then do to length? GRPO keeps growing wrong answers; Dr. GRPO mostly stops it. The length growth many read as reasoning "emerging" under GRPO may be, at least in part, an artefact of the loss (their word: confounded). In their ablation on Qwen2.5-1.5B, removing either term beats vanilla GRPO. They assume beta equal to 0 with rule-based rewards, unlike DeepSeekMath's 0.04. Verdict: the group baseline kept, both normalisations revised.
 
 ---
@@ -3558,23 +3710,28 @@ Later work (Liu et al. 2025, "Understanding R1-Zero-Like Training", §3) found "
 
 ## What estimator does GRPO use for the KL, and why is it fine?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
 <div class="eq">$$k_3 = u - \log u - 1,\qquad u = \pi_{\rm ref}/\pi_\theta$$</div>
 
-- PPO: $k_1 = -\log u$ in the reward; GRPO: $k_3$ in the loss
-- same mean; $k_3$ never negative
-- as a loss, only $k_3$ pulls toward $\pi_{\rm ref}$
+<dl class="where">
+<dt>$u$</dt><dd>the reference's probability of the sampled token over the policy's</dd>
+<dt>$k_1, k_3$</dt><dd>two one-token estimates of the KL divergence</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Does it anchor what it says?</p>
-<p class="a"><b>A.</b> Roughly; little difference found at small $\beta$</p>
+- PPO puts $k_1 = -\log u$ in the reward; GRPO puts $k_3$ in the loss.
+- Both average to the true KL, but $k_3$ is never negative.
+- As a loss, only $k_3$ has a gradient that pulls the policy toward $\pi_{\rm ref}$.
+
+<p class="q"><b>Q.</b> Does it anchor what Eq. 3 says?</p>
+<p class="a"><b>A.</b> Roughly; little difference at small $\beta$</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-kl-est.svg" alt="Illustration: per-token KL estimates against u on a log axis. k3 = u - log u - 1 is a curve touching zero at u = 1 and positive elsewhere; k1 = -log u is a falling line that goes negative above u = 1. Dots at u = 0.625 (k1 +0.470, k3 +0.095) and u = 2.5 (k1 -0.916, k3 +0.584)"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · Eq. 2, Eq. 4, App. A.1.6, after Schulman 2020 (blog; names $k_1$, $k_3$). Tang &amp; Munos 2025, arXiv:2506.09477. KL: Kullback-Leibler divergence; $\beta$: KL weight; $\pi_{\rm ref}$: frozen reference model. Toy numbers: ours</p>
+<p class="footnote">Shao et al. 2024 · Eq. 2, Eq. 4, App. A.1.6, after Schulman 2020 (blog; names $k_1$, $k_3$). Tang &amp; Munos 2025, arXiv:2506.09477. $\pi_{\rm ref}$: frozen reference model; $\pi_\theta$: the policy; $\beta$: KL weight. Toy numbers: ours</p>
 
 Note:
 On the slide in short: both estimators use one sampled token; they have the same mean on tokens drawn from the current policy, and k3 is never negative. As a loss term, k1 has zero expected gradient, while k3 pulls toward the reference; it descends the KL in the order Eq. 3 does not write. Does the KL term anchor what it says it anchors? Roughly: on-policy and per position only; little difference was found at beta = 0.001, and 0.04, the value used, was untested.
@@ -3590,23 +3747,29 @@ Tang and Munos make the same point in 2025 ("On a few pitfalls in KL divergence 
 
 ## Can we credit each step instead of the answer?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
-- a process reward model scores each step
-- z-score over all steps of all $G$ answers
-- token advantage: sum of its own and later steps' scores
+- A **process reward model** scores each step, not only the answer.
+- Step scores are z-scored across all steps of all $G$ answers.
 
 <div class="eq">$$\hat A_{i,t} = \sum_{j:\ {\rm index}(j) \ge t}\tilde R_i^{(j)}$$</div>
 
-<p class="q"><b>Q.</b> Answer 1's step 2 scores 0.6, not 0.2. What happens to answer 2's step 1 advantage?</p>
+<dl class="where">
+<dt>$\tilde R_i^{(j)}$</dt><dd>the z-scored score of step $j$ of answer $i$</dd>
+<dt>index$(j)$</dt><dd>the position of step $j$'s last token</dd>
+</dl>
+
+<p class="plain">In words: a token's advantage is its own step's score plus every later step's.</p>
+
+<p class="q"><b>Q.</b> If answer 1's step 2 scored 0.6, not 0.2, what happens to answer 2's step 1?</p>
 <p class="a"><b>A.</b> −0.408 ▸ −1.769: the pool couples answers</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-steps.svg" alt="Illustration: one toy answer with three steps scored 0.9, 0.2 and 0.8. Normalised step rewards +1.22, -1.63, +0.82; reward-to-go advantages for the tokens of each step +0.41, -0.82, +0.82"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §4.1.3, following Math-Shepherd (arXiv:2312.08935; step labels built by checking whether a step can reach the right answer). index($j$): last token of step $j$; $\tilde R_i^{(j)}$: normalised score of step $j$ of answer $i$. Toy: ours, pooled mean 0.6, std 0.245</p>
+<p class="footnote">Shao et al. 2024 · §4.1.3, following Math-Shepherd (arXiv:2312.08935; step labels built by checking whether a step can reach the right answer). Toy: ours, pooled mean 0.6, std 0.245</p>
 
 Note:
 One number per answer punishes five right steps along with one wrong one; the authors say outcome rewards "may not be sufficient and efficient" for complex math. So, following Math-Shepherd, a process reward model scores each step. Normalise every step score against the pool of all steps of all G answers, then give each token the sum of the normalised scores of its own step and every later one: a reward-to-go, like a return.
@@ -3622,23 +3785,24 @@ Toy: answer 1 has steps scored 0.9, 0.2, 0.8; answer 2 has 0.5 and 0.6. Pool mea
 <div class="points">
 <div class="text">
 
-- reward model goes stale as the policy moves
-- each round: new samples + 10% old data, then $\pi_{\rm ref} \leftarrow \pi_\theta$
-- iteration 0: MATH 46.8 ▸ about 49.9, then dips; iteration 1 about 50 to 52; iteration 2 flat on MATH
-- 2 things change at once; 1 run each
+- The **reward model** was trained on the starting model's answers, so it goes stale.
+- Each round retrains it on new samples plus 10% old data, then resets $\pi_{\rm ref} \leftarrow \pi_\theta$.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> KL at a round's first step?</p>
-<p class="a"><b>A.</b> Zero: $\pi_{\rm ref} = \pi_\theta$, so $u = 1$</p>
+- On MATH, iteration 0 rises from 46.8 to about 49.9, then dips; iteration 1 reaches 50 to 52.
+- Two things change per round, one run each.
+
+<p class="q"><b>Q.</b> What is the KL at a round's first step?</p>
+<p class="a"><b>A.</b> Zero: the reference equals the policy, so $u = 1$ and $k_3 = 0$</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-04-grpo-fig6.png" alt="Figure 6 of the paper: GSM8K and MATH accuracy against training steps for iterations 0, 1 and 2 of iterative RL from DeepSeekMath-Instruct 7B. Iteration 0 rises from 82.9 and 46.8; iteration 1 sits clearly higher; iteration 2 adds a little on GSM8K and little on MATH"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §4.1.4, §5.2.1, Fig. 6 (by eye). $\pi_{\rm ref}$: KL anchor; $u$: ratio of $\pi_{\rm ref}$ to $\pi_\theta$. GSM8K: grade-school word problems; MATH: competition problems. Iterations 0 to 2 are the paper's "two rounds"</p>
+<p class="footnote">Shao et al. 2024 · §4.1.4, §5.2.1, Fig. 6 (by eye). $\pi_{\rm ref}$: the reference model, the KL anchor; $\pi_\theta$: the policy; $u$: their ratio for a token. GSM8K: grade-school word problems; MATH: competition problems. Iterations 0 to 2 are the paper's "two rounds"</p>
 
 Note:
 Four versions of the model, three loops. The policy changes at every gradient step. The old policy, the copy that sampled the batch, is refreshed at every sampling step. The reference model, the KL anchor, is reset to the current policy at every outer iteration. The starting Instruct 7B model never changes. Algorithm 1 loops over I rounds, M steps and mu updates per batch; mu is 1 in the paper's run, M is not stated. A small slip: Algorithm 1 line 11 cites Equation 21, the appendix's gradient coefficient, as the objective (Eq. 3).
@@ -3670,10 +3834,10 @@ What it doesn't show: between rounds two things change at once, the reward model
 </div>
 <div class="text">
 
-- shows: narrow RL lifts a strong model everywhere, held-out benchmarks too
-- shows: no value model needed
-- not shown: GRPO matches PPO (no PPO run)
-- not shown: which variant, or seed spread
+- It shows that RL on two benchmarks' questions lifts a strong model everywhere, held-out benchmarks too.
+- It shows that no value model is needed.
+- It does not show that GRPO matches PPO: there is no PPO run.
+- It does not say which variant made this row, or how much gains vary across seeds.
 
 </div>
 </div>
@@ -3703,7 +3867,7 @@ What does Table 5 show, and not show? It establishes that RL with GRPO on a narr
   <tr><td>code and math mixed</td><td class="num">17.6</td><td class="num">12.1</td><td class="num"><b>19.7</b></td><td class="num"><b>13.5</b></td></tr>
 </table>
 
-- code first, no tools: +2.8 GSM8K, +0.9 MATH, one run each (ours)
+- Without tools, code first wins by only 2.8 on GSM8K and 0.9 on MATH, one run each (ours).
 
 </div>
 <div class="text">
@@ -3715,8 +3879,8 @@ What does Table 5 show, and not show? It establishes that RL with GRPO on a narr
   <tr><td>ArXiv-RedPajama</td><td class="num">28.1</td><td class="num">11.1</td><td class="num">50.0</td><td class="num">24.8</td></tr>
 </table>
 
-- arXiv: "no notable improvements on all" vs "a grain of salt"
-- the real model still keeps 20% code, 10% arXiv
+- On arXiv the paper says "no notable improvements on all" in §1.1, but "a grain of salt" in §5.1.2.
+- The real model still keeps 20% code and 10% arXiv.
 
 </div>
 </div>
@@ -3731,14 +3895,26 @@ So two registers again. The contributions say arXiv "brings no notable improveme
 
 ---
 
-<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §5.2.1 · Eq. 5, Table 10, Fig. 5</p>
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §5.2.1 · Eq. 5, Table 10 · the unified view</p>
 
 ## Is every method SFT with a weight per token?
 
-<div class="cols wide-fig">
+<div class="eq">$$\nabla\mathcal J_{\mathcal A} = \mathbb E_{(q,o)\sim\mathcal D}\Big[\frac{1}{\lvert o\rvert}\sum_t GC_{\mathcal A}(q,o,t)\ \nabla\log\pi_\theta(o_t \mid q, o_{\lt t})\Big]$$</div>
+
+<div class="cols">
 <div class="text">
 
-<div class="eq">$$\nabla\mathcal J_{\mathcal A} = \mathbb E_{(q,o)\sim\mathcal D}\Big[\frac{1}{\lvert o\rvert}\sum_t GC_{\mathcal A}(q,o,t)\ \nabla\log\pi_\theta(o_t \mid q, o_{\lt t})\Big]$$</div>
+<dl class="where">
+<dt>$\mathcal A$</dt><dd>a training method: SFT, RFT, PPO or GRPO</dd>
+<dt>$GC_{\mathcal A}$</dt><dd>its <b>gradient coefficient</b>: the weight on each token</dd>
+<dt>$(q,o)\sim\mathcal D$</dt><dd>a question and an answer from the method's data source</dd>
+<dt>$o_t$, $\lvert o\rvert$</dt><dd>token $t$, and the answer's length</dd>
+</dl>
+
+<p class="plain">In words: every method is SFT's gradient with a weight on each token. Methods differ in where answers come from and how the weight is set.</p>
+
+</div>
+<div class="text">
 
 <table class="rules">
   <tr><td>method</td><td>weight on each token</td></tr>
@@ -3748,18 +3924,40 @@ So two registers again. The contributions say arXiv "brings no notable improveme
   <tr><td>GRPO</td><td>$\hat A_{i,t} + \beta(u - 1)$</td></tr>
 </table>
 
-- Fig. 5 (1.3B): online beats offline, GRPO beats Online RFT, per-step beats per-answer on GSM8K
-- no PPO, no DPO curve; one run each
+</div>
+</div>
+
+<p class="footnote">Shao et al. 2024 · §5.2.1, Eq. 5, Table 10 (one update per batch). SFT: supervised fine-tuning. RFT: rejection sampling fine-tuning, on the frozen SFT model's correct answers; Online RFT samples from the current policy. $u$, $\beta$: as on the KL slide</p>
+
+Note:
+The paper's most reusable idea. Write the gradient of any of these methods the same way: SFT's gradient of log pi of each token, times a per-token weight, the gradient coefficient. Methods differ in only three knobs: where the answers come from, what the reward is, and how the weight is computed. The full Table 10 (with App. A.1, mu equals 1): SFT, answers from human-written data, no reward, weight 1. RFT, answers from the frozen SFT model, rule reward, weight 1 if correct else 0. Online RFT, answers from the current policy, rule reward, same weight. PPO, current policy, model reward, the value-model advantage. GRPO, current policy with G per question, model reward, the group advantage plus beta times u minus 1. A rule means the answer is checked against the key; the reward model's labels also come from the rule. Table 10 also lists DPO, a later reading with a pairwise weight.
+SFT weights every token of a human solution by 1. RFT keeps the correct answers: the no-baseline weights of step one. Online RFT does the same with the current policy: with a 0/1 reward, that is REINFORCE with no baseline. PPO's weight is the value-model advantage; GRPO's is the group advantage plus the KL term. Read down the table and you see what RL adds over SFT: answers from the model's own current distribution, and weights that can be negative and graded. Check: on the group 1, 0, 0, 0, Online RFT gives 1, 0, 0, 0; GRPO gives plus 1.73 and three minus 0.58s.
+
+---
+
+
+<p class="eyebrow"><span class="paper">Shao et al. 2024</span> · §5.2.1 · Fig. 5</p>
+
+## Which ingredient wins in Figure 5?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- Online beats offline: Online RFT pulls ahead of RFT later in training.
+- Signed, graded weights beat 0/1 weights: GRPO beats Online RFT.
+- Step rewards beat answer rewards on GSM8K; on MATH the two GRPO curves interleave.
+- There is no PPO or DPO curve, the model is 1.3B, and each line is one run.
+
+<p class="q"><b>Q.</b> GRPO beats Online RFT. Which change did it?</p>
+<p class="a"><b>A.</b> Unknown: the baseline, the std, the KL and a reward model all change at once</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-fig5.png" alt="Figure 5 of the paper: GSM8K and MATH accuracy against training steps up to about 8,800 for DeepSeekMath-Instruct 1.3B trained with RFT, Online RFT, GRPO with outcome supervision and GRPO with process supervision. On GSM8K RFT stays lowest near 60, Online RFT near 62, GRPO with outcome rewards near 63 to 64 and with process rewards near 65; on MATH the two GRPO curves peak around step 4,000 and are interleaved later"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · §5.2.1, Eq. 5, Table 10, Fig. 5 (by eye). $GC$: gradient coefficient. RFT: rejection sampling fine-tuning, on the frozen SFT model's correct answers; Online RFT: same, current policy. DPO: direct preference optimisation</p>
+<p class="footnote">Shao et al. 2024 · §5.2.1, Fig. 5 (DeepSeekMath-Instruct 1.3B; by eye). Legend: GRPO+OS outcome rewards, GRPO+PS process (per-step) rewards. DPO: direct preference optimisation</p>
 
 Note:
-The paper's most reusable idea. Write the gradient of any of these methods the same way: SFT's gradient of log pi of each token, times a per-token weight, the gradient coefficient. Methods differ in only three knobs: where the answers come from, what the reward is, and how the weight is computed. The full Table 10 (with App. A.1, mu equals 1): SFT, answers from human-written data, no reward, weight 1. RFT, answers from the frozen SFT model, rule reward, weight 1 if correct else 0. Online RFT, answers from the current policy, rule reward, same weight. PPO, current policy, model reward, the value-model advantage. GRPO, current policy with G per question, model reward, the group advantage plus beta times u minus 1. A rule means the answer is checked against the key; the reward model's labels also come from the rule. Table 10 also lists DPO, a later reading with a pairwise weight.
-SFT weights every token of a human solution by 1. RFT keeps the correct answers: the no-baseline weights of step one. Online RFT does the same with the current policy: with a 0/1 reward, that is REINFORCE with no baseline. PPO's weight is the value-model advantage; GRPO's is the group advantage plus the KL term. Read down the table and you see what RL adds over SFT: answers from the model's own current distribution, and weights that can be negative and graded. Check: on the group 1, 0, 0, 0, Online RFT gives 1, 0, 0, 0; GRPO gives plus 1.73 and three minus 0.58s.
 Which ingredient wins in Figure 5? The closest the paper comes to a method comparison, DeepSeekMath-Instruct 1.3B (not otherwise described), legend GRPO+OS for outcome rewards and GRPO+PS for process (per-step) rewards. All four start together. Three findings. Online beats offline: Online RFT "is comparable to RFT in the early stage of training but gains an absolute advantage in the later stage", because early on the policy and the SFT model are nearly the same model. Signed, graded weights beat 0/1: GRPO surpasses Online RFT. Step rewards beat answer rewards: clear on GSM8K, where process rewards end near 65 against 63 to 64 (RFT stays lowest near 60, Online RFT near 62). On MATH the GRPO curves peak near step 4,000 and then interleave, so that finding is not clear there.
 Cautions: no PPO and no DPO curve, though Table 10 lists both; a 1.3B model while every headline is at 7B; one run each, with gaps of 1 to 3 points about the size of the curves' wiggle. And GRPO against Online RFT changes several things at once: baseline, std, KL and a reward model instead of a rule.
 
@@ -3769,16 +3967,18 @@ Cautions: no PPO and no DPO curve, though Table 10 lists both; a 1.3B model whil
 
 ## Sharpen or extend: how would we tell?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
-- Pass@K: any of $K$ samples right
-- Maj@K: the majority answer right
-- raise $p$ 0.3 ▸ 0.6: Maj@15 +0.74, Pass@15 +0.005
-- $p$ = 0: both stay 0
+<p class="plain">RL might <b>sharpen</b>, making right answers the model already writes more likely, or <b>extend</b>, solving questions it could not.</p>
+
+- **Pass@K**: sample $K$ answers; solved if any one is right.
+- **Maj@K**: solved if the most common answer is right.
+- Toy: each sample is right with chance $p$. Raising $p$ from 0.3 to 0.6 lifts Maj@15 by 0.74, Pass@15 by 0.005.
+- At $p$ = 0 both stay 0: only extending can move them.
 
 <p class="q"><b>Q.</b> At $p$ = 0.3, why does voting hurt?</p>
-<p class="a"><b>A.</b> The wrong answer is more common</p>
+<p class="a"><b>A.</b> The wrong answer is more common, so it wins</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-majpass.svg" alt="Illustration: chance a question counts as solved against K. Pass@K rises to nearly 1 within a few samples for p = 0.3 and 0.6. Maj@K rises from 0.600 to 0.787 at K = 15 for p = 0.6, and falls from 0.300 to 0.050 for p = 0.3"></div>
@@ -3800,21 +4000,21 @@ A toy: each sample is right with probability p, otherwise one particular wrong a
 <div class="points">
 <div class="text">
 
-- K = 1: RL ahead by about 6.7 (GSM8K), 6.4 (MATH)
-- Maj@64 gap: about 1.5 and 1.0
+- At $K$ = 1, RL is ahead by about 6.7 points on GSM8K and 6.4 on MATH.
+- With a 64-sample majority vote, the gaps shrink to about 1.5 and 1.0.
 
 </div>
 <div class="text">
 
-- Pass@K: Instruct ahead on GSM8K from K = 8
-- MATH Pass@K curves meet from K = 16
+- On GSM8K, Instruct's Pass@K passes RL's from $K$ = 8.
+- On MATH, the two Pass@K curves meet from $K$ = 16.
 
 </div>
 </div>
 <div class="fig"><img src="img/week-04-grpo-fig7.png" alt="Figure 7 of the paper: Maj@K and Pass@K of the Instruct and RL 7B models on GSM8K and MATH for K from 1 to 64 at temperature 0.7. RL starts well above Instruct at K = 1; the Maj@K gap shrinks with K; on GSM8K the Instruct Pass@K curve ends above RL's, on MATH the two Pass@K curves meet"></div>
 </div>
 
-<p class="footnote">Shao et al. 2024 · Fig. 7, temperature 0.7; GSM8K: grade-school word problems; MATH: competition problems. Readings and gaps by eye (ours). Caption: "RL enhances Maj@K but not Pass@K."</p>
+<p class="footnote">Shao et al. 2024 · Fig. 7, temperature 0.7; GSM8K: grade-school word problems; MATH: competition problems. Pass@K: any of $K$ samples right; Maj@K: the majority answer right. Readings by eye (ours). Caption: "RL enhances Maj@K but not Pass@K."</p>
 
 Note:
 Prediction first: if RL only sharpens, the two Pass at K curves should meet at large K. Now the figure. Lower pair Maj at K, upper pair Pass at K, Instruct against RL, temperature 0.7. At K equals 1 both metrics are just accuracy, and RL is ahead by about 6.7 points on GSM8K and 6.4 on MATH (Instruct's GSM8K at K equals 1 is about 81.5 here against 82.9 in Table 5: different decoding). As K grows, the Maj gap shrinks to about 1.5 and 1.0, and the Pass curves meet: on MATH from K equals 16, and on GSM8K Instruct ends higher.
@@ -3829,16 +4029,16 @@ So check the caption against the figure: "RL enhances Maj@K but not Pass@K" is t
 <div class="cols">
 <div class="text">
 
-- $k$ up to hundreds, many models and tasks
-- small $k$: RL model ahead; large $k$: base model ahead
-- on the training set: pass@1 26.1 ▸ 42.5, pass@256 falls
-- verdict on §5.2.2: confirmed and sharpened; still debated (ours)
+- Yue et al. measure pass@$k$ for $k$ up to the hundreds, on many models and tasks.
+- At small $k$ the RL model is ahead; at large $k$ the base model is ahead.
+- On the training set, pass@1 rose from 26.1 to 42.5 while pass@256 fell.
+- Verdict on §5.2.2: confirmed and sharpened, but still debated (ours).
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Same comparison as DeepSeekMath?</p>
-<p class="a"><b>A.</b> No: RL vs its base model, not vs Instruct</p>
+<p class="q"><b>Q.</b> Is it the same comparison as DeepSeekMath's?</p>
+<p class="a"><b>A.</b> No: they compare RL with its base model, not with an instruct model</p>
 
 </div>
 </div>
@@ -3858,9 +4058,9 @@ One difference: they compare RL against the base model it started from; DeepSeek
 <div class="cols wide-fig">
 <div class="text">
 
-- no PPO run on the same model and data
-- R1's supplement, MATH: PPO 0.501 and 0.536, GRPO 0.555
-- one run each, by GRPO's authors
+- The paper never trains PPO on the same model and data.
+- A year later, on MATH, R1's supplement has PPO at 0.501 ($\lambda$ = 0.95) and 0.536 ($\lambda$ = 1), GRPO at 0.555.
+- Each is one run, by GRPO's own authors.
 
 <p class="q"><b>Q.</b> Does it sink the argument?</p>
 <p class="a"><b>A.</b> It sinks "as good as PPO", not "GRPO works"</p>
@@ -3887,16 +4087,16 @@ Read it carefully: one run per setting, one model, two lambdas, by GRPO's own au
 <div class="cols">
 <div class="text">
 
-- "significantly reducing training resources"
-- "less memory consumption"
-- no number anywhere, and not flagged
-- ours: 252 GB ▸ 140 GB at 7B
+- The paper says GRPO is "significantly reducing training resources".
+- It also claims "less memory consumption".
+- It gives no number anywhere, and does not flag the gap.
+- Our estimate: training state falls from 252 GB to 140 GB at 7B.
 
 </div>
 <div class="text">
 
 <p class="q"><b>Q.</b> Does it sink the argument?</p>
-<p class="a"><b>A.</b> No, but 64 samples per question cost too</p>
+<p class="a"><b>A.</b> No, but sampling 64 answers per question costs memory and time too</p>
 
 </div>
 </div>
@@ -3916,16 +4116,16 @@ But GRPO pays elsewhere. Sampling 64 answers per question, up to 1,024 tokens ea
 <div class="cols">
 <div class="text">
 
-- $\epsilon$ in Eq. 3, never given
-- $\mu$ = 1: ratio is 1, clip inert; reported run: REINFORCE + group baseline + std, length average, KL anchor
-- later systems update several times per batch, so the clip binds
-- R1: $\epsilon$ = 10, very loose; DAPO: $\epsilon_{\rm low}$ 0.2, $\epsilon_{\rm high}$ 0.28
+- The clip range $\epsilon$ appears in Eq. 3, but its value is never given.
+- With one update per batch ($\mu$ = 1) the ratio is 1 and the clip never binds: the run is REINFORCE with a group baseline, the std, a length average and a KL anchor.
+- Later systems update several times per batch, so their clip binds.
+- R1 sets $\epsilon$ = 10, a very loose clip; DAPO clips at 0.2 below and 0.28 above.
 
 </div>
 <div class="text">
 
 <p class="q"><b>Q.</b> Does it sink the argument?</p>
-<p class="a"><b>A.</b> No: it changes what GRPO is here</p>
+<p class="a"><b>A.</b> No, but it changes what GRPO is in this paper</p>
 
 </div>
 </div>
@@ -3947,10 +4147,10 @@ DAPO, a 2025 set of repairs to GRPO for long answers, points the same way. Clip-
 <div class="cols">
 <div class="text">
 
-- which model is in Table 5: outcome or process rewards, one round or two? never said
-- Fig. 6 MATH peak about 52.2 at step 4,700; GSM8K there about 87.5, not 88.2
-- no seeds, no error bars; Fig. 5 at 1.3B, headline at 7B
-- small gaps: code first, no tools +0.9 to +2.8; process vs outcome, GSM8K only
+- The paper never says which model is in Table 5: outcome or process rewards, one round or two.
+- Fig. 6's MATH peak, about 52.2 at step 4,700, has GSM8K near 87.5, not Table 5's 88.2.
+- There are no seeds or error bars; Fig. 5 is at 1.3B, the headline at 7B.
+- Some gaps are small: code first without tools gains 0.9 to 2.8; process beats outcome on GSM8K only.
 
 </div>
 <div class="text">
@@ -3984,7 +4184,7 @@ Does it sink the argument? Not for the large effects: corpus against corpus, Ins
   <tr><td>suits (ours)</td><td>dense per-step reward</td><td>one score per answer</td></tr>
 </table>
 
-<p class="footnote">Schulman et al. 2017; Shao et al. 2024 §4.1. PPO's own KL (penalty variant) anchors to the previous policy; PPO for language models anchors to $\pi_{\rm ref}$</p>
+<p class="footnote">Schulman et al. 2017; Shao et al. 2024 §4.1. $G$: group size; $k_1$, $k_3$: one-token KL estimates (KL slide). PPO's own KL (penalty variant) anchors to the previous policy; PPO for language models anchors to $\pi_{\rm ref}$, the frozen reference</p>
 
 Note:
 Side by side with the reading before. The deepest difference is not memory. PPO estimates how good a state is with a network; GRPO estimates how good an answer is compared with its siblings, by sampling. For a task where the reward arrives only at the end, sampling siblings is the more direct question.
@@ -4013,12 +4213,12 @@ The rest follows. GAE against a per-answer z-score; four models against three; t
 </div>
 <div class="text">
 
-- admits: weak on triangles and ellipses, behind GPT-4 few-shot, arXiv "a grain of salt"
-- admits: reward unreliable (PRM800K about 20% mislabelled)
-- strong: RL on two benchmarks' questions only, real controls, reports its own deflating Fig. 7
+- The authors admit weakness on triangles and ellipses, a gap to GPT-4 few-shot, and arXiv's "grain of salt".
+- They admit the reward is unreliable: PRM800K has about 20% wrong labels.
+- Its strengths: RL on two benchmarks' questions only, real controls, and its own deflating Fig. 7.
 
 <p class="q"><b>Q.</b> What would convince us?</p>
-<p class="a"><b>A.</b> PPO on the same model, data and reward model, generation compute counted; Pass@K to 256 or more</p>
+<p class="a"><b>A.</b> PPO on the same model, data and reward model, with generation compute counted; and Pass@K out to 256 or more</p>
 
 </div>
 </div>
@@ -4040,10 +4240,10 @@ What would convince us? Two experiments would settle the paper's two open claims
 <div class="cols">
 <div class="text">
 
-- $\hat A_i$ = z-score in the group: no critic
-- every method: SFT gradient × a weight
-- normalisations shape what is learned
-- measure what RL changed: Maj vs Pass
+- The advantage $\hat A_i$ is a z-score within the group, so no critic is needed.
+- Every method is the SFT gradient times a weight on each token.
+- Normalisations (the std, the length average, the KL estimator) shape what is learned.
+- To see what RL changed, compare Maj@K with Pass@K.
 
 </div>
 <div class="text">
