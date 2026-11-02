@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-29T14:01:18.464089</dc:date>
+    <dc:date>2026-11-01T19:22:02.166537</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -41,7 +41,7 @@ Q 72.594 64.969043 72.594 67.138435
 L 72.594 111.249391 
 Q 72.594 113.418783 74.592 113.418783 
 z
-" clip-path="url(#pd74b664a9e)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5458d83b58)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 221.112 106.187478 
@@ -54,7 +54,7 @@ Q 219.114 72.200348 219.114 74.369739
 L 219.114 104.018087 
 Q 219.114 106.187478 221.112 106.187478 
 z
-" clip-path="url(#pd74b664a9e)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5458d83b58)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 301.032 106.187478 
@@ -67,7 +67,7 @@ Q 299.034 72.200348 299.034 74.369739
 L 299.034 104.018087 
 Q 299.034 106.187478 301.032 106.187478 
 z
-" clip-path="url(#pd74b664a9e)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5458d83b58)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 380.952 106.187478 
@@ -80,41 +80,41 @@ Q 378.954 72.200348 378.954 74.369739
 L 378.954 104.018087 
 Q 378.954 106.187478 380.952 106.187478 
 z
-" clip-path="url(#pd74b664a9e)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5458d83b58)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 196.805358 89.193913 
 Q 206.459989 89.193913 214.437569 89.193913 
-" clip-path="url(#pd74b664a9e)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
     <path d="M 208.037569 85.993913 
 L 214.437569 89.193913 
 L 208.037569 92.393913 
 z
-" clip-path="url(#pd74b664a9e)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
    </g>
    <g id="patch_7">
     <path d="M 286.714951 89.193913 
 Q 291.375904 89.193913 294.359806 89.193913 
-" clip-path="url(#pd74b664a9e)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
     <path d="M 287.959806 85.993913 
 L 294.359806 89.193913 
 L 287.959806 92.393913 
 z
-" clip-path="url(#pd74b664a9e)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
    </g>
    <g id="patch_8">
     <path d="M 366.634951 89.193913 
 Q 371.295904 89.193913 374.279806 89.193913 
-" clip-path="url(#pd74b664a9e)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="fill: none; stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
     <path d="M 367.879806 85.993913 
 L 374.279806 89.193913 
 L 367.879806 92.393913 
 z
-" clip-path="url(#pd74b664a9e)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
+" clip-path="url(#p5458d83b58)" style="stroke: #000000; stroke-width: 1.5; stroke-linecap: round"/>
    </g>
    <g id="text_1">
     <!-- prompt -->
-    <g transform="translate(116.101016 80.431726) scale(0.11 -0.11)">
+    <g transform="translate(116.101016 80.503913) scale(0.11 -0.11)">
      <defs>
       <path id="PTSans-Regular-70" d="M 493 3200 
 L 845 3200 
@@ -259,8 +259,8 @@ z
      <use xlink:href="#PTSans-Regular-70" transform="translate(222.899948 0)"/>
      <use xlink:href="#PTSans-Regular-74" transform="translate(276.999939 0)"/>
     </g>
-    <!-- "Name the capital -->
-    <g transform="translate(91.208359 92.016101) scale(0.11 -0.11)">
+    <!-- "What is -->
+    <g transform="translate(113.944844 91.943913) scale(0.11 -0.11)">
      <defs>
       <path id="PTSans-Regular-22" d="M 1328 4480 
 L 1827 4480 
@@ -275,23 +275,53 @@ L 576 3245
 L 576 4480 
 z
 " transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-4e" d="M 1350 2931 
-L 1005 3578 
-L 979 3578 
-L 1043 2931 
-L 1043 0 
-L 544 0 
-L 544 4550 
-L 826 4550 
-L 2970 1562 
-L 3302 947 
-L 3334 947 
-L 3264 1562 
-L 3264 4480 
-L 3763 4480 
-L 3763 -70 
-L 3482 -70 
-L 1350 2931 
+      <path id="PTSans-Regular-57" d="M 1421 1478 
+L 1523 736 
+L 1530 736 
+L 1638 1491 
+L 2560 4480 
+L 2816 4480 
+L 3744 1478 
+L 3853 736 
+L 3859 736 
+L 3974 1491 
+L 4730 4480 
+L 5248 4480 
+L 4000 -70 
+L 3706 -70 
+L 2797 2931 
+L 2682 3610 
+L 2650 3610 
+L 2534 2925 
+L 1626 -70 
+L 1331 -70 
+L 51 4480 
+L 614 4480 
+L 1421 1478 
+z
+" transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-68" d="M 2547 0 
+L 2547 1824 
+Q 2547 2074 2518 2262 
+Q 2490 2451 2413 2576 
+Q 2336 2701 2205 2765 
+Q 2074 2829 1862 2829 
+Q 1562 2829 1318 2633 
+Q 1075 2438 1005 2131 
+L 1005 0 
+L 493 0 
+L 493 4480 
+L 1005 4480 
+L 1005 2842 
+L 1030 2842 
+Q 1197 3040 1430 3158 
+Q 1664 3277 2010 3277 
+Q 2278 3277 2476 3216 
+Q 2675 3155 2806 3001 
+Q 2938 2848 2998 2589 
+Q 3059 2330 3059 1933 
+L 3059 0 
+L 2547 0 
 z
 " transform="scale(0.015625)"/>
       <path id="PTSans-Regular-61" d="M 442 2963 
@@ -347,86 +377,7 @@ Q 781 685 941 541
 Q 1101 397 1350 397 
 z
 " transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-65" d="M 2829 256 
-Q 2637 102 2345 12 
-Q 2054 -77 1728 -77 
-Q 1363 -77 1094 41 
-Q 826 160 653 381 
-Q 480 602 397 909 
-Q 314 1216 314 1600 
-Q 314 2419 678 2848 
-Q 1043 3277 1722 3277 
-Q 1939 3277 2156 3229 
-Q 2374 3181 2547 3046 
-Q 2720 2912 2829 2665 
-Q 2938 2419 2938 2016 
-Q 2938 1805 2899 1549 
-L 845 1549 
-Q 845 1267 902 1049 
-Q 960 832 1081 681 
-Q 1203 531 1398 451 
-Q 1594 371 1875 371 
-Q 2093 371 2310 448 
-Q 2528 525 2637 627 
-L 2829 256 
-z
-M 1728 2829 
-Q 1350 2829 1123 2630 
-Q 896 2432 851 1952 
-L 2438 1952 
-Q 2438 2438 2252 2633 
-Q 2067 2829 1728 2829 
-z
-" transform="scale(0.015625)"/>
       <path id="PTSans-Regular-20" transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-68" d="M 2547 0 
-L 2547 1824 
-Q 2547 2074 2518 2262 
-Q 2490 2451 2413 2576 
-Q 2336 2701 2205 2765 
-Q 2074 2829 1862 2829 
-Q 1562 2829 1318 2633 
-Q 1075 2438 1005 2131 
-L 1005 0 
-L 493 0 
-L 493 4480 
-L 1005 4480 
-L 1005 2842 
-L 1030 2842 
-Q 1197 3040 1430 3158 
-Q 1664 3277 2010 3277 
-Q 2278 3277 2476 3216 
-Q 2675 3155 2806 3001 
-Q 2938 2848 2998 2589 
-Q 3059 2330 3059 1933 
-L 3059 0 
-L 2547 0 
-z
-" transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-63" d="M 2675 211 
-Q 2483 70 2220 -3 
-Q 1958 -77 1670 -77 
-Q 1299 -77 1043 41 
-Q 787 160 624 381 
-Q 461 602 387 912 
-Q 314 1222 314 1600 
-Q 314 2413 672 2845 
-Q 1030 3277 1702 3277 
-Q 2010 3277 2224 3229 
-Q 2438 3181 2611 3091 
-L 2464 2650 
-Q 2317 2733 2137 2781 
-Q 1958 2829 1754 2829 
-Q 845 2829 845 1600 
-Q 845 1357 893 1136 
-Q 941 915 1053 745 
-Q 1165 576 1347 473 
-Q 1530 371 1798 371 
-Q 2029 371 2211 441 
-Q 2394 512 2509 602 
-L 2675 211 
-z
-" transform="scale(0.015625)"/>
       <path id="PTSans-Regular-69" d="M 602 3200 
 L 1114 3200 
 L 1114 0 
@@ -444,152 +395,54 @@ Q 691 3834 592 3930
 Q 493 4026 493 4173 
 z
 " transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-6c" d="M 1062 787 
-Q 1062 563 1139 467 
-Q 1216 371 1357 371 
-Q 1440 371 1536 384 
-Q 1632 397 1754 442 
-L 1811 38 
-Q 1709 -13 1526 -45 
-Q 1344 -77 1210 -77 
-Q 922 -77 736 86 
-Q 550 250 550 640 
-L 550 4480 
-L 1062 4480 
-L 1062 787 
+      <path id="PTSans-Regular-73" d="M 1901 870 
+Q 1901 1062 1785 1171 
+Q 1670 1280 1500 1353 
+Q 1331 1427 1129 1494 
+Q 928 1562 758 1667 
+Q 589 1773 473 1939 
+Q 358 2106 358 2387 
+Q 358 2848 620 3062 
+Q 883 3277 1350 3277 
+Q 1696 3277 1929 3216 
+Q 2163 3155 2336 3072 
+L 2214 2650 
+Q 2067 2720 1859 2774 
+Q 1651 2829 1414 2829 
+Q 1133 2829 1001 2733 
+Q 870 2637 870 2400 
+Q 870 2234 985 2141 
+Q 1101 2048 1270 1974 
+Q 1440 1901 1641 1830 
+Q 1843 1760 2012 1645 
+Q 2182 1530 2297 1354 
+Q 2413 1178 2413 890 
+Q 2413 685 2345 505 
+Q 2278 326 2137 198 
+Q 1997 70 1789 -3 
+Q 1581 -77 1299 -77 
+Q 934 -77 678 -6 
+Q 422 64 250 160 
+L 403 595 
+Q 550 512 787 441 
+Q 1024 371 1267 371 
+Q 1542 371 1721 480 
+Q 1901 589 1901 870 
 z
 " transform="scale(0.015625)"/>
      </defs>
      <use xlink:href="#PTSans-Regular-22"/>
-     <use xlink:href="#PTSans-Regular-4e" transform="translate(33.499985 0)"/>
-     <use xlink:href="#PTSans-Regular-61" transform="translate(100.799973 0)"/>
-     <use xlink:href="#PTSans-Regular-6d" transform="translate(150.399963 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(231.599945 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(282.399933 0)"/>
-     <use xlink:href="#PTSans-Regular-74" transform="translate(309.09993 0)"/>
-     <use xlink:href="#PTSans-Regular-68" transform="translate(342.999924 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(397.699921 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(448.499908 0)"/>
-     <use xlink:href="#PTSans-Regular-63" transform="translate(475.199905 0)"/>
-     <use xlink:href="#PTSans-Regular-61" transform="translate(520.299896 0)"/>
-     <use xlink:href="#PTSans-Regular-70" transform="translate(569.899887 0)"/>
-     <use xlink:href="#PTSans-Regular-69" transform="translate(623.999878 0)"/>
-     <use xlink:href="#PTSans-Regular-74" transform="translate(650.799866 0)"/>
-     <use xlink:href="#PTSans-Regular-61" transform="translate(684.69986 0)"/>
-     <use xlink:href="#PTSans-Regular-6c" transform="translate(734.29985 0)"/>
+     <use xlink:href="#PTSans-Regular-57" transform="translate(33.499985 0)"/>
+     <use xlink:href="#PTSans-Regular-68" transform="translate(116.299973 0)"/>
+     <use xlink:href="#PTSans-Regular-61" transform="translate(170.999969 0)"/>
+     <use xlink:href="#PTSans-Regular-74" transform="translate(220.59996 0)"/>
+     <use xlink:href="#PTSans-Regular-20" transform="translate(254.499954 0)"/>
+     <use xlink:href="#PTSans-Regular-69" transform="translate(281.199951 0)"/>
+     <use xlink:href="#PTSans-Regular-73" transform="translate(307.999939 0)"/>
     </g>
-    <!-- of France." -->
-    <g transform="translate(109.055 103.456101) scale(0.11 -0.11)">
+    <!-- 17 × 19?" -->
+    <g transform="translate(111.550625 103.383913) scale(0.11 -0.11)">
      <defs>
-      <path id="PTSans-Regular-66" d="M 141 3200 
-L 640 3200 
-L 640 3379 
-Q 640 3674 688 3891 
-Q 736 4109 845 4246 
-Q 954 4384 1126 4451 
-Q 1299 4518 1555 4518 
-Q 1760 4518 1917 4492 
-Q 2074 4467 2246 4397 
-L 2131 3968 
-Q 1984 4032 1853 4051 
-Q 1722 4070 1606 4070 
-Q 1440 4070 1347 4019 
-Q 1254 3968 1212 3869 
-Q 1171 3770 1161 3626 
-Q 1152 3482 1152 3290 
-L 1152 3200 
-L 2003 3200 
-L 2003 2752 
-L 1152 2752 
-L 1152 0 
-L 640 0 
-L 640 2752 
-L 141 2752 
-L 141 3200 
-z
-" transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-46" d="M 544 4480 
-L 2982 4480 
-L 2982 4006 
-L 1075 4006 
-L 1075 2477 
-L 2854 2477 
-L 2854 2003 
-L 1075 2003 
-L 1075 0 
-L 544 0 
-L 544 4480 
-z
-" transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-6e" d="M 2547 0 
-L 2547 1824 
-Q 2547 2323 2403 2576 
-Q 2259 2829 1875 2829 
-Q 1536 2829 1315 2646 
-Q 1094 2464 1005 2189 
-L 1005 0 
-L 493 0 
-L 493 3200 
-L 851 3200 
-L 947 2810 
-L 973 2810 
-Q 1126 3014 1385 3145 
-Q 1645 3277 2003 3277 
-Q 2266 3277 2464 3216 
-Q 2662 3155 2793 3001 
-Q 2925 2848 2992 2589 
-Q 3059 2330 3059 1933 
-L 3059 0 
-L 2547 0 
-z
-" transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-2e" d="M 314 294 
-Q 314 467 413 566 
-Q 512 666 678 666 
-Q 851 666 953 566 
-Q 1056 467 1056 294 
-Q 1056 128 953 25 
-Q 851 -77 678 -77 
-Q 512 -77 413 25 
-Q 314 128 314 294 
-z
-" transform="scale(0.015625)"/>
-     </defs>
-     <use xlink:href="#PTSans-Regular-6f"/>
-     <use xlink:href="#PTSans-Regular-66" transform="translate(53.599991 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(85.499985 0)"/>
-     <use xlink:href="#PTSans-Regular-46" transform="translate(112.199982 0)"/>
-     <use xlink:href="#PTSans-Regular-72" transform="translate(163.899979 0)"/>
-     <use xlink:href="#PTSans-Regular-61" transform="translate(197.899963 0)"/>
-     <use xlink:href="#PTSans-Regular-6e" transform="translate(247.499954 0)"/>
-     <use xlink:href="#PTSans-Regular-63" transform="translate(302.199951 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(347.299942 0)"/>
-     <use xlink:href="#PTSans-Regular-2e" transform="translate(398.09993 0)"/>
-     <use xlink:href="#PTSans-Regular-22" transform="translate(405.499924 0)"/>
-    </g>
-   </g>
-   <g id="text_2">
-    <!-- token 1 -->
-    <g transform="translate(232.088438 92.193913) scale(0.12 -0.12)">
-     <defs>
-      <path id="PTSans-Regular-6b" d="M 1299 1440 
-L 1005 1440 
-L 1005 0 
-L 493 0 
-L 493 4480 
-L 1005 4480 
-L 1005 1754 
-L 1267 1843 
-L 2259 3200 
-L 2854 3200 
-L 1875 1914 
-L 1613 1702 
-L 1933 1446 
-L 3002 0 
-L 2368 0 
-L 1299 1440 
-z
-" transform="scale(0.015625)"/>
       <path id="PTSans-Regular-31" d="M 691 474 
 L 1587 474 
 L 1587 3571 
@@ -606,14 +459,165 @@ L 691 0
 L 691 474 
 z
 " transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-37" d="M 704 0 
+L 2310 3750 
+L 2592 4064 
+L 2214 4006 
+L 390 4006 
+L 390 4480 
+L 3066 4480 
+L 3066 4307 
+L 1222 0 
+L 704 0 
+z
+" transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-d7" d="M 813 3309 
+L 1619 2496 
+L 2432 3309 
+L 2758 2970 
+L 1952 2163 
+L 2758 1350 
+L 2432 1018 
+L 1619 1837 
+L 806 1018 
+L 474 1344 
+L 1293 2170 
+L 486 2970 
+L 813 3309 
+z
+" transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-39" d="M 333 3123 
+Q 333 3430 422 3692 
+Q 512 3955 685 4147 
+Q 858 4339 1117 4448 
+Q 1376 4557 1722 4557 
+Q 2374 4557 2739 4134 
+Q 3104 3712 3104 2944 
+Q 3104 2221 2941 1680 
+Q 2778 1139 2490 768 
+Q 2202 397 1808 189 
+Q 1414 -19 954 -77 
+L 838 333 
+Q 1210 390 1507 550 
+Q 1805 710 2019 953 
+Q 2234 1197 2368 1507 
+Q 2502 1818 2554 2182 
+Q 2381 1978 2173 1898 
+Q 1965 1818 1626 1818 
+Q 1363 1818 1129 1904 
+Q 896 1990 717 2156 
+Q 538 2323 435 2566 
+Q 333 2810 333 3123 
+z
+M 864 3174 
+Q 864 2720 1104 2493 
+Q 1344 2266 1734 2266 
+Q 2048 2266 2272 2368 
+Q 2496 2470 2592 2637 
+Q 2605 2720 2605 2784 
+Q 2605 2848 2605 2918 
+Q 2605 3149 2550 3363 
+Q 2496 3578 2387 3747 
+Q 2278 3917 2102 4013 
+Q 1926 4109 1690 4109 
+Q 1299 4109 1081 3862 
+Q 864 3616 864 3174 
+z
+" transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-3f" d="M 960 1133 
+Q 954 1165 954 1203 
+Q 954 1242 954 1274 
+Q 954 1542 1034 1747 
+Q 1114 1952 1232 2121 
+Q 1350 2291 1488 2438 
+Q 1626 2586 1744 2736 
+Q 1862 2886 1942 3056 
+Q 2022 3226 2022 3443 
+Q 2022 3738 1852 3923 
+Q 1683 4109 1286 4109 
+Q 1056 4109 819 4029 
+Q 582 3949 410 3840 
+L 237 4237 
+Q 480 4384 749 4470 
+Q 1018 4557 1414 4557 
+Q 1696 4557 1910 4477 
+Q 2125 4397 2269 4256 
+Q 2413 4115 2483 3923 
+Q 2554 3731 2554 3514 
+Q 2554 3226 2467 3011 
+Q 2381 2797 2249 2621 
+Q 2118 2445 1968 2291 
+Q 1818 2138 1686 1968 
+Q 1555 1798 1468 1600 
+Q 1382 1402 1382 1133 
+L 960 1133 
+z
+M 832 294 
+Q 832 467 931 566 
+Q 1030 666 1197 666 
+Q 1370 666 1472 566 
+Q 1574 467 1574 294 
+Q 1574 128 1472 25 
+Q 1370 -77 1197 -77 
+Q 1030 -77 931 25 
+Q 832 128 832 294 
+z
+" transform="scale(0.015625)"/>
      </defs>
-     <use xlink:href="#PTSans-Regular-74"/>
-     <use xlink:href="#PTSans-Regular-6f" transform="translate(33.899994 0)"/>
-     <use xlink:href="#PTSans-Regular-6b" transform="translate(87.499985 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(135.399979 0)"/>
-     <use xlink:href="#PTSans-Regular-6e" transform="translate(186.199966 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(240.899963 0)"/>
-     <use xlink:href="#PTSans-Regular-31" transform="translate(267.59996 0)"/>
+     <use xlink:href="#PTSans-Regular-31"/>
+     <use xlink:href="#PTSans-Regular-37" transform="translate(54.499985 0)"/>
+     <use xlink:href="#PTSans-Regular-20" transform="translate(103.624969 0)"/>
+     <use xlink:href="#PTSans-Regular-d7" transform="translate(130.324966 0)"/>
+     <use xlink:href="#PTSans-Regular-20" transform="translate(180.824951 0)"/>
+     <use xlink:href="#PTSans-Regular-31" transform="translate(207.524948 0)"/>
+     <use xlink:href="#PTSans-Regular-39" transform="translate(262.024933 0)"/>
+     <use xlink:href="#PTSans-Regular-3f" transform="translate(316.524918 0)"/>
+     <use xlink:href="#PTSans-Regular-22" transform="translate(360.124908 0)"/>
+    </g>
+   </g>
+   <g id="text_2">
+    <!-- "3" -->
+    <g transform="translate(243.5175 92.443913) scale(0.13 -0.13)">
+     <defs>
+      <path id="PTSans-Regular-33" d="M 1498 371 
+Q 1715 371 1900 435 
+Q 2086 499 2220 624 
+Q 2355 749 2432 921 
+Q 2509 1094 2509 1299 
+Q 2509 1747 2243 1964 
+Q 1978 2182 1510 2182 
+L 1037 2182 
+L 1037 2368 
+L 1958 3789 
+L 2253 4070 
+L 1837 4006 
+L 570 4006 
+L 570 4480 
+L 2854 4480 
+L 2854 4294 
+L 1837 2765 
+L 1613 2579 
+L 1613 2566 
+L 1830 2611 
+Q 2086 2605 2304 2518 
+Q 2522 2432 2682 2269 
+Q 2842 2106 2931 1878 
+Q 3021 1651 3021 1363 
+Q 3021 1018 2899 749 
+Q 2778 480 2570 297 
+Q 2362 115 2080 19 
+Q 1798 -77 1485 -77 
+Q 1197 -77 966 -32 
+Q 736 13 563 83 
+L 698 538 
+Q 845 467 1046 419 
+Q 1248 371 1498 371 
+z
+" transform="scale(0.015625)"/>
+     </defs>
+     <use xlink:href="#PTSans-Regular-22"/>
+     <use xlink:href="#PTSans-Regular-33" transform="translate(33.499985 0)"/>
+     <use xlink:href="#PTSans-Regular-22" transform="translate(87.999969 0)"/>
     </g>
    </g>
    <g id="text_3">
@@ -695,42 +699,15 @@ Q 1261 4109 1033 3654
 Q 806 3200 806 2240 
 z
 " transform="scale(0.015625)"/>
-      <path id="PTSans-Regular-39" d="M 333 3123 
-Q 333 3430 422 3692 
-Q 512 3955 685 4147 
-Q 858 4339 1117 4448 
-Q 1376 4557 1722 4557 
-Q 2374 4557 2739 4134 
-Q 3104 3712 3104 2944 
-Q 3104 2221 2941 1680 
-Q 2778 1139 2490 768 
-Q 2202 397 1808 189 
-Q 1414 -19 954 -77 
-L 838 333 
-Q 1210 390 1507 550 
-Q 1805 710 2019 953 
-Q 2234 1197 2368 1507 
-Q 2502 1818 2554 2182 
-Q 2381 1978 2173 1898 
-Q 1965 1818 1626 1818 
-Q 1363 1818 1129 1904 
-Q 896 1990 717 2156 
-Q 538 2323 435 2566 
-Q 333 2810 333 3123 
-z
-M 864 3174 
-Q 864 2720 1104 2493 
-Q 1344 2266 1734 2266 
-Q 2048 2266 2272 2368 
-Q 2496 2470 2592 2637 
-Q 2605 2720 2605 2784 
-Q 2605 2848 2605 2918 
-Q 2605 3149 2550 3363 
-Q 2496 3578 2387 3747 
-Q 2278 3917 2102 4013 
-Q 1926 4109 1690 4109 
-Q 1299 4109 1081 3862 
-Q 864 3616 864 3174 
+      <path id="PTSans-Regular-2e" d="M 314 294 
+Q 314 467 413 566 
+Q 512 666 678 666 
+Q 851 666 953 566 
+Q 1056 467 1056 294 
+Q 1056 128 953 25 
+Q 851 -77 678 -77 
+Q 512 -77 413 25 
+Q 314 128 314 294 
 z
 " transform="scale(0.015625)"/>
      </defs>
@@ -747,6 +724,37 @@ z
     <!-- reward 0 -->
     <g transform="translate(228.801563 128.966087) scale(0.12 -0.12)">
      <defs>
+      <path id="PTSans-Regular-65" d="M 2829 256 
+Q 2637 102 2345 12 
+Q 2054 -77 1728 -77 
+Q 1363 -77 1094 41 
+Q 826 160 653 381 
+Q 480 602 397 909 
+Q 314 1216 314 1600 
+Q 314 2419 678 2848 
+Q 1043 3277 1722 3277 
+Q 1939 3277 2156 3229 
+Q 2374 3181 2547 3046 
+Q 2720 2912 2829 2665 
+Q 2938 2419 2938 2016 
+Q 2938 1805 2899 1549 
+L 845 1549 
+Q 845 1267 902 1049 
+Q 960 832 1081 681 
+Q 1203 531 1398 451 
+Q 1594 371 1875 371 
+Q 2093 371 2310 448 
+Q 2528 525 2637 627 
+L 2829 256 
+z
+M 1728 2829 
+Q 1350 2829 1123 2630 
+Q 896 2432 851 1952 
+L 2438 1952 
+Q 2438 2438 2252 2633 
+Q 2067 2829 1728 2829 
+z
+" transform="scale(0.015625)"/>
       <path id="PTSans-Regular-77" d="M 2566 3200 
 L 3302 1331 
 L 3462 717 
@@ -816,8 +824,8 @@ z
     </g>
    </g>
    <g id="text_5">
-    <!-- token 2 -->
-    <g transform="translate(312.008438 92.193913) scale(0.12 -0.12)">
+    <!-- "2" -->
+    <g transform="translate(323.4375 92.443913) scale(0.13 -0.13)">
      <defs>
       <path id="PTSans-Regular-32" d="M 2854 3462 
 Q 2854 3123 2729 2768 
@@ -851,13 +859,9 @@ Q 2854 3699 2854 3462
 z
 " transform="scale(0.015625)"/>
      </defs>
-     <use xlink:href="#PTSans-Regular-74"/>
-     <use xlink:href="#PTSans-Regular-6f" transform="translate(33.899994 0)"/>
-     <use xlink:href="#PTSans-Regular-6b" transform="translate(87.499985 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(135.399979 0)"/>
-     <use xlink:href="#PTSans-Regular-6e" transform="translate(186.199966 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(240.899963 0)"/>
-     <use xlink:href="#PTSans-Regular-32" transform="translate(267.59996 0)"/>
+     <use xlink:href="#PTSans-Regular-22"/>
+     <use xlink:href="#PTSans-Regular-32" transform="translate(33.499985 0)"/>
+     <use xlink:href="#PTSans-Regular-22" transform="translate(87.999969 0)"/>
     </g>
    </g>
    <g id="text_6">
@@ -949,52 +953,11 @@ z
     </g>
    </g>
    <g id="text_8">
-    <!-- token 3 -->
-    <g transform="translate(391.928438 92.193913) scale(0.12 -0.12)">
-     <defs>
-      <path id="PTSans-Regular-33" d="M 1498 371 
-Q 1715 371 1900 435 
-Q 2086 499 2220 624 
-Q 2355 749 2432 921 
-Q 2509 1094 2509 1299 
-Q 2509 1747 2243 1964 
-Q 1978 2182 1510 2182 
-L 1037 2182 
-L 1037 2368 
-L 1958 3789 
-L 2253 4070 
-L 1837 4006 
-L 570 4006 
-L 570 4480 
-L 2854 4480 
-L 2854 4294 
-L 1837 2765 
-L 1613 2579 
-L 1613 2566 
-L 1830 2611 
-Q 2086 2605 2304 2518 
-Q 2522 2432 2682 2269 
-Q 2842 2106 2931 1878 
-Q 3021 1651 3021 1363 
-Q 3021 1018 2899 749 
-Q 2778 480 2570 297 
-Q 2362 115 2080 19 
-Q 1798 -77 1485 -77 
-Q 1197 -77 966 -32 
-Q 736 13 563 83 
-L 698 538 
-Q 845 467 1046 419 
-Q 1248 371 1498 371 
-z
-" transform="scale(0.015625)"/>
-     </defs>
-     <use xlink:href="#PTSans-Regular-74"/>
-     <use xlink:href="#PTSans-Regular-6f" transform="translate(33.899994 0)"/>
-     <use xlink:href="#PTSans-Regular-6b" transform="translate(87.499985 0)"/>
-     <use xlink:href="#PTSans-Regular-65" transform="translate(135.399979 0)"/>
-     <use xlink:href="#PTSans-Regular-6e" transform="translate(186.199966 0)"/>
-     <use xlink:href="#PTSans-Regular-20" transform="translate(240.899963 0)"/>
-     <use xlink:href="#PTSans-Regular-33" transform="translate(267.59996 0)"/>
+    <!-- "3" -->
+    <g transform="translate(403.3575 92.443913) scale(0.13 -0.13)">
+     <use xlink:href="#PTSans-Regular-22"/>
+     <use xlink:href="#PTSans-Regular-33" transform="translate(33.499985 0)"/>
+     <use xlink:href="#PTSans-Regular-22" transform="translate(87.999969 0)"/>
     </g>
    </g>
    <g id="text_9">
@@ -1053,39 +1016,26 @@ z
     <!-- response probability $0.9 \times 0.8 \times 0.5 = 0.36$ -->
     <g transform="translate(165.66 165.122609) scale(0.12 -0.12)">
      <defs>
-      <path id="PTSans-Regular-73" d="M 1901 870 
-Q 1901 1062 1785 1171 
-Q 1670 1280 1500 1353 
-Q 1331 1427 1129 1494 
-Q 928 1562 758 1667 
-Q 589 1773 473 1939 
-Q 358 2106 358 2387 
-Q 358 2848 620 3062 
-Q 883 3277 1350 3277 
-Q 1696 3277 1929 3216 
-Q 2163 3155 2336 3072 
-L 2214 2650 
-Q 2067 2720 1859 2774 
-Q 1651 2829 1414 2829 
-Q 1133 2829 1001 2733 
-Q 870 2637 870 2400 
-Q 870 2234 985 2141 
-Q 1101 2048 1270 1974 
-Q 1440 1901 1641 1830 
-Q 1843 1760 2012 1645 
-Q 2182 1530 2297 1354 
-Q 2413 1178 2413 890 
-Q 2413 685 2345 505 
-Q 2278 326 2137 198 
-Q 1997 70 1789 -3 
-Q 1581 -77 1299 -77 
-Q 934 -77 678 -6 
-Q 422 64 250 160 
-L 403 595 
-Q 550 512 787 441 
-Q 1024 371 1267 371 
-Q 1542 371 1721 480 
-Q 1901 589 1901 870 
+      <path id="PTSans-Regular-6e" d="M 2547 0 
+L 2547 1824 
+Q 2547 2323 2403 2576 
+Q 2259 2829 1875 2829 
+Q 1536 2829 1315 2646 
+Q 1094 2464 1005 2189 
+L 1005 0 
+L 493 0 
+L 493 3200 
+L 851 3200 
+L 947 2810 
+L 973 2810 
+Q 1126 3014 1385 3145 
+Q 1645 3277 2003 3277 
+Q 2266 3277 2464 3216 
+Q 2662 3155 2793 3001 
+Q 2925 2848 2992 2589 
+Q 3059 2330 3059 1933 
+L 3059 0 
+L 2547 0 
 z
 " transform="scale(0.015625)"/>
       <path id="PTSans-Regular-62" d="M 493 4480 
@@ -1114,6 +1064,21 @@ Q 2611 1907 2566 2124
 Q 2522 2342 2426 2496 
 Q 2330 2650 2179 2739 
 Q 2029 2829 1811 2829 
+z
+" transform="scale(0.015625)"/>
+      <path id="PTSans-Regular-6c" d="M 1062 787 
+Q 1062 563 1139 467 
+Q 1216 371 1357 371 
+Q 1440 371 1536 384 
+Q 1632 397 1754 442 
+L 1811 38 
+Q 1709 -13 1526 -45 
+Q 1344 -77 1210 -77 
+Q 922 -77 736 86 
+Q 550 250 550 640 
+L 550 4480 
+L 1062 4480 
+L 1062 787 
 z
 " transform="scale(0.015625)"/>
       <path id="PTSans-Regular-79" d="M 1434 1126 
@@ -1539,7 +1504,7 @@ z
    </g>
   </g>
   <g id="text_12">
-   <!-- illustration: state = prompt + tokens so far; action = next token; one reward, after the last token -->
+   <!-- illustration: state = prompt + tokens so far; action = next token; reward 1 for 323, after the last token -->
    <g style="fill: #777777" transform="translate(5.328 213.408) scale(0.1 -0.1)">
     <defs>
      <path id="PTSans-Regular-75" d="M 954 3200 
@@ -1606,6 +1571,51 @@ L 256 1933
 L 256 2394 
 z
 " transform="scale(0.015625)"/>
+     <path id="PTSans-Regular-6b" d="M 1299 1440 
+L 1005 1440 
+L 1005 0 
+L 493 0 
+L 493 4480 
+L 1005 4480 
+L 1005 1754 
+L 1267 1843 
+L 2259 3200 
+L 2854 3200 
+L 1875 1914 
+L 1613 1702 
+L 1933 1446 
+L 3002 0 
+L 2368 0 
+L 1299 1440 
+z
+" transform="scale(0.015625)"/>
+     <path id="PTSans-Regular-66" d="M 141 3200 
+L 640 3200 
+L 640 3379 
+Q 640 3674 688 3891 
+Q 736 4109 845 4246 
+Q 954 4384 1126 4451 
+Q 1299 4518 1555 4518 
+Q 1760 4518 1917 4492 
+Q 2074 4467 2246 4397 
+L 2131 3968 
+Q 1984 4032 1853 4051 
+Q 1722 4070 1606 4070 
+Q 1440 4070 1347 4019 
+Q 1254 3968 1212 3869 
+Q 1171 3770 1161 3626 
+Q 1152 3482 1152 3290 
+L 1152 3200 
+L 2003 3200 
+L 2003 2752 
+L 1152 2752 
+L 1152 0 
+L 640 0 
+L 640 2752 
+L 141 2752 
+L 141 3200 
+z
+" transform="scale(0.015625)"/>
      <path id="PTSans-Regular-3b" d="M 570 275 
 Q 570 429 672 525 
 Q 774 621 934 621 
@@ -1631,6 +1641,30 @@ Q 1357 2707 1254 2604
 Q 1152 2502 979 2502 
 Q 813 2502 713 2604 
 Q 614 2707 614 2874 
+z
+" transform="scale(0.015625)"/>
+     <path id="PTSans-Regular-63" d="M 2675 211 
+Q 2483 70 2220 -3 
+Q 1958 -77 1670 -77 
+Q 1299 -77 1043 41 
+Q 787 160 624 381 
+Q 461 602 387 912 
+Q 314 1222 314 1600 
+Q 314 2413 672 2845 
+Q 1030 3277 1702 3277 
+Q 2010 3277 2224 3229 
+Q 2438 3181 2611 3091 
+L 2464 2650 
+Q 2317 2733 2137 2781 
+Q 1958 2829 1754 2829 
+Q 845 2829 845 1600 
+Q 845 1357 893 1136 
+Q 941 915 1053 745 
+Q 1165 576 1347 473 
+Q 1530 371 1798 371 
+Q 2029 371 2211 441 
+Q 2394 512 2509 602 
+L 2675 211 
 z
 " transform="scale(0.015625)"/>
      <path id="PTSans-Regular-78" d="M 1331 1638 
@@ -1737,43 +1771,49 @@ z
     <use xlink:href="#PTSans-Regular-6e" transform="translate(2616.599487 0)"/>
     <use xlink:href="#PTSans-Regular-3b" transform="translate(2671.299484 0)"/>
     <use xlink:href="#PTSans-Regular-20" transform="translate(2696.899475 0)"/>
-    <use xlink:href="#PTSans-Regular-6f" transform="translate(2723.599472 0)"/>
-    <use xlink:href="#PTSans-Regular-6e" transform="translate(2777.199463 0)"/>
-    <use xlink:href="#PTSans-Regular-65" transform="translate(2831.89946 0)"/>
-    <use xlink:href="#PTSans-Regular-20" transform="translate(2882.699448 0)"/>
-    <use xlink:href="#PTSans-Regular-72" transform="translate(2909.399445 0)"/>
-    <use xlink:href="#PTSans-Regular-65" transform="translate(2943.399429 0)"/>
-    <use xlink:href="#PTSans-Regular-77" transform="translate(2994.199417 0)"/>
-    <use xlink:href="#PTSans-Regular-61" transform="translate(3067.699402 0)"/>
-    <use xlink:href="#PTSans-Regular-72" transform="translate(3117.299393 0)"/>
-    <use xlink:href="#PTSans-Regular-64" transform="translate(3151.299377 0)"/>
-    <use xlink:href="#PTSans-Regular-2c" transform="translate(3205.099365 0)"/>
-    <use xlink:href="#PTSans-Regular-20" transform="translate(3216.84935 0)"/>
-    <use xlink:href="#PTSans-Regular-61" transform="translate(3243.549347 0)"/>
-    <use xlink:href="#PTSans-Regular-66" transform="translate(3293.149338 0)"/>
-    <use xlink:href="#PTSans-Regular-74" transform="translate(3325.049332 0)"/>
-    <use xlink:href="#PTSans-Regular-65" transform="translate(3358.949326 0)"/>
-    <use xlink:href="#PTSans-Regular-72" transform="translate(3409.749313 0)"/>
-    <use xlink:href="#PTSans-Regular-20" transform="translate(3443.749298 0)"/>
-    <use xlink:href="#PTSans-Regular-74" transform="translate(3470.449295 0)"/>
-    <use xlink:href="#PTSans-Regular-68" transform="translate(3504.349289 0)"/>
-    <use xlink:href="#PTSans-Regular-65" transform="translate(3559.049286 0)"/>
-    <use xlink:href="#PTSans-Regular-20" transform="translate(3609.849274 0)"/>
-    <use xlink:href="#PTSans-Regular-6c" transform="translate(3636.549271 0)"/>
-    <use xlink:href="#PTSans-Regular-61" transform="translate(3665.749268 0)"/>
-    <use xlink:href="#PTSans-Regular-73" transform="translate(3715.349258 0)"/>
-    <use xlink:href="#PTSans-Regular-74" transform="translate(3757.449249 0)"/>
-    <use xlink:href="#PTSans-Regular-20" transform="translate(3791.349243 0)"/>
-    <use xlink:href="#PTSans-Regular-74" transform="translate(3818.04924 0)"/>
-    <use xlink:href="#PTSans-Regular-6f" transform="translate(3851.949234 0)"/>
-    <use xlink:href="#PTSans-Regular-6b" transform="translate(3905.549225 0)"/>
-    <use xlink:href="#PTSans-Regular-65" transform="translate(3953.449219 0)"/>
-    <use xlink:href="#PTSans-Regular-6e" transform="translate(4004.249207 0)"/>
+    <use xlink:href="#PTSans-Regular-72" transform="translate(2723.599472 0)"/>
+    <use xlink:href="#PTSans-Regular-65" transform="translate(2757.599457 0)"/>
+    <use xlink:href="#PTSans-Regular-77" transform="translate(2808.399445 0)"/>
+    <use xlink:href="#PTSans-Regular-61" transform="translate(2881.899429 0)"/>
+    <use xlink:href="#PTSans-Regular-72" transform="translate(2931.49942 0)"/>
+    <use xlink:href="#PTSans-Regular-64" transform="translate(2965.499405 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3019.299393 0)"/>
+    <use xlink:href="#PTSans-Regular-31" transform="translate(3045.99939 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3100.499374 0)"/>
+    <use xlink:href="#PTSans-Regular-66" transform="translate(3127.199371 0)"/>
+    <use xlink:href="#PTSans-Regular-6f" transform="translate(3159.099365 0)"/>
+    <use xlink:href="#PTSans-Regular-72" transform="translate(3212.699356 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3246.699341 0)"/>
+    <use xlink:href="#PTSans-Regular-33" transform="translate(3273.399338 0)"/>
+    <use xlink:href="#PTSans-Regular-32" transform="translate(3327.899323 0)"/>
+    <use xlink:href="#PTSans-Regular-33" transform="translate(3382.399307 0)"/>
+    <use xlink:href="#PTSans-Regular-2c" transform="translate(3436.899292 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3448.649277 0)"/>
+    <use xlink:href="#PTSans-Regular-61" transform="translate(3475.349274 0)"/>
+    <use xlink:href="#PTSans-Regular-66" transform="translate(3524.949265 0)"/>
+    <use xlink:href="#PTSans-Regular-74" transform="translate(3556.849258 0)"/>
+    <use xlink:href="#PTSans-Regular-65" transform="translate(3590.749252 0)"/>
+    <use xlink:href="#PTSans-Regular-72" transform="translate(3641.54924 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3675.549225 0)"/>
+    <use xlink:href="#PTSans-Regular-74" transform="translate(3702.249222 0)"/>
+    <use xlink:href="#PTSans-Regular-68" transform="translate(3736.149216 0)"/>
+    <use xlink:href="#PTSans-Regular-65" transform="translate(3790.849213 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(3841.6492 0)"/>
+    <use xlink:href="#PTSans-Regular-6c" transform="translate(3868.349197 0)"/>
+    <use xlink:href="#PTSans-Regular-61" transform="translate(3897.549194 0)"/>
+    <use xlink:href="#PTSans-Regular-73" transform="translate(3947.149185 0)"/>
+    <use xlink:href="#PTSans-Regular-74" transform="translate(3989.249176 0)"/>
+    <use xlink:href="#PTSans-Regular-20" transform="translate(4023.14917 0)"/>
+    <use xlink:href="#PTSans-Regular-74" transform="translate(4049.849167 0)"/>
+    <use xlink:href="#PTSans-Regular-6f" transform="translate(4083.749161 0)"/>
+    <use xlink:href="#PTSans-Regular-6b" transform="translate(4137.349152 0)"/>
+    <use xlink:href="#PTSans-Regular-65" transform="translate(4185.249146 0)"/>
+    <use xlink:href="#PTSans-Regular-6e" transform="translate(4236.049133 0)"/>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="pd74b664a9e">
+  <clipPath id="p5458d83b58">
    <rect x="66.6" y="25.92" width="412.92" height="166.32"/>
   </clipPath>
  </defs>

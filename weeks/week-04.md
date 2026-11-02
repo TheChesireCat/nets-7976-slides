@@ -2120,6 +2120,31 @@ Reading 3 of 4. Schulman, Wolski, Dhariwal, Radford and Klimov, OpenAI, 2017. Th
 
 ---
 
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Before the paper · why reinforcement learning (ours)</p>
+
+## Why not just fine-tune on answers?
+
+<table class="rules" style="font-size:24px">
+  <tr><td></td><td>fine-tuning</td><td>reinforcement learning</td></tr>
+  <tr><td>prompt</td><td>"The capital of France is"</td><td>"What is 17 × 19?"</td></tr>
+  <tr><td>we have</td><td>the answer: Paris</td><td>a checker: 323 ▸ 1, anything else ▸ 0</td></tr>
+  <tr><td>the model learns from</td><td>the right token</td><td>a score for its own answer</td></tr>
+  <tr><td>loss</td><td>$-\log\pi_\theta(\text{Paris} \mid x)$</td><td>this reading</td></tr>
+</table>
+
+<p class="q" style="margin-top:24px"><b>Q.</b> When is a score easier to get than a label?</p>
+<p class="a"><b>A.</b> Many good answers (an essay), or a checker but no worked solution</p>
+
+<p class="footnote">Ours. $\pi_\theta$: the model, called the policy. We use 17 × 19 = 323 as the running example through PPO and GRPO</p>
+
+Note:
+Start from what you already know. Fine-tuning: the model reads "The capital of France is", predicts a distribution over the next token, and we know the right one, Paris, so we minimise minus log of its probability. Every step has a label.
+Now ask "What is 17 × 19?". We may have no worked solution to imitate, only a checker: 323 is right, anything else is wrong. Or ask for an essay, where there are hundreds of good answers and no single target sequence. What we can do is let the model answer, score the answer, and change the model so high-scoring answers become more likely.
+That's the whole difference. Fine-tuning says: here is the answer you should give. Reinforcement learning says: here is how good the answer you gave was.
+Say the model answers 323, 324 and 326 on three tries: rewards 1, 0, 0. We want 323 pushed up and the other two pushed down, without any label. The rest of this reading is how to do that, and how to do it without wrecking the model on a few lucky samples. We keep this example through PPO and GRPO.
+
+---
+
 <p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · Motivation · §1</p>
 
 ## What problem is PPO solving?
@@ -2191,19 +2216,19 @@ Two notation warnings. The paper uses r t for both the reward and the probabilit
 - state: prompt + tokens so far
 - action: next token, 1 of 50257
 - transition: append it; deterministic
-- reward: one number, at the end
+- reward: 1 if the answer is 323, at the end
 
 <p class="q"><b>Q.</b> One step or many?</p>
 <p class="a"><b>A.</b> Both: one reward per response, but we apply PPO's ratio per token (ours)</p>
 
 </div>
-<div class="fig"><img src="img/week-04-ppo-tokens.svg" alt="Illustration: a prompt followed by three tokens with probabilities 0.9, 0.8 and 0.5; rewards 0, 0 and 1; the response probability is 0.36"></div>
+<div class="fig"><img src="img/week-04-ppo-tokens.svg" alt="Illustration: the prompt What is 17 × 19? followed by three tokens, 3, 2 and 3, with probabilities 0.9, 0.8 and 0.5; rewards 0, 0 and 1; the response probability is 0.36"></div>
 </div>
 
-<p class="footnote">Ours. 50257: GPT-2's byte-pair vocabulary (subword pieces); GPT-3 reuses the tokenizer (this week's GPT-3 reading). InstructGPT calls the setting "a bandit environment": one prompt, one response, one reward</p>
+<p class="footnote">Ours; one digit per token for the example. 50257: GPT-2's byte-pair vocabulary (subword pieces); GPT-3 reuses the tokenizer (this week's GPT-3 reading). InstructGPT calls the setting "a bandit environment": one prompt, one response, one reward</p>
 
 Note:
-The mapping is direct. The state is the prompt plus the tokens generated so far; the action is the next token, one of about fifty thousand; the transition is deterministic, append the token; and the reward is usually one number at the end, from a reward model or a checker. For "Name the capital of France." three tokens with probabilities 0.9, 0.8 and 0.5 give the whole response probability 0.36, and only the last token sees a reward.
+The mapping is direct. The state is the prompt plus the tokens generated so far; the action is the next token, one of about fifty thousand; the transition is deterministic, append the token; and the reward is usually one number at the end, from a reward model or a checker. For "What is 17 × 19?" the model writes 3, then 2, then 3, with probabilities 0.9, 0.8 and 0.5: the whole response has probability 0.36, and only the last token sees a reward, 1, because 323 is right. (A real tokenizer may write 323 as one token; we split the digits so the example has three steps.)
 Is this a one-step or many-step problem? Both, and hold both views. InstructGPT calls it a bandit: one prompt in, one response out, one reward. But PPO's ratio, clip and advantage run per token, treating each token as a step whose only nonzero reward is at the end. And we can't compute expectations exactly: there are astronomically many responses, so everything below is an estimate from samples, with a variance.
 
 ---
@@ -2218,22 +2243,31 @@ Is this a one-step or many-step problem? Both, and hold both views. InstructGPT 
 - value $V(s)$: expected return from $s$
 - $Q(s, a)$: take $a$ first, then the policy
 - advantage $A = Q - V$: better than expected? $A \gt 0$: do it more; $A \lt 0$: less
-- $V$ is learned: regress it onto returns we observe
+- $V$ is learned by a second network, the critic: regress it onto returns
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Who knows $V$?</p>
-<p class="a"><b>A.</b> Nobody: a second network learns it, the value network ("critic")</p>
+<table class="rules" style="font-size:22px">
+  <tr><td>state</td><td class="num">critic's $V$</td></tr>
+  <tr><td>prompt</td><td class="num">0.5</td></tr>
+  <tr><td>prompt + "3"</td><td class="num">0.6</td></tr>
+  <tr><td>prompt + "32"</td><td class="num">0.8</td></tr>
+  <tr><td>prompt + "4"</td><td class="num">≈ 0</td></tr>
+</table>
+
+<p class="q" style="margin-top:14px"><b>Q.</b> Advantage of writing "4" first?</p>
+<p class="a"><b>A.</b> About $0 - 0.5 = -0.5$: do it less</p>
 
 </div>
 </div>
 
-<p class="footnote">Ours, standard definitions. InstructGPT (Ouyang et al. 2022) used "a 6B RM and a 6B value function" for policies of every size; RM: reward model, a network trained on human rankings</p>
+<p class="footnote">Ours, standard definitions; critic values illustrative, reused in the GAE example. InstructGPT (Ouyang et al. 2022) used "a 6B RM and a 6B value function" for policies of every size; RM: reward model, a network trained on human rankings</p>
 
 Note:
 A good action isn't one with high reward; it's one that did better than we expected from that state. The value V of s is the expected return from s following the policy. Q of s and a is the expected return if we take a first. The advantage, Q minus V, is how much better a is than the policy's average behaviour there. A positive advantage means do this more often, negative means less. That sign steers every update in this paper, and PPO treats the two signs differently.
 V isn't known; a second network learns it, the value network or critic, by regression onto the returns we actually observe.
+Make it concrete with 17 × 19 (the critic's guesses are ours). Before any digit, the critic thinks the model gets it right half the time: 0.5. After "3" it is more hopeful, 0.6; after "32", 0.8. After "4" the answer is already wrong, since 323 starts with 3: a dead end, value about 0. So writing "4" first has advantage about 0 minus 0.5, strongly negative, even though no reward has arrived yet. That is what the critic buys: a judgement on each token, not just on the finished answer.
 For a language model the critic is itself a transformer with a scalar output head, reading the prompt and response so far and predicting the final reward. InstructGPT used a 6-billion-parameter value network, started from the reward model (a network trained on human rankings), for every policy size. Remember this: the next reading removes this piece.
 
 ---
@@ -2254,13 +2288,19 @@ For a language model the critic is itself a transformer with a scalar output hea
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> For a language model?</p>
-<p class="a"><b>A.</b> Dynamics: "append the token"; nothing to model. Loss $L^{PG}$ is the same without the $\nabla$</p>
+<table class="rules" style="font-size:22px">
+  <tr><td></td><td>loss</td><td>on</td></tr>
+  <tr><td>fine-tuning</td><td>$-\log\pi_\theta(y^\star \mid x)$</td><td>the label</td></tr>
+  <tr><td>policy gradient</td><td>$-\hat A\log\pi_\theta(y \mid x)$</td><td>own sample</td></tr>
+</table>
+
+<p class="q" style="margin-top:14px"><b>Q.</b> Sample "324", $\hat A = -0.5$?</p>
+<p class="a"><b>A.</b> A fine-tuning step on 324, reversed, at half size</p>
 
 </div>
 </div>
 
-<p class="footnote">Our derivation of Eqs. (1), (2), Schulman et al. 2017 §2.1; the batch average is "the empirical average over a finite batch of samples". GAE, the $\hat A_t$ PPO uses, comes with the algorithm (§5)</p>
+<p class="footnote">Our derivation of Eqs. (1), (2), Schulman et al. 2017 §2.1; the batch average is "the empirical average over a finite batch of samples". Comparison with fine-tuning: ours. GAE, the $\hat A_t$ PPO uses, comes with the algorithm (§5)</p>
 
 Note:
 Step 1: how do you differentiate an expectation over trajectories when the trajectories are sampled from the policy you're differentiating? Write J as a sum over trajectories of probability times return, with R of tau the total reward of trajectory tau and p theta of tau its probability under the policy:
@@ -2273,6 +2313,7 @@ So the score times anything that doesn't depend on the action averages to zero.
 Use it three times. A reward earned before step t is fixed once we condition on the history up to s t, so its product with the score at t averages to zero: an action can't have caused a reward that came before it, so each action only answers for the rewards after it. Averaging those later rewards given the state and action is the definition of Q (the law of total expectation: average over what happens next). And subtracting V of s t, which doesn't depend on the action, changes nothing. What remains is the score weighted by the advantage: the paper's Eq. 1. Eq. 2 is the loss whose gradient that is:
 $$L^{PG}(\theta) = \hat{\mathbb{E}}\_t\big[\log\pi\_\theta(a\_t \mid s\_t)\hat A\_t\big]$$
 Those steps are exact. Bias enters only when we plug in an estimated advantage. For now, think of it as the return from t minus V of s t. In words: maximum likelihood on your own samples, weighted by how much better than expected they were.
+Set it next to fine-tuning, the table. Fine-tuning pushes up the log-probability of a label someone wrote. The policy gradient pushes up the log-probability of the model's own sample, the same update, multiplied by the advantage. On 17 × 19: the sample 323 with advantage plus 0.5 gets a half-size fine-tuning step toward 323. The sample 324 with advantage minus 0.5 gets a half-size step away from it. The advantage is the scaling factor; everything else in PPO is about estimating it and keeping these steps safe. For a language model the dynamics are just "append the token", so there is nothing to model.
 
 ---
 
@@ -2313,8 +2354,8 @@ The fix is a baseline. Subtract 10.5 and both samples give exactly 0.25: zero va
 
 <blockquote>"doing so is not well-justified, and empirically it often leads to destructively large policy updates"</blockquote>
 
-- after step 1: data from the old policy; nothing in $L^{PG}$ says stop
-- a lucky action ▸ probability 1
+- after step 1: old data, and nothing in $L^{PG}$ says stop; a lucky action ▸ probability 1
+- 0.20 ▸ 0.30: $r$ = 1.5, outside $[0.8, 1.2]$
 
 </div>
 <div class="text">
@@ -2338,7 +2379,7 @@ Why? The loss's gradient is right only at the policy that collected the data. Af
 What's the evidence? Less than it seems. The paper says see Section 6.1 and that "results are not shown but were similar or worse than" the "no clipping or penalty" setting. So the pointer lands on Table 1's no-clip row, which uses the ratio objective we're about to meet: minus 0.39 on average, below random, because HalfCheetah collapses ("worse than the initial random policy", §6.1). That row is the ratio objective r t times the advantage of §3 run for several epochs, not L PG.
 How do you score a new policy on old samples? Our samples came from the old policy. Use importance sampling: an average under the new policy equals an average under the old policy with each term multiplied by the probability ratio, new over old:
 $$\mathbb{E}\_{a\sim\pi}[f(a)] = \mathbb{E}\_{a\sim\pi\_{\rm old}}\Big[\tfrac{\pi(a)}{\pi\_{\rm old}(a)}f(a)\Big]$$
-That identity is the one that justifies the ratio, which starts at 1. The resulting surrogate objective is named for Kakade and Langford's conservative policy iteration:
+That identity is the one that justifies the ratio, which starts at 1. A number to hold: if a token had probability 0.20 when we sampled and 0.30 now, the ratio is 1.5, the token is 50% more likely, already outside the band 0.8 to 1.2 that PPO will allow (ours). The resulting surrogate objective is named for Kakade and Langford's conservative policy iteration:
 $$L^{CPI}(\theta) = \hat{\mathbb{E}}\_t\big[r\_t(\theta)\hat A\_t\big]$$
 Check it against the policy gradient: at the old parameters the gradient of the ratio equals the gradient of log pi (ours), so the two losses have exactly the same gradient at the start. They differ only once we move. And notice what the ratio doesn't fix: it corrects which action the new policy would pick, but the states are still the ones the old policy visited. That's why the surrogate is only trusted nearby.
 Why is it dangerous alone? It's linear in the ratio. If the old policy gave a good action probability 0.2, the ratio can reach 5, and the optimiser is rewarded all the way to certainty.
@@ -2416,6 +2457,31 @@ $$L^{KLPEN} = \hat{\mathbb{E}}\_t\big[r\_t\hat A\_t - \beta\thinspace \mathrm{KL
 Run several epochs, measure the mean KL d, then halve beta if d is below the target over 1.5, double it if d is above 1.5 times the target. With a target of 0.01 and beta of 1 the thresholds are 0.00667 and 0.015 (ours): an update that reached 0.004 halves beta to 0.5; one that reached 0.02 doubles it to 2; 0.012 leaves it alone. It's a thermostat: it reacts after the fact, so a single update can still overshoot. The authors say such misses are rare and beta quickly adjusts; 1.5 and 2 were "chosen heuristically". The paper says it "performed worse than the clipped surrogate objective, however, we've included it here because it's an important baseline". It is usable "in addition to" clipping; never tested.
 Remember: this KL is to the policy one iteration ago. The KL penalty in language-model fine-tuning is to a frozen reference model, a different thing we'll see at the end.
 
+--
+
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §1, §2, §5 · what was already there (sub-slide)</p>
+
+## What did PPO actually add?
+
+<table class="rules" style="font-size:22px">
+  <tr><td>piece</td><td>from</td></tr>
+  <tr><td>likelihood × reward: the policy gradient</td><td>Williams 1992 (REINFORCE)</td></tr>
+  <tr><td>a learned critic as baseline; many actors</td><td>Mnih et al. 2016 (A3C)</td></tr>
+  <tr><td>GAE for the advantage</td><td>Schulman et al. 2015a</td></tr>
+  <tr><td>the ratio surrogate $L^{CPI}$</td><td>Kakade &amp; Langford 2002</td></tr>
+  <tr><td>a KL limit on each update</td><td>TRPO, Schulman et al. 2015b</td></tr>
+  <tr><td>clip and min; $K$ epochs of Adam on one batch</td><td>PPO 2017: new</td></tr>
+</table>
+
+<p class="q" style="margin-top:20px"><b>Q.</b> So what is PPO's contribution?</p>
+<p class="a"><b>A.</b> One clipped loss that lets a batch take many first-order steps</p>
+
+<p class="footnote">Schulman et al. 2017, references [Wil92], [Mni+16], [Sch+15a], [KL02], [Sch+15b]. The paper cites Williams 1992 for the entropy bonus; REINFORCE is that paper's estimator. Actor-critic itself is older than A3C</p>
+
+Note:
+Optional. Everything before this slide existed before PPO. The policy gradient, likelihood times reward, is Williams's REINFORCE from 1992. A learned value function as a baseline, with many actors running in parallel, is the actor-critic style the paper takes from Mnih et al. 2016, A3C. GAE, the way PPO turns the critic into advantages, is Schulman's own 2015 paper. The ratio surrogate is Kakade and Langford's conservative policy iteration from 2002. Limiting each update by a KL is TRPO, 2015.
+What PPO adds is the clip with its pessimistic minimum, and the recipe of running several epochs of Adam on each batch. That is a few lines of code, which is both why the paper is short and why it spread. Keep this in mind for the critiques: if most of the parts are older, it is fair to ask how much of PPO's success is the new part, and Engstrom et al. ask exactly that.
+
 ---
 
 <p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §3 · Eq. 7, four cases</p>
@@ -2487,33 +2553,64 @@ Second, in probability terms the upper clip, which matters for positive advantag
 
 ---
 
-<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §5 · Eqs. 9 to 12 · loss and GAE</p>
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §5 · Eq. 9 · the loss</p>
 
 ## Why does the loss have three parts?
 
-<div class="cols wide-fig">
+<div class="cols">
 <div class="text">
 
 <div class="eq">$$L^{CLIP+VF+S} = \hat{\mathbb{E}}_t\big[L^{CLIP}_t - c_1 L^{VF}_t + c_2 S[\pi_\theta](s_t)\big]$$</div>
 
-- $L^{VF}$: train the critic; $S$: entropy, keeps exploring
-- GAE: sum the critic's one-step surprises $\delta_t$ with weights $(\gamma\lambda)^l$
-- $\lambda = 0$: $\delta_t$; $\lambda = 1$: return − $V$
-- $\gamma$ 0.99, $\lambda$ 0.95: reach about 16.8 steps (ours)
-
-<p class="q"><b>Q.</b> $\hat A_0$ (token 1) with $\lambda = 1$, $\gamma = 1$?</p>
-<p class="a"><b>A.</b> $0.1 + 0.2 + 0.2 = 0.5 = 1 - V(s_0)$</p>
+- $L^{VF}$: train the critic, squared error to the return
+- $S$: entropy, keeps the policy exploring
+- MuJoCo: separate networks, no entropy; Atari: $c_1$ 1, $c_2$ 0.01
 
 </div>
-<div class="fig"><img src="img/week-04-ppo-gaesteps.svg" alt="Illustration: advantages for a three-token response with rewards 0, 0, 1 and values 0.5, 0.6, 0.8; with lambda 0 they are 0.1, 0.2, 0.2; with lambda 0.95, 0.4705, 0.39, 0.2; with lambda 1, 0.5, 0.4, 0.2"></div>
+<div class="text">
+
+<p class="q"><b>Q.</b> Separate policy and critic: does $c_1$ matter?</p>
+<p class="a"><b>A.</b> No: it only trades the two losses off when they share weights</p>
+
+</div>
 </div>
 
-<p class="footnote">Schulman et al. 2017 · Eqs. (9) to (12); GAE: generalised advantage estimation (Schulman et al. 2015). $\delta_t$: temporal-difference residual. Example ours, $\gamma$ = 1 (InstructGPT applies "No discount"); $t$ = 0 is token 1</p>
+<p class="footnote">Schulman et al. 2017 · Eq. (9), App. A, Table 5. $c_1$, $c_2$: weights; $S$: entropy of the action distribution</p>
 
 Note:
 Why more than the clipped term? Because we also have to train the value function the advantages come from, and if the policy and value share a network, both losses must live in one objective. So Eq. 9 subtracts c1 times the value network's squared error, subtracted because the whole thing is maximised, and adds c2 times the policy's entropy, a bonus "to ensure sufficient exploration": it rewards keeping the action distribution spread out. Here L VF is the squared error between the value network and its target, and S is minus the sum over actions of pi times log pi. V targ is the observed return (regression); the paper leaves it undefined (common code uses the advantage plus the old V, which is the return).
 A worked number for one sample: case a's clip term, 2.4, with advantage plus 2. With V at 0.7 the target is 2.7. The value network predicted 0.7, squared error 4, c1 of 1; the state has two actions at 0.39 and 0.61, entropy 0.669 (a 50/50 choice has entropy ln 2, 0.693 nats), c2 of 0.01. Total 2.4 minus 4 plus 0.00669, which is minus 1.5933 (ours). A badly wrong critic dominates the loss, which is why the value term needs its own coefficient.
 When do the coefficients matter? On MuJoCo the networks are separate, so c1 is irrelevant, and the paper says it uses no entropy bonus, c2 of zero. Atari lists c1 of 1 and c2 of 0.01 (Table 5); the paper never says the network is shared, but that's our inference from c1. For a language model with a separate value model, c1 is irrelevant again. Remember: the value term and the V inside the advantage are the two places a critic enters PPO. The next reading removes both.
+
+---
+
+<p class="eyebrow"><span class="paper">Schulman et al. 2017</span> · §5 · Eqs. 10 to 12 · GAE</p>
+
+## How do we estimate the advantage?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="eq">$$\hat A_t = \textstyle\sum_l(\gamma\lambda)^l\delta_{t+l},\quad \delta_t = R_t + \gamma V(s_{t+1}) - V(s_t)$$</div>
+
+- return − $V(s_t)$: real rewards; unbiased, noisy
+- one step, $\delta_t$: trusts the critic; steady, biased
+- GAE blends them: $\lambda$ 0 = one step, 1 = full return
+
+<p class="q"><b>Q.</b> $\hat A_0$ (writes "3") with $\lambda = 1$, $\gamma = 1$?</p>
+<p class="a"><b>A.</b> $0.1 + 0.2 + 0.2 = 0.5 = 1 - V(s_0)$</p>
+
+</div>
+<div class="fig"><img src="img/week-04-ppo-gaesteps.svg" alt="Illustration: advantages for the 17 × 19 answer 3, 2, 3 with rewards 0, 0, 1 and critic values 0.5, 0.6, 0.8; with lambda 0 they are 0.1, 0.2, 0.2; with lambda 0.95, 0.4705, 0.39, 0.2; with lambda 1, 0.5, 0.4, 0.2"></div>
+</div>
+
+<p class="footnote">Schulman et al. 2017 · Eqs. (10) to (12); GAE: generalised advantage estimation (Schulman et al. 2015a). $\delta_t$: temporal-difference residual. Example ours, $\gamma$ = 1 (InstructGPT applies "No discount")</p>
+
+Note:
+The advantage asks: how much better than expected was this token? There are two honest ways to measure it, and they fail in opposite directions.
+One: wait for the end, add up the real rewards from here, the return, and subtract the critic's V of s t. No guess is involved beyond the baseline, so it is unbiased; but it rides on every random thing that happened later in the answer, so it is noisy. With a reward only at the end and no discount, the return is just the final reward: every token of 323 gets 1 minus its own V.
+Two: look one step ahead. Take the reward you just got plus the critic's value of where you landed, minus the critic's value of where you were: the one-step surprise delta. Only one random reward is involved, so it is steady; but it trusts the critic, and early in training the critic is poor, so it is biased.
+GAE takes a weighted blend of every horizon in between. Lambda sets the blend: lambda 0 is the one-step surprise, all critic; lambda 1 is the full return, no critic beyond the baseline. Careful with the direction: a lower lambda leans more on the critic, so it has more bias and less variance. PPO's settings, gamma 0.99 and lambda 0.95, lean mostly on real rewards: credit reaches back about 16.8 steps (ours, 1 over 1 minus gamma lambda).
 GAE step 1: how surprised was the critic? Section 5 says how PPO actually computes the advantage, using generalised advantage estimation from the GAE paper (arXiv:1506.02438). Start with the one-step surprise, the temporal-difference residual: what I got, the reward plus the value of where I landed, minus what I expected, V of s t:
 $$\delta\_t = R\_t + \gamma V(s\_{t+1}) - V(s\_t)$$
 If V were exactly right, delta would be an unbiased estimate of the advantage. If V is wrong it's biased, but it has low variance, because it involves one random reward. V is poor early on, so lean on it less. Add k of them and the sum telescopes:
@@ -2522,7 +2619,7 @@ Each plus gamma V of the next state cancels the next minus V. You get k real rew
 GAE step 2: why not average every horizon? Rather than pick one k, GAE averages all of them, weighting the k-step estimate by one minus lambda times lambda to the k minus one:
 $$(1-\lambda)\big(\hat A^{(1)} + \lambda\hat A^{(2)} + \dots\big) = \textstyle\sum\_l(\gamma\lambda)^l\delta\_{t+l}$$
 Collect the coefficient of each delta: delta t appears in every term and gets one minus lambda times a geometric series, which is 1; delta t plus 1 gets lambda; in general gamma to the l delta gets lambda to the l. So GAE is a discounted sum of surprises with the steeper discount gamma lambda. Lambda 0 gives the one-step surprise, low variance, biased; lambda 1 gives the return minus the baseline, unbiased, high variance. The GAE paper finds the best lambda well below the best gamma.
-On a segment, standard code computes it backwards: A t equals delta t plus gamma lambda A t plus 1. Worked example (the figure): three tokens, reward 1 at the end, values 0.5, 0.6, 0.8. Deltas 0.1, 0.2, 0.2. Backwards, 0.2, then 0.39, then 0.4705. With lambda 1 the first is 0.5, the return minus the baseline. With the paper's settings, by our calculation of 1 over 1 minus gamma lambda, credit reaches back about 17 steps (16.8): an effective horizon.
+On a segment, standard code computes it backwards: A t equals delta t plus gamma lambda A t plus 1. Worked example (the figure): the 17 × 19 answer, digits 3, 2, 3, reward 1 at the end, the critic's values 0.5, 0.6, 0.8 from the earlier slide. Deltas 0.1, 0.2, 0.2. Backwards, 0.2, then 0.39, then 0.4705. With lambda 1 the first is 0.5, the return minus the baseline. With the paper's settings, by our calculation of 1 over 1 minus gamma lambda, credit reaches back about 17 steps (16.8): an effective horizon.
 Two practical notes. The paper's printed exponent in Eqs. 10 and 11 is T minus t plus 1; it must be T minus t minus 1, so check it at t equals T minus 1. And on MuJoCo the segment of 2048 steps is longer than the 1000-step episodes, so a terminal state sets V to zero and restarts the recursion, while a time-limit cut should bootstrap; Andrychowicz et al. found that choice made little difference at 1000 steps.
 
 ---
@@ -3112,7 +3209,7 @@ The second argument is the deeper one. Recall GAE: the advantage is a discounted
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Group $(1,1,1,0)$: what does the mean 0.75 change?</p>
+<p class="q"><b>Q.</b> 17 × 19, four answers: 323, 323, 323, 326, rewards $(1,1,1,0)$. What does the mean 0.75 change?</p>
 <p class="a"><b>A.</b> Weights $(1,1,1,0)$ become $(0.25, 0.25, 0.25, -0.75)$: the wrong answer is pushed down, not ignored</p>
 
 </div>
@@ -3122,7 +3219,7 @@ The second argument is the deeper one. Recall GAE: the advantage is a discounted
 
 Note:
 Why can you replace the value model at all? Because it is only a baseline. Start from the plain policy gradient from the PPO section, known as REINFORCE: the gradient of the objective is the expectation over sampled answers of (R of o minus b) times the gradient of log pi of o; that is, push up the log-probability of each sampled answer in proportion to its reward. You may subtract any baseline b that doesn't depend on the sampled answer. The proof is the equation on the slide: the expectation of b times the gradient of log pi is b times the gradient of the sum of the probabilities, which is the gradient of 1, which is zero.
-So the baseline is free in expectation, and it changes what each answer gets. Take 0/1 rewards and a group with three right, one wrong. No baseline: weights 1, 1, 1, 0, and the wrong answer is simply ignored. That is rejection sampling fine-tuning (RFT: fine-tune on your own correct answers), and its online version, which we meet again in the unified view. Subtract the group mean of 0.75 and the wrong answer gets minus 0.75: it is pushed down. PPO learns the baseline with a network; GRPO estimates it by sampling.
+So the baseline is free in expectation, and it changes what each answer gets. Take 0/1 rewards and a group with three right, one wrong: four tries at 17 × 19, answering 323, 323, 323 and 326. No baseline: weights 1, 1, 1, 0, and the wrong answer is simply ignored. That is rejection sampling fine-tuning (RFT: fine-tune on your own correct answers), and its online version, which we meet again in the unified view. Subtract the group mean of 0.75 and the wrong answer gets minus 0.75: it is pushed down. PPO learns the baseline with a network; GRPO estimates it by sampling.
 Step two goes from whole answers to tokens. An answer's probability is the product of its token probabilities, so its log is a sum, and so is its gradient: the gradient of log pi of o is the sum over t of the gradient of log pi of o_t given the question and the earlier tokens. Substitute into the policy gradient: every token of the answer is weighted by the same number, the answer's reward minus the baseline. So giving every token one advantage, which GRPO calls outcome supervision, is not a cheap approximation. It is exactly REINFORCE with a baseline.
 GRPO's loss then carries two weights REINFORCE doesn't have: it divides each answer's gradient by its length, so a token in a long answer counts less (the paper's own PPO objective, Eq. 1, already has this length average); and it divides by the group's standard deviation. One more check: the group mean includes answer i's own reward. Write it out and that only rescales the true gradient by G minus 1 over G, 0.984 at G equals 64. So the mean is not the real worry. The std division is the real departure, because the std depends on answer i itself. Both weights come back under later work (Dr. GRPO). Hold on to both.
 
@@ -3153,12 +3250,16 @@ GRPO's loss then carries two weights REINFORCE doesn't have: it divides each ans
 </div>
 </div>
 
+<p class="q"><b>Q.</b> The clip and the KL both keep the model close. Close to what?</p>
+<p class="a"><b>A.</b> Clip: the policy that sampled this batch. KL: the frozen reference, for the whole run</p>
+
 <p class="footnote">Shao et al. 2024 · Eq. 1, Eq. 3. $r_{i,t}$: ratio of $\pi_\theta$ to the sampling policy for token $t$ of answer $i$; $\hat A_{i,t}$: its advantage; $\pi_{\rm ref}$: frozen reference model; $\beta$: KL weight; $\epsilon$: clip width</p>
 
 Note:
 Read Eq. 3 as a diff of PPO's clipped objective. One: the min and clip are exactly PPO's, now indexed by answer and token. Two: an average over G answers to the same question. That is the new part; the average over each answer's own tokens is already in the paper's PPO objective, Eq. 1, so it is not new here, though it comes back as a length bias later. Three: the advantage comes from the group's rewards, not from GAE and a value model. Four: the KL penalty to the reference model leaves the reward and enters the loss. The paper's reason (§4.1.1) is that this avoids "complicating the calculation of" the advantage; our reading is that the advantage is one number per answer, and a per-token penalty inside it would break that.
 Same letters as the PPO section. The ratio is r, now indexed by answer i and token t; the reward is capital R. The paper writes rewards with lowercase r and never names the ratio, so its equations look different from ours; the content is the same. Other new symbols: G is the group size, 64 in the paper; u, introduced with the KL estimator, is the reference model's probability of the sampled token divided by the policy's.
 The authors add a nice argument for groups: reward models are trained on comparisons between answers to the same question, so they are better at saying which of two siblings is better than at absolute scores across questions. GRPO only ever compares siblings.
+Two leashes, as in the PPO section. The clip compares the current model with the one that sampled this batch, so it limits each update. The KL compares it with a frozen reference, the supervised model, so it limits total drift over the whole run. GRPO keeps both; only the KL moves, from the reward into the loss.
 
 ---
 
