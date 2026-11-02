@@ -1,5 +1,5 @@
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · video slide 1 · roadmap</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · roadmap</p>
 
 ## What will this hour cover?
 
@@ -30,28 +30,15 @@
 </div>
 </div>
 
-<p class="footnote">Mei Li, "RLHF, PPO &amp; GRPO Explained: A Top-Down Guide to LLM Policy Optimization", YouTube, 20 May 2026, youtube.com/watch?v=HWo8LNcBLdc. Video 0:00. We keep the video's letters, which follow the GRPO paper's</p>
+<p class="footnote">The letters follow the GRPO paper (Shao et al. 2024, arXiv:2402.03300). Week 4 reads InstructGPT, PPO and GRPO one paper at a time</p>
 
 Note:
-This deck follows Mei Li's video slide by slide, in the same order and with the same letters, so you can watch the video and read along. The video is a top-down guide: why RLHF is needed, how it works, and where PPO and GRPO fit; start from the intuition, connect it to the math, then walk through one step of the training loop for each method.
-The same material is in the Week 4 deck as three readings: InstructGPT, PPO and GRPO. Where Week 4 has a check, a worked number or a caveat that the video skips, it sits on an optional sub-slide below the main slide. The letters: q is the prompt, o the answer, o t its token t; these are the GRPO paper's letters, which the video uses throughout.
+This deck is a top-down guide to RLHF: why it is needed, how it works, and where PPO and GRPO fit. We start from the intuition, connect it to the math, then walk through one step of the training loop for each method.
+The same material is in the Week 4 deck as three readings: InstructGPT, PPO and GRPO. Here they are told as one pipeline; checks, worked numbers and caveats from Week 4 sit on optional sub-slides below the main slides. The letters: q is the prompt, o the answer, o t its token t; these are the GRPO paper's letters, used throughout.
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 1 of 6</p>
-<h1>Motivation and RL foundations</h1>
-<p class="subtitle">Video slides 2 to 6 · 0:51 to 8:45</p>
-<p class="question">Why is imitating good answers not enough, and how is a language model an RL agent?</p>
-<ol class="track six"><li class="now">Part 1<span>motivation</span></li><li>Part 2<span>SFT, reward model</span></li><li>Part 3<span>PPO's parts</span></li><li>Part 4<span>PPO's objective</span></li><li>Part 5<span>GRPO</span></li><li>Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 1: why supervised fine-tuning alone isn't enough, the reinforcement learning words we need, how a language model fits them, and InstructGPT's three-stage pipeline, which the rest of the hour fills in.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 1 · video slide 2</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 1, motivation</p>
 
 ## Why is supervised fine-tuning alone not enough?
 
@@ -70,7 +57,7 @@ Part 1: why supervised fine-tuning alone isn't enough, the reinforcement learnin
 <div class="fig"><img src="img/week-04-rlhf-sft-pref.svg" alt="Illustration: left, what SFT gives: a prompt and one reference answer, copy this. Right, what preference learning needs: a prompt and two answers, A versus B, and a person prefers A"></div>
 </div>
 
-<p class="footnote">Video 0:51 to 2:25. Helpful, honest, harmless: InstructGPT's three goals (Ouyang et al. 2022 §1, after Askell et al. 2021)</p>
+<p class="footnote">Helpful, honest, harmless: InstructGPT's three goals (Ouyang et al. 2022 §1, after Askell et al. 2021)</p>
 
 Note:
 In supervised fine-tuning we give the model a prompt together with a single reference answer and train it to reproduce that answer token by token. The only signal is essentially "copy this". That's useful, but notice what it leaves out: SFT only ever shows one good answer per problem. It never shows a comparison, so it can teach the model to imitate a demonstration but not to judge which answer is better.
@@ -78,7 +65,7 @@ What we actually need: given the same prompt and two candidate answers A and B, 
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 1 · video slide 3</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 1, motivation</p>
 
 ## What is reinforcement learning?
 
@@ -96,7 +83,7 @@ What we actually need: given the same prompt and two candidate answers A and B, 
 <div class="fig"><img src="img/week-04-ppo-agent.svg" alt="Illustration: the policy, the agent, sends an action to the environment; the environment returns the next state and a reward"></div>
 </div>
 
-<p class="footnote">Video 2:25 to 3:39. Figure from the Week 4 PPO section, which writes the reward $R_t$; here, as in the video, it is $r$</p>
+<p class="footnote">Figure from the Week 4 PPO section, which writes the reward $R_t$; here it is $r$</p>
 
 Note:
 Reinforcement learning is close to how we learn as people: since we were babies we've learned by interacting with the world, trying things, seeing the results, and gradually learning which actions lead to better outcomes. More formally, it's a kind of machine learning in which an agent learns to make good decisions by interacting with an environment and receiving feedback as rewards or penalties.
@@ -104,7 +91,7 @@ The loop: starting from a state s, the agent takes an action a. The environment 
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 1 · video slide 4</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 1, motivation</p>
 
 ## What are the key RL terms?
 
@@ -120,14 +107,14 @@ The loop: starting from a state s, the agent takes an action a. The environment 
 <p class="q"><b>Q.</b> Value or advantage: which one judges a single action?</p>
 <p class="a"><b>A.</b> The advantage; the value judges the state before the action is chosen</p>
 
-<p class="footnote">Video 3:39 to 5:06. Return, value and advantage get their equations on later slides (video slides 14, 18 and 19)</p>
+<p class="footnote">Return, value and advantage get their equations in Parts 3 and 4</p>
 
 Note:
 Five words before we map RL onto language models. The policy describes how the agent chooses actions. A trajectory is the sequence of states, actions and rewards produced as the agent interacts with the environment; a rollout is a trajectory generated by running the current policy, so trajectory names the sequence and rollout stresses the sampling. The return is the total future reward from a given point onward, the quantity the agent ultimately wants to maximise. The value of a state is the expected future reward from that state: how good we expect things to be from here. And the advantage says whether a particular action was better or worse than what we expected from that state. The advantage is the word to remember: it is what PPO and GRPO multiply each token's gradient by.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 1 · video slide 5</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 1, motivation</p>
 
 ## How is a language model an RL agent?
 
@@ -146,16 +133,16 @@ Five words before we map RL onto language models. The policy describes how the a
 <div class="fig"><img src="img/week-04-rlhf-shanghai.svg" alt="Illustration: the state Where is Shanghai? Shanghai is in goes into the LLM, which gives the next token China probability 0.78, Asia 0.08, Jiangsu 0.05, city 0.03; sampling China appends it to give the next state"></div>
 </div>
 
-<p class="footnote">Video 5:06 to 7:15. Words drawn as single tokens for simplicity; real tokens can be whole words, pieces of words, punctuation or white space</p>
+<p class="footnote">Words drawn as single tokens for simplicity; real tokens can be whole words, pieces of words, punctuation or white space</p>
 
 Note:
 In LLM reinforcement learning the policy is the language model itself: given the current context it defines a probability distribution over the next token. The state is the prompt together with the tokens generated so far, the context the model sees. The action is the next token sampled from the model.
 Example: the prompt is "Where is Shanghai?" and the model has already written "Shanghai is in". That whole context is the state, and the next action could be "China", with probability 0.78. After it's chosen the state changes: the prefix now includes "China", and the model uses the new context to choose the next token.
-One clarification the video makes: tokens are drawn as whole words only for simplicity. In real models a token can be a word, part of a word, punctuation or even white space; conceptually the RL formulation is the same. In RLHF we optimise this policy so that its answers receive higher rewards.
+One clarification: tokens are drawn as whole words only for simplicity. In real models a token can be a word, part of a word, punctuation or even white space; conceptually the RL formulation is the same. In RLHF we optimise this policy so that its answers receive higher rewards.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 1 · video slide 6 · Ouyang et al. 2022, Fig. 2</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 1, motivation · Ouyang et al. 2022, Fig. 2</p>
 
 ## What are RLHF's three stages?
 
@@ -177,28 +164,15 @@ One clarification the video makes: tokens are drawn as whole words only for simp
 <div class="fig"><img src="img/week-04-igpt-fig2.png" alt="Ouyang et al. Figure 2: three steps. Step 1: a prompt, Explain the moon landing to a 6 year old, a labeler writes the desired output, and the data fine-tunes GPT-3 into an SFT model. Step 2: several model outputs A to D for the same prompt, a labeler ranks them D above C above A equal to B, and the ranking trains a reward model. Step 3: a new prompt, Write a story about frogs, the PPO policy writes an output, the reward model gives a reward r k, and the reward updates the policy"></div>
 </div>
 
-<p class="footnote">Video 7:15 to 8:45. Ouyang et al. 2022, "Training language models to follow instructions with human feedback", arXiv:2203.02155, Fig. 2. Week 4 reads it as "PPO, applied"</p>
+<p class="footnote">Ouyang et al. 2022, "Training language models to follow instructions with human feedback", arXiv:2203.02155, Fig. 2. Week 4 reads it as "PPO, applied"</p>
 
 Note:
 How do we usually apply RL to language models? The classic example is InstructGPT from OpenAI, which introduced the RLHF pipeline for aligning language models. It has three stages. First, supervised fine-tuning: collect demonstration data and train a supervised policy. Second, reward modelling: collect comparison data, where people compare different answers to the same prompt, and train a reward model to predict which answer is preferred. Third, reinforcement learning: optimise the policy against the reward model, so it learns to write answers that get higher preference scores.
-The figure is the paper's own. Note step 2's prompt, "Explain the moon landing to a 6 year old": the video reuses it for its ranking example in Part 2.
+The figure is the paper's own. Note step 2's prompt, "Explain the moon landing to a 6 year old": it comes back as the ranking example in Part 2.
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 2 of 6</p>
-<h1>Stage 1, SFT, and stage 2, the reward model</h1>
-<p class="subtitle">Video slides 7 to 10 · 8:45 to 16:57</p>
-<p class="question">How do you train on demonstrations, and how do rankings become a reward?</p>
-<ol class="track six"><li class="done">Part 1<span>motivation</span></li><li class="now">Part 2<span>SFT, reward model</span></li><li>Part 3<span>PPO's parts</span></li><li>Part 4<span>PPO's objective</span></li><li>Part 5<span>GRPO</span></li><li>Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 2: the first two stages. SFT is pre-training's objective on different data with a mask; the reward model is the same network with a different head and a pairwise loss. Watch the head: the same picture comes back for the value model in Part 3.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 2 · video slide 7</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model</p>
 
 ## How does SFT differ from pre-training?
 
@@ -213,14 +187,14 @@ Part 2: the first two stages. SFT is pre-training's objective on different data 
 <p class="q"><b>Q.</b> If the objective is the same, what makes SFT change the model's behaviour?</p>
 <p class="a"><b>A.</b> The data: every example is a prompt followed by a good answer</p>
 
-<p class="footnote">Video 8:45 to 9:42. InstructGPT's SFT data: about 13,000 training prompts with labeler-written answers (Ouyang et al. 2022 §3.2, Table 6)</p>
+<p class="footnote">InstructGPT's SFT data: about 13,000 training prompts with labeler-written answers (Ouyang et al. 2022 §3.2, Table 6)</p>
 
 Note:
 Most of us already know pre-training and SFT. In pre-training the model sees a very large collection of text, web pages, books, code, articles, and the objective is simple: given the previous tokens, predict the next one. SFT is teacher-forced next-token prediction on a reference answer: the same objective, but the data is prompt and answer pairs instead of arbitrary text. The goal is to make the model more useful as an assistant, teaching it how to answer questions and follow instructions. The one mechanical difference, next slide: the loss is computed only on the answer.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 2 · video slide 8 · the policy's head</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · the policy's head</p>
 
 ## How does SFT train on one answer?
 
@@ -242,7 +216,7 @@ Most of us already know pre-training and SFT. In pre-training the model sees a v
 <div class="fig"><img src="img/week-04-rlhf-heads-policy.svg" alt="Illustration: inputs q1 to q4 and o1 to o3 go into an LLM backbone with a language-model head on top; the targets are q2, q3, q4, o1, o2, o3, EOS; the three prompt targets are greyed out as masked, no loss; the four answer targets carry the loss"></div>
 </div>
 
-<p class="footnote">Video 9:42 to 11:32. The cross-entropy (negative log-likelihood) of the target tokens. Language-model head: the last layer, which turns each position's hidden state into scores over the vocabulary</p>
+<p class="footnote">The cross-entropy (negative log-likelihood) of the target tokens. Language-model head: the last layer, which turns each position's hidden state into scores over the vocabulary</p>
 
 Note:
 Suppose q is the prompt and o the target answer. We concatenate their tokens and feed the whole sequence into the model. At each position the model predicts the next token, so the target sequence is the input shifted by one. That shifted setup is what teacher forcing means: at every position the model is shown the true previous token from the reference answer, not its own previous prediction, so even if it would have generated a different token, training continues along the reference.
@@ -251,7 +225,7 @@ Keep the picture: one backbone, a head that scores the vocabulary at every posit
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 2 · video slide 9 · Ouyang et al. 2022 §3.5</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · Ouyang et al. 2022 §3.5</p>
 
 ## How do you collect preference data?
 
@@ -281,15 +255,15 @@ Keep the picture: one backbone, a head that scores the vocabulary at every posit
 </div>
 </div>
 
-<p class="footnote">Video 11:32 to 13:20; the answers are the video's. Ouyang et al. 2022 §3.5: labelers rank "between $K = 4$ and $K = 9$ responses"</p>
+<p class="footnote">Answers ours, after the paper's Fig. 2 prompt. Ouyang et al. 2022 §3.5: labelers rank "between $K = 4$ and $K = 9$ responses"</p>
 
 Note:
 To train a reward model we first collect comparison data. For the same prompt we generate several candidate answers, by sampling the same model a few times with nonzero temperature or by collecting answers from different models. Then a labeler compares them and ranks them from best to worst.
-The video's example: "Explain the moon landing to a 6-year-old", four answers. A: "The moon landing was when people...". B: "In 1969, Apollo 11 executed...". C: "Some astronauts went to the moon...". D: "People took a rocket to the moon...". The labeler ranks C, then A, then D, then B. Four answers give six pairs: C over A, C over D, C over B, A over D, A over B, D over B. Four is just an example; in practice it's a small number, often between four and nine, which is exactly InstructGPT's range. These pairs are the reward model's training data.
+The example: "Explain the moon landing to a 6-year-old", four answers. A: "The moon landing was when people...". B: "In 1969, Apollo 11 executed...". C: "Some astronauts went to the moon...". D: "People took a rocket to the moon...". The labeler ranks C, then A, then D, then B. Four answers give six pairs: C over A, C over D, C over B, A over D, A over B, D over B. Four is just an example; in practice it's a small number, often between four and nine, which is exactly InstructGPT's range. These pairs are the reward model's training data.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 2 · video slide 10 · the reward model's head · Ouyang et al. 2022, Eq. 1</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · the reward model's head · Ouyang et al. 2022, Eq. 1</p>
 
 ## How does a reward model learn from pairs?
 
@@ -314,7 +288,7 @@ The video's example: "Explain the moon landing to a 6-year-old", four answers. A
 <div class="fig"><img src="img/week-04-rlhf-heads-reward.svg" alt="Illustration: the same inputs and backbone design, with a reward head on the last token only, giving one score r phi of q and o for the whole answer"></div>
 </div>
 
-<p class="footnote">Video 13:20 to 16:57. Ouyang et al. 2022 §3.5, Eq. 1, after Stiennon et al. 2020. Bradley-Terry (1952): a model of pairwise comparisons in which win odds depend on a score difference</p>
+<p class="footnote">Ouyang et al. 2022 §3.5, Eq. 1, after Stiennon et al. 2020. Bradley-Terry (1952): a model of pairwise comparisons in which win odds depend on a score difference</p>
 
 Note:
 The reward model takes a prompt q and an answer o and returns a single number; a better answer should get a higher score. In practice it starts from a trained language model, often the SFT model: reuse the backbone, remove the language-model head that predicts the next token, and add a reward head, which turns the final token's hidden state into one scalar score for the whole answer.
@@ -323,7 +297,7 @@ InstructGPT's §3.5 describes starting from the SFT model; its appendix says the
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 2 · video slide 10 · Ouyang et al. 2022 §3.5 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · Ouyang et al. 2022 §3.5 · optional</p>
 
 ## Why average a prompt's pairs first?
 
@@ -332,7 +306,7 @@ InstructGPT's §3.5 describes starting from the SFT model; its appendix says the
 
 - A prompt with 9 ranked answers gives 36 pairs; one with 4 gives 6.
 - Averaged pair by pair, the 9-answer prompt would count six times as much.
-- The video's fix: average over each prompt's pairs, then over prompts (the main slide's $1/N$ is the simple form).
+- The fix: average over each prompt's pairs, then over prompts (the main slide's $1/N$ is the simple form).
 - InstructGPT does this with the $1/\binom K2$ in Eq. 1, and puts all of a prompt's pairs in one batch element.
 
 </div>
@@ -344,28 +318,15 @@ InstructGPT's §3.5 describes starting from the SFT model; its appendix says the
 </div>
 </div>
 
-<p class="footnote">Video 16:30. Ouyang et al. 2022 §3.5: shuffled pairs made the model overfit; "we train on all $\binom K2$ comparisons from each prompt as a single batch element". Week 4, InstructGPT section</p>
+<p class="footnote">Ouyang et al. 2022 §3.5: shuffled pairs made the model overfit; "we train on all $\binom K2$ comparisons from each prompt as a single batch element". Week 4, InstructGPT section</p>
 
 Note:
-Optional, the video's practical detail and InstructGPT's version of it. Different prompts give different numbers of pairs, so averaging pair by pair lets prompts with many ranked answers dominate. The video first averages a prompt's pairs, then averages across prompts.
+Optional, a practical detail and InstructGPT's version of it. Different prompts give different numbers of pairs, so averaging pair by pair lets prompts with many ranked answers dominate. So first average a prompt's pairs, then average across prompts.
 InstructGPT does the same and gives a second reason. The pairs within one ranking are highly correlated: if you shuffle them into the dataset as separate examples, each answer is seen many times in one epoch, and the reward model overfits. So they train on all of a prompt's comparisons as one batch element. That is also cheaper: "a single forward pass of the RM for each completion", 9 for K = 9, instead of one per pair, 36, as the paper counts it.
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 3 of 6</p>
-<h1>Stage 3: PPO's parts</h1>
-<p class="subtitle">Video slides 11 to 15 · 16:57 to 29:55</p>
-<p class="question">Which four models run in PPO, and how does one score reach every token?</p>
-<ol class="track six"><li class="done">Part 1<span>motivation</span></li><li class="done">Part 2<span>SFT, reward model</span></li><li class="now">Part 3<span>PPO's parts</span></li><li>Part 4<span>PPO's objective</span></li><li>Part 5<span>GRPO</span></li><li>Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 3: the third stage. First the two algorithms, then PPO's four models, then the per-token reward and the value model, and a worked example with real numbers.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 11 · Shao et al. 2024, Fig. 4</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · Shao et al. 2024, Fig. 4</p>
 
 ## What does stage 3 do, and with which algorithm?
 
@@ -387,15 +348,15 @@ Part 3: the third stage. First the two algorithms, then PPO's four models, then 
 <div class="fig"><img src="img/week-04-grpo-fig4.png" alt="Shao et al. Figure 4. Top, PPO: the policy model writes output o; a frozen reference model and a frozen reward model give a KL-penalised reward r; a trained value model gives v; GAE turns r and v into the advantage A. Bottom, GRPO: the policy writes o1 to oG; the frozen reward model scores them r1 to rG; a group computation gives A1 to AG; the KL to the reference model goes straight to the policy"></div>
 </div>
 
-<p class="footnote">Video 16:57 to 18:06. Shao et al. 2024, DeepSeekMath, arXiv:2402.03300, Fig. 4: yellow models are trained, blue frozen. Schulman et al. 2017, PPO, arXiv:1707.06347</p>
+<p class="footnote">Shao et al. 2024, DeepSeekMath, arXiv:2402.03300, Fig. 4: yellow models are trained, blue frozen. Schulman et al. 2017, PPO, arXiv:1707.06347</p>
 
 Note:
 Now that we can train a reward model, the final stage: use it as a training signal to optimise the language model, so the model writes answers that get higher scores. Two RL methods are common for LLM policy optimisation. PPO, proximal policy optimization, is the classical and most widely used RLHF algorithm. GRPO, group relative policy optimization, is simpler in some ways, because it removes the value model and uses a group of answers to the same prompt as its baseline.
-The figure, which the video uses throughout, is from the GRPO paper, DeepSeekMath. Top row PPO, bottom row GRPO: yellow models are trained, blue ones frozen. Count them: four in PPO, two trained; three in GRPO, one trained.
+The figure, which we come back to for PPO and GRPO, is from the GRPO paper, DeepSeekMath. Top row PPO, bottom row GRPO: yellow models are trained, blue ones frozen. Count them: four in PPO, two trained; three in GRPO, one trained.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 12 · one network design, three heads</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · one network design, three heads</p>
 
 ## Which four models does PPO run?
 
@@ -417,23 +378,23 @@ The figure, which the video uses throughout, is from the GRPO paper, DeepSeekMat
 <div class="fig"><img src="img/week-04-rlhf-heads-all.svg" alt="Illustration, three panels with the same inputs q1 to q4, o1 to o3 and the same backbone design. Left, policy: a language-model head over every position predicts the next tokens q2 to EOS, the prompt targets masked. Middle, reward model: a reward head on the last token gives one score r phi of q and o. Right, value model: a value head over the answer positions gives v1 to v4"></div>
 </div>
 
-<p class="footnote">Video 18:06 to 20:16. The reference model has the policy's head; it is a frozen copy. KL: Kullback-Leibler divergence, how far one distribution is from another. $\theta$, $\phi$, $\psi$: each model's weights</p>
+<p class="footnote">The reference model has the policy's head; it is a frozen copy. KL: Kullback-Leibler divergence, how far one distribution is from another. $\theta$, $\phi$, $\psi$: each model's weights</p>
 
 Note:
 There are four models in PPO. First, the policy model: the language model we want to optimise; it gives the probability of the next token given the prompt and the tokens so far. Second, the reference model: usually a frozen copy of the model before RL, which anchors the policy to what it learned in SFT and keeps it from drifting too far. Third, the reward model we trained in Part 2: it scores the full answer. Fourth, the value model: it predicts the expected future reward from the current state and is used to compute the advantage.
-The picture is the video's point made once: these are the same kind of transformer with a different head on top, though only the policy and the value model may share weights. The policy and the reference have the language-model head; the reward model has one scalar at the last token; the value model one scalar at every answer position.
+The picture makes one point: these are the same kind of transformer with a different head on top, though only the policy and the value model may share weights. The policy and the reference have the language-model head; the reward model has one scalar at the last token; the value model one scalar at every answer position.
 At a high level PPO works like this. The policy writes an answer o to a prompt q. We compute a KL penalty by comparing the policy with the reference, and score the answer with the reward model; together they make the reward signal r. Separately, the value model gives value estimates v. Then r and v go into GAE, generalised advantage estimation, which gives the advantage A, and the advantage tells us how to update the policy.
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 12 · Ouyang et al. 2022 §3.5 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · Ouyang et al. 2022 §3.5 · optional</p>
 
 ## Do the value model and the policy share a backbone?
 
 <div class="cols">
 <div class="text">
 
-- The video: often yes, one backbone with two heads, updated together.
+- Often yes in practice: one backbone with two heads, updated together.
 - InstructGPT: no. "The value function is initialized from the RM", a separate 6B model.
 - So for the 175B policy the value model is 29 times smaller (ours).
 - Count for InstructGPT: four models in memory, two trained.
@@ -447,14 +408,14 @@ At a high level PPO works like this. The policy writes an answer o to a prompt q
 </div>
 </div>
 
-<p class="footnote">Video 23:28, 54:31. Ouyang et al. 2022 §3.5, App. C; RM: reward model, 6B at every policy size, "initialized from a 6B GPT-3 model that was fine-tuned on a variety of public NLP datasets" (SFT or GPT-3 starts gave "similar results"). Week 4, "How many models does RLHF run?"</p>
+<p class="footnote">Ouyang et al. 2022 §3.5, App. C; RM: reward model, 6B at every policy size, "initialized from a 6B GPT-3 model that was fine-tuned on a variety of public NLP datasets" (SFT or GPT-3 starts gave "similar results"). Week 4, "How many models does RLHF run?"</p>
 
 Note:
-Optional. The video says the policy and the value model very often share one transformer backbone, with one head for the next token and one for the value, and PPO training then updates the backbone and both heads together. That's a common implementation choice. InstructGPT did not: its value function is initialised from the 6B reward model, at every policy size. So at 175B the value model is 29 times smaller than the policy (our arithmetic), which matters when GRPO later says the value model is "typically another model of comparable size as the policy model".
+Optional. In many implementations the policy and the value model share one transformer backbone, with one head for the next token and one for the value, and PPO training then updates the backbone and both heads together. That's a common implementation choice. InstructGPT did not: its value function is initialised from the 6B reward model, at every policy size. So at 175B the value model is 29 times smaller than the policy (our arithmetic), which matters when GRPO later says the value model is "typically another model of comparable size as the policy model".
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 13 · per-token reward, $k_1$ KL</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · per-token reward, $k_1$ KL</p>
 
 ## How does one score become a reward for every token?
 
@@ -482,7 +443,7 @@ Optional. The video says the policy and the value model very often share one tra
 </div>
 </div>
 
-<p class="footnote">Video 20:16 to 22:33. Ouyang et al. 2022 §3.5: "a per-token KL penalty from the SFT model at each token". $\beta$ = 0.1 is illustrative. $k_1$: Schulman 2020's name for the one-sample log ratio</p>
+<p class="footnote">Ouyang et al. 2022 §3.5: "a per-token KL penalty from the SFT model at each token". $\beta$ = 0.1 is illustrative. $k_1$: Schulman 2020's name for the one-sample log ratio</p>
 
 Note:
 In PPO the reward combines two parts: the reward model's final score r phi of q and o, and per-token KL penalties. The reward model gives one score for the whole answer, but in LLM PPO each generated token is an action, so we need token-level quantities: log probabilities, KL penalties, advantages. The score is only available for the complete answer, so we add it at the final token. For every earlier token the step reward is just minus beta times the per-token KL estimate; for the last token it's the reward model's score minus beta times its KL estimate.
@@ -491,7 +452,7 @@ One thing the Q/A shows: a single k1 term can be negative, a small bonus for a t
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 14 · the value model's head</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · the value model's head</p>
 
 ## What does the value model predict, and how is it trained?
 
@@ -513,7 +474,7 @@ One thing the Q/A shows: a single k1 term can be negative, a small bonus for a t
 <div class="fig"><img src="img/week-04-rlhf-heads-value.svg" alt="Illustration: the same inputs and backbone design, with a value head over the answer positions q4, o1, o2 and o3, giving one value each, v1 to v4"></div>
 </div>
 
-<p class="footnote">Video 22:33 to 26:36. $s_t$: the state before token $o_t$ is chosen. PPO's robot runs used $\gamma$ = 0.99; InstructGPT used "No discount", $\gamma$ = 1 (Week 4)</p>
+<p class="footnote">$s_t$: the state before token $o_t$ is chosen. PPO's robot runs used $\gamma$ = 0.99; InstructGPT used "No discount", $\gamma$ = 1 (Week 4)</p>
 
 Note:
 The value model estimates the expected future return from the current state s t, before taking action a t. For an LLM, s t is the prompt plus the tokens so far and the action is the next token. Architecturally it's an LLM backbone with a value head, which predicts a scalar for each generated token position; often it shares the backbone with the policy.
@@ -522,7 +483,7 @@ So V psi of s t is the expected return from that state: given the partial answer
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 14 · Schulman et al. 2017 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · Schulman et al. 2017 · optional</p>
 
 ## What does $\gamma$ below 1 do to a final reward?
 
@@ -543,14 +504,14 @@ So V psi of s t is the expected return from that state: given the partial answer
 </div>
 </div>
 
-<p class="footnote">Video 24:30 to 25:34. Schulman et al. 2017, App. A: $\gamma$ = 0.99 in every robot and Atari run. GAE paper (Schulman et al. 2015): $\gamma$ cuts variance "at the cost of introducing bias"</p>
+<p class="footnote">Schulman et al. 2017, App. A: $\gamma$ = 0.99 in every robot and Atari run. GAE paper (Schulman et al. 2015): $\gamma$ cuts variance "at the cost of introducing bias"</p>
 
 Note:
-Optional: why gamma near 1 matters so much here. With a single reward at the end and gamma 0.99, a token 499 steps before the end sees 0.99 to the 499, about 0.007 of it (our arithmetic). The first sentence of a long answer would learn almost nothing from the score. The video's reason, earlier tokens set the direction of the answer, is exactly this. PPO's robot settings use 0.99, where rewards arrive at every step (our reading); InstructGPT applies no discount.
+Optional: why gamma near 1 matters so much here. With a single reward at the end and gamma 0.99, a token 499 steps before the end sees 0.99 to the 499, about 0.007 of it (our arithmetic). The first sentence of a long answer would learn almost nothing from the score. The reason given on the main slide, that earlier tokens set the direction of the answer, is exactly this. PPO's robot settings use 0.99, where rewards arrive at every step (our reading); InstructGPT applies no discount.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 3 · video slide 15 · worked example</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, PPO's parts · worked example</p>
 
 ## What are the returns for "Gravity pulls objects together"?
 
@@ -567,29 +528,16 @@ Optional: why gamma near 1 matters so much here. With a single reward at the end
 <p class="q"><b>Q.</b> With our values, what is the value loss?</p>
 <p class="a"><b>A.</b> $(0.0400 + 0.0169 + 0.0100 + 0.0016)/4 = 0.0171$ (ours)</p>
 
-<p class="footnote">Video 26:36 to 29:55; the prompt, answer, score, KL values, $\beta$ and $\gamma$ are the video's. The value predictions $v_t$ are ours, so the loss has a number; we reuse them for GAE in Part 4</p>
+<p class="footnote">Example ours: prompt, answer, score, KL values, $\beta$ and $\gamma$ are illustrative. The value predictions $v_t$ give the loss a number; we reuse them for GAE in Part 4</p>
 
 Note:
 A small example. Prompt: "Explain gravity simply." Answer: "Gravity pulls objects together", four tokens, one word each for simplicity. The reward model's score for this pair is 2. The per-token sampled KL estimates are 0.03, 0.02, 0.04 and 0.01.
 With beta 1, the step rewards: for the first three tokens only the negative KL penalty, so minus 0.03, minus 0.02, minus 0.04. For the last we add the score: 2 minus 0.01, 1.99. With gamma 1, no discount, compute the returns backwards from the end: G4 = r4 = 1.99; G3 = minus 0.04 plus 1.99 = 1.95; G2 = minus 0.02 plus 1.95 = 1.93; G1 = minus 0.03 plus 1.93 = 1.90. These returns are the value model's training targets: at each position the value head predicts a number, and we want it to match G t. The loss is the mean squared error between each prediction and its return, averaged over the four tokens.
-The video leaves the predictions symbolic. To give the loss a number we add value predictions of our own, 1.70, 1.80, 1.85 and 1.95: a value model that slightly underrates this answer. The squared errors are 0.04, 0.0169, 0.01 and 0.0016, mean 0.0171. We keep these four values for the GAE example in Part 4.
+To give the loss a number we add value predictions of our own, 1.70, 1.80, 1.85 and 1.95: a value model that slightly underrates this answer. The squared errors are 0.04, 0.0169, 0.01 and 0.0016, mean 0.0171. We keep these four values for the GAE example in Part 4.
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 4 of 6</p>
-<h1>Policy gradients, GAE and PPO's objective</h1>
-<p class="subtitle">Video slides 16 to 24 · 29:55 to 55:16</p>
-<p class="question">How does a score become a gradient, and how does PPO keep each step small?</p>
-<ol class="track six"><li class="done">Part 1<span>motivation</span></li><li class="done">Part 2<span>SFT, reward model</span></li><li class="done">Part 3<span>PPO's parts</span></li><li class="now">Part 4<span>PPO's objective</span></li><li>Part 5<span>GRPO</span></li><li>Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 4 is the math: the objective, the policy gradient derived in full, the advantage as a baseline, GAE, PPO's clipped objective and why it uses an old policy, then one full PPO training step.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 16 · the RL objective</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · the RL objective</p>
 
 ## What exactly does RL maximise?
 
@@ -617,7 +565,7 @@ Part 4 is the math: the objective, the policy gradient derived in full, the adva
 </div>
 </div>
 
-<p class="footnote">Video 29:55 to 31:37. The video introduces this as the setup for GAE; the reward $r_t$ may depend on $s_t$, $a_t$ and $s_{t+1}$</p>
+<p class="footnote">This is the setup for GAE; the reward $r_t$ may depend on $s_t$, $a_t$ and $s_{t+1}$</p>
 
 Note:
 Before GAE, set up the RL objective. Suppose tau is a trajectory: a sequence of states and actions, s0, a0, s1, a1 and so on, generated by following the policy pi theta. At each step the action is sampled from the policy given the current state; after the action, the environment moves to the next state according to its transition probability P. At each step the agent also gets a reward, which can depend on the state, the action and the next state.
@@ -625,7 +573,7 @@ The goal is the expected return: J of theta, the average total reward over traje
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 17 · the policy gradient</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · the policy gradient</p>
 
 ## How do you take the gradient of an average over samples?
 
@@ -646,7 +594,7 @@ The goal is the expected return: J of theta, the average total reward over traje
 </div>
 </div>
 
-<p class="footnote">Video 31:37 to 35:46. $\Psi_t$: the weight on step $t$'s gradient. The ▸ is a generalisation, not an equality: $G(\tau)$ is one valid choice of $\Psi_t$, the advantage another (GAE paper, Schulman et al. 2015, §2)</p>
+<p class="footnote">$\Psi_t$: the weight on step $t$'s gradient. The ▸ is a generalisation, not an equality: $G(\tau)$ is one valid choice of $\Psi_t$, the advantage another (GAE paper, Schulman et al. 2015, §2)</p>
 
 Note:
 Now the gradient of the objective. J of theta is an expectation over trajectories, so by definition it's an integral over all trajectories of the trajectory's probability times its return. Take the gradient with respect to theta. The key step: the gradient of a probability equals the probability times the gradient of its log. So the gradient becomes the integral of p theta of tau, times the gradient of log p theta of tau, times G of tau.
@@ -655,7 +603,7 @@ Put it back: the policy gradient is the expectation of the return times the sum 
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 18 · the advantage as baseline</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · the advantage as baseline</p>
 
 ## Why weight each step by its advantage?
 
@@ -689,7 +637,7 @@ Put it back: the policy gradient is the expectation of the return times the sum 
 </div>
 </div>
 
-<p class="footnote">Video 35:46 to 38:08. Numbers ours, after the video's easy prompt and hard prompt. The true $Q$ and $V$ are unknown, so they must be estimated: that is GAE, next</p>
+<p class="footnote">Numbers ours. The true $Q$ and $V$ are unknown, so they must be estimated: that is GAE, next</p>
 
 Note:
 Connect this to advantage estimation. A good choice for the weight Psi t is the advantage: Q of s t, a t minus V of s t. Q is the expected return if we take action a t at state s t and then keep following the policy. V is the expected return from s t, averaging over actions the policy might take. So V acts as a baseline, and the advantage says how much better than average action a t is in state s t.
@@ -698,7 +646,7 @@ In our numbers (ours): the easy prompt's weaker answer, 0.85, has a much higher 
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 19 · GAE · Schulman et al. 2015</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · GAE · Schulman et al. 2015</p>
 
 ## How does GAE estimate the advantage?
 
@@ -731,7 +679,7 @@ In our numbers (ours): the easy prompt's weaker answer, 0.85, has a much higher 
 </div>
 </div>
 
-<p class="footnote">Video 38:08 to 40:32. GAE: generalised advantage estimation, Schulman et al. 2015 (ICLR 2016), arXiv:1506.02438. Monte Carlo: estimating from complete sampled rollouts. PPO's robot runs: $\lambda$ = 0.95</p>
+<p class="footnote">GAE: generalised advantage estimation, Schulman et al. 2015 (ICLR 2016), arXiv:1506.02438. Monte Carlo: estimating from complete sampled rollouts. PPO's robot runs: $\lambda$ = 0.95</p>
 
 Note:
 How do we estimate the advantage with GAE? First the temporal-difference residual, TD residual for short, written delta t: a one-step estimate of the advantage. It compares what the value model predicted before with what we see after one step: the reward at step t, plus gamma times the value of the next state, minus the value of the current state. If delta is positive, the outcome was better than the value model expected; if negative, worse.
@@ -740,7 +688,7 @@ Lambda controls the bias-variance trade-off. At lambda 0, GAE is the pure one-st
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 19 · Later work · DeepSeek-AI 2025 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · Later work · DeepSeek-AI 2025 · optional</p>
 
 ## Is $\lambda$ = 0.95 right for a language model?
 
@@ -759,11 +707,11 @@ Lambda controls the bias-variance trade-off. At lambda 0, GAE is the pure one-st
 <p class="footnote">DeepSeek-AI 2025, DeepSeek-R1, arXiv:2501.12948, supplement; a 16B mixture-of-experts model; values by eye. MATH: competition maths problems. Week 4, "Where is the PPO baseline?"</p>
 
 Note:
-Optional. The video's "typically 0.95" comes from robotics, where a reward arrives at every step. For a language model with one reward at the end, 0.95 to the 499th is effectively zero, so with lambda 0.95 the early tokens' advantages are almost entirely the value model's opinion (our reading). R1's supplement is the one head-to-head: on MATH, PPO with lambda 0.95 "performs considerably worse than GRPO"; with lambda 1.0 it "improves substantially, nearing that of GRPO". By eye, 0.501, 0.536 and 0.555; one run per setting, one model, by GRPO's own authors.
+Optional. The "typical" 0.95 comes from robotics, where a reward arrives at every step. For a language model with one reward at the end, 0.95 to the 499th is effectively zero, so with lambda 0.95 the early tokens' advantages are almost entirely the value model's opinion (our reading). R1's supplement is the one head-to-head: on MATH, PPO with lambda 0.95 "performs considerably worse than GRPO"; with lambda 1.0 it "improves substantially, nearing that of GRPO". By eye, 0.501, 0.536 and 0.555; one run per setting, one model, by GRPO's own authors.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 20 · Schulman et al. 2017, Eq. 7</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · Schulman et al. 2017, Eq. 7</p>
 
 ## What is PPO's objective?
 
@@ -792,16 +740,16 @@ Optional. The video's "typically 0.95" comes from robotics, where a reward arriv
 </div>
 </div>
 
-<p class="footnote">Video 40:32 to 43:42. Schulman et al. 2017 §3, Eq. 7; $\epsilon$ = 0.2 in its robot runs. The $1/\lvert o\rvert$ token average is the language-model form, as in Shao et al. 2024 Eq. 1</p>
+<p class="footnote">Schulman et al. 2017 §3, Eq. 7; $\epsilon$ = 0.2 in its robot runs. The $1/\lvert o\rvert$ token average is the language-model form, as in Shao et al. 2024 Eq. 1</p>
 
 Note:
 Now we have the building blocks. PPO's objective is something we maximise. At a high level: increase the probability of tokens with positive advantage and decrease it for tokens with negative advantage. The formula looks complicated, but the idea is simple: update the current policy using rollouts from the old policy, while making sure the update isn't too large.
 Read it. Sample a prompt q from the prompt dataset, then an answer o from the old policy. For each generated token compute two surrogates. The unclipped one is the importance ratio r t of theta times the advantage: the token's probability under the current policy divided by its probability under the old policy, given the same prompt and previous tokens. The clipped one clips the ratio so it can't go below 1 minus epsilon or above 1 plus epsilon. PPO takes the minimum of the two. That clipping is PPO's key idea: it stops the new policy moving too far from the old one in one update. One over the length of o averages over the answer's tokens; the outer expectation averages over the batch. A hat t is the GAE advantage.
-Watch the letters: the video, like the PPO paper, writes r for the step reward and r of theta for the ratio.
+Watch the letters: like the PPO paper, we write r for the step reward and r of theta for the ratio.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 21 · the importance ratio</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · the importance ratio</p>
 
 ## Why sample from an old copy of the policy?
 
@@ -824,7 +772,7 @@ Watch the letters: the video, like the PPO paper, writes r for the step reward a
 </div>
 </div>
 
-<p class="footnote">Video 43:42 to 45:33. Importance sampling: reweighting samples drawn from one distribution so they average correctly under another. At the first update $\pi_\theta = \pi_{\theta_{\rm old}}$, so every ratio is 1</p>
+<p class="footnote">Importance sampling: reweighting samples drawn from one distribution so they average correctly under another. At the first update $\pi_\theta = \pi_{\theta_{\rm old}}$, so every ratio is 1</p>
 
 Note:
 Why generate the rollouts with the old policy? Efficiency. In pure on-policy training, every time the policy changes you need fresh rollouts from the new policy. For a large language model, generating rollouts is expensive, especially for long outputs or long-horizon tasks. So PPO first makes a frozen copy of the current policy, the old policy, uses it to generate a batch of rollouts, and then optimises the current policy on that fixed batch. That allows a small, controlled amount of off-policy mismatch.
@@ -832,7 +780,7 @@ Here's the problem: the rollouts came from the old policy, but the model we're u
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 22 · Schulman et al. 2017, Fig. 1</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · Schulman et al. 2017, Fig. 1</p>
 
 ## What does the clip do when the advantage is positive, and when negative?
 
@@ -853,7 +801,7 @@ Here's the problem: the rollouts came from the old policy, but the model we're u
 <div class="fig"><img src="img/week-04-ppo-fig1.png" alt="Schulman et al. Figure 1: one term of L CLIP against the ratio r. Left, positive advantage: rising from the origin, flat beyond 1 plus epsilon. Right, negative advantage: flat below 1 minus epsilon, then falling. A red dot marks the start at r = 1"></div>
 </div>
 
-<p class="footnote">Video 45:33 to 48:45. Schulman et al. 2017, Fig. 1: one token's term of the objective against the ratio $r$. The clip caps only the improvement; a move the wrong way is never clipped</p>
+<p class="footnote">Schulman et al. 2017, Fig. 1: one token's term of the objective against the ratio $r$. The clip caps only the improvement; a move the wrong way is never clipped</p>
 
 Note:
 A closer look at the clipping. The plot shows the objective for a single time step t; the horizontal axis is the importance ratio r. The red dot is where the update starts: r equals 1, because before the update the current policy is the old one.
@@ -862,7 +810,7 @@ Negative advantage: the token was worse than expected, so we want it less. Since
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 22 · Week 4, PPO section · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · Week 4, PPO section · optional</p>
 
 ## Four worked cases of the clip
 
@@ -894,7 +842,7 @@ Optional, from Week 4. Case a: a good token already 30% more likely, past the 20
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 23 · recap: the advantage in PPO</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · recap: the advantage in PPO</p>
 
 ## How does PPO compute each token's advantage?
 
@@ -913,7 +861,7 @@ Optional, from Week 4. Case a: a good token already 30% more likely, past the 20
 <div class="fig"><img src="img/week-04-rlhf-gaeflow.svg" alt="Illustration: box 1, reward and value per token: the step reward r t equals minus beta KL t, plus r phi at the last token, and the value v t from the value model. Box 2, TD error delta t equals r t plus gamma v t+1 minus v t, with v T+1 equal to 0. Box 3, advantage backward: A t equals delta t plus gamma lambda A t+1, starting from A T+1 equal to 0"></div>
 </div>
 
-<p class="footnote">Video 48:45 to 50:18. GAE (Schulman et al. 2015) applied to PPO for language models; the reward and reference models are frozen, the value model is trained</p>
+<p class="footnote">GAE (Schulman et al. 2015) applied to PPO for language models; the reward and reference models are frozen, the value model is trained</p>
 
 Note:
 A quick recap of how A t is computed. It comes from applying GAE to two inputs: the per-token rewards from the current step on, and the learned value function. The first input, the per-token reward, combines the per-token KL estimate and, at the final token, the reward model's score. KL t measures how much the policy deviates from the reference at token t, and beta times KL t is the penalty we subtract. The second input is the value model's scalar prediction for each state.
@@ -921,7 +869,7 @@ With those two inputs, GAE produces the advantage in two steps. First the TD err
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 23 · the gravity example, continued (ours) · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · the gravity example, continued (ours) · optional</p>
 
 ## What advantages does GAE give "Gravity pulls objects together"?
 
@@ -936,14 +884,14 @@ With those two inputs, GAE produces the advantage in two steps. First the TD err
 <p class="q"><b>Q.</b> Check $\hat A_3$ at $\lambda$ = 0.95, and $\hat A_1$ at $\lambda$ = 1.</p>
 <p class="a"><b>A.</b> $0.06 + 0.95 \times 0.04 = 0.098$; at $\lambda$ = 1, $G_1 - v_1 = 1.90 - 1.70 = 0.20$</p>
 
-<p class="footnote">Ours: the video's rewards with our values from video slide 15; $\gamma$ = 1, $v_5 = 0$. Every advantage is positive because our value model underrated this answer. At $\lambda$ = 1 the targets equal the returns $G_t$</p>
+<p class="footnote">Ours: the rewards and values of the worked example in Part 3; $\gamma$ = 1, $v_5 = 0$. Every advantage is positive because our value model underrated this answer. At $\lambda$ = 1 the targets equal the returns $G_t$</p>
 
 Note:
-Optional, ours: the gravity example carried through GAE. Rewards from the video, values ours from Part 3, gamma 1, and the value after the last token is 0 because the answer has ended. TD errors: 0.07, 0.03, 0.06, 0.04. Backwards with lambda 0.95: A4 = 0.04, A3 = 0.06 + 0.95 times 0.04 = 0.098, A2 = 0.03 + 0.95 times 0.098 = 0.123, A1 = 0.07 + 0.95 times 0.123 = 0.187. With lambda 1 the deltas telescope and each advantage is the return minus the value: 0.20, 0.13, 0.10, 0.04. All are positive because our value model expected a little less than this answer got, so PPO will push all four tokens up, the first most. The value targets, advantage plus value, are 1.887, 1.923, 1.948 and 1.99: slightly below the Monte Carlo returns, because lambda below 1 leans on the value model's lower guesses.
+Optional, ours: the gravity example carried through GAE. Rewards and values from Part 3, gamma 1, and the value after the last token is 0 because the answer has ended. TD errors: 0.07, 0.03, 0.06, 0.04. Backwards with lambda 0.95: A4 = 0.04, A3 = 0.06 + 0.95 times 0.04 = 0.098, A2 = 0.03 + 0.95 times 0.098 = 0.123, A1 = 0.07 + 0.95 times 0.123 = 0.187. With lambda 1 the deltas telescope and each advantage is the return minus the value: 0.20, 0.13, 0.10, 0.04. All are positive because our value model expected a little less than this answer got, so PPO will push all four tokens up, the first most. The value targets, advantage plus value, are 1.887, 1.923, 1.948 and 1.99: slightly below the Monte Carlo returns, because lambda below 1 leans on the value model's lower guesses.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 24 · one PPO step, 1 of 2: the rollout</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · one PPO step, 1 of 2: the rollout</p>
 
 ## One PPO step: what happens during the rollout?
 
@@ -960,7 +908,7 @@ Optional, ours: the gravity example carried through GAE. Rewards from the video,
 <p class="q"><b>Q.</b> Why $\log\pi_{\theta_{\rm old}}$ in step 3, not $\log\pi_\theta$?</p>
 <p class="a"><b>A.</b> At rollout time they are the same model, and sampling already computed them</p>
 
-<p class="footnote">Video 50:18 to 53:30. $\hat G_t$: the return target for the value model, since an advantage is a return minus a value</p>
+<p class="footnote">$\hat G_t$: the return target for the value model, since an advantage is a return minus a value</p>
 
 Note:
 To finish PPO, one step of the training loop. First, copy the current policy and freeze it as the old policy; for each prompt, sample an answer from it, a sequence of tokens o1 to oT. Next, compute the reward model's score for the complete answer: one scalar for the whole response. Then for all response tokens compute several token-level quantities in parallel. The value model predicts v t for each state, the prompt plus the tokens before position t. And the per-token KL estimate: conceptually it compares pi theta with the reference; we use log pi theta old because at rollout time the old policy is a frozen copy of pi theta and we already have its log probabilities.
@@ -969,7 +917,7 @@ Then the advantages, backwards from the final token with the recursive GAE formu
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 4 · video slide 24 · one PPO step, 2 of 2: the update</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, PPO's objective · one PPO step, 2 of 2: the update</p>
 
 ## One PPO step: what happens during the update?
 
@@ -995,28 +943,15 @@ Then the advantages, backwards from the final token with the recursive GAE formu
 </div>
 </div>
 
-<p class="footnote">Video 53:30 to 55:16. $c_v$: the value loss's weight; $L_{\rm VM}$: the value model's mean squared error. Several passes per batch: Schulman et al. 2017 §5, "$K$ epochs"; InstructGPT used "a single inner epoch" (App. C)</p>
+<p class="footnote">$c_v$: the value loss's weight; $L_{\rm VM}$: the value model's mean squared error. Several passes per batch: Schulman et al. 2017 §5, "$K$ epochs"; InstructGPT used "a single inner epoch" (App. C)</p>
 
 Note:
 During PPO optimisation we recompute the current policy's log probability on the same rollout: for each generated token, its log probability under pi theta given the prompt and the earlier tokens. Then the importance ratio: the exponential of the current log probability minus the old one, for the same token and context. Finally the training loss. J PPO is an objective we want to maximise, so in code we minimise its negative, and add the value model's loss weighted by a coefficient.
-As the video says, the policy and the value model often share a transformer backbone, with one head for next-token prediction and one for the value, and PPO updates the backbone and both heads together. The reward model and the reference model stay frozen. Steps 7 to 9 can run several epochs on one batch, which is exactly why the ratio and the clip are needed: after the first pass, pi theta is no longer pi theta old.
+In many implementations the policy and the value model share a transformer backbone, with one head for next-token prediction and one for the value, and PPO updates the backbone and both heads together. The reward model and the reference model stay frozen. Steps 7 to 9 can run several epochs on one batch, which is exactly why the ratio and the clip are needed: after the first pass, pi theta is no longer pi theta old.
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 5 of 6</p>
-<h1>GRPO: group relative policy optimization</h1>
-<p class="subtitle">Video slides 25 to 28 · 55:16 to 1:03:15</p>
-<p class="question">What if the baseline comes from other answers to the same prompt, not a value model?</p>
-<ol class="track six"><li class="done">Part 1<span>motivation</span></li><li class="done">Part 2<span>SFT, reward model</span></li><li class="done">Part 3<span>PPO's parts</span></li><li class="done">Part 4<span>PPO's objective</span></li><li class="now">Part 5<span>GRPO</span></li><li>Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 5: GRPO, from the DeepSeekMath paper. Three models instead of four, a group of answers as the baseline, the KL moved from the reward into the loss, and one training step.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 25 · Shao et al. 2024, Fig. 4</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · Shao et al. 2024, Fig. 4</p>
 
 ## What does GRPO drop?
 
@@ -1038,7 +973,7 @@ Part 5: GRPO, from the DeepSeekMath paper. Three models instead of four, a group
 <div class="fig"><img src="img/week-04-grpo-fig4.png" alt="Shao et al. Figure 4. Top, PPO: the policy model writes output o; a frozen reference model and a frozen reward model give a KL-penalised reward r; a trained value model gives v; GAE turns r and v into the advantage A. Bottom, GRPO: the policy writes o1 to oG; the frozen reward model scores them r1 to rG; a group computation gives A1 to AG; the KL to the reference model goes straight to the policy"></div>
 </div>
 
-<p class="footnote">Video 55:16 to 57:01. Shao et al. 2024, "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models", arXiv:2402.03300, §4.1, Fig. 4 (bottom row)</p>
+<p class="footnote">Shao et al. 2024, "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models", arXiv:2402.03300, §4.1, Fig. 4 (bottom row)</p>
 
 Note:
 Now from PPO to GRPO, group relative policy optimization. It uses a simpler setup. PPO had four models: policy, reference, reward and value. GRPO keeps three. The policy model pi theta, the one we optimise; because GRPO samples a group of answers per prompt, we index by both the answer i and the token position t. The reference model, a frozen copy of the model before RL, anchoring the KL penalty. And the reward model we trained earlier, which scores complete answers.
@@ -1046,7 +981,7 @@ The value model V psi: GRPO removes it entirely. And because there is no value m
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 26 · group as baseline · Shao et al. 2024 §4.1.2</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · group as baseline · Shao et al. 2024 §4.1.2</p>
 
 ## How does a group of answers become the baseline?
 
@@ -1070,7 +1005,7 @@ The value model V psi: GRPO removes it entirely. And because there is no value m
 <div class="fig"><img src="img/week-04-grpo-adv.svg" alt="Illustration: two groups of four answers with 0/1 rewards. Hard question, one right: the right answer gets +1.73, each wrong one -0.58. Easy question, three right: each right answer +0.58, the wrong one -1.73"></div>
 </div>
 
-<p class="footnote">Video 57:01 to 58:32. $r_i$ is a reward, not the ratio $r_{i,t}(\theta)$ of the next slide. Shao et al. 2024 §4.1.2, outcome supervision; the paper samples $G$ = 64. std: standard deviation, population form in our numbers. Figure from Week 4 (ours)</p>
+<p class="footnote">$r_i$ is a reward, not the ratio $r_{i,t}(\theta)$ of the next slide. Shao et al. 2024 §4.1.2, outcome supervision; the paper samples $G$ = 64. std: standard deviation, population form in our numbers. Figure from Week 4 (ours)</p>
 
 Note:
 How does GRPO compute the advantage? For each question q, sample a group of answers from the old policy, o1 up to oG. The reward model scores each, giving G rewards r1 up to rG. Instead of a value model as the baseline, GRPO uses the rewards within the same group: for each answer, subtract the group's mean reward and divide by the group's standard deviation. That normalised reward is the advantage for the answer, and the same advantage is assigned to every token in it.
@@ -1079,7 +1014,7 @@ Worked numbers from Week 4: one right answer in four gets plus 1.73, each wrong 
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 26 · Later work · Liu et al. 2025, Yu et al. 2025 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · Later work · Liu et al. 2025, Yu et al. 2025 · optional</p>
 
 ## What if every answer in the group gets the same score?
 
@@ -1103,11 +1038,11 @@ Worked numbers from Week 4: one right answer in four gets plus 1.73, each wrong 
 <p class="footnote">Ours, after Week 4's GRPO section. Yu et al. 2025, DAPO, arXiv:2503.14476 (dynamic sampling). Liu et al. 2025, "Understanding R1-Zero-Like Training", arXiv:2503.20783 (Dr. GRPO)</p>
 
 Note:
-Optional, from Week 4. The paper doesn't discuss the case where every answer in a group gets the same reward: the formula is zero over zero, implementations add a small epsilon to the std, and every advantage becomes zero, so the prompt contributes no gradient. Near-identical reward-model scores are worse than equal ones: a std of 0.005 multiplies tiny differences by 200, and four answers that are all about the same look like two right and two wrong. DAPO, a later repair of GRPO, filters out groups whose answers are all right or all wrong; Dr. GRPO removes the std division, and the length average, altogether. This is the video's later point about low reward variance, seen from the formula.
+Optional, from Week 4. The paper doesn't discuss the case where every answer in a group gets the same reward: the formula is zero over zero, implementations add a small epsilon to the std, and every advantage becomes zero, so the prompt contributes no gradient. Near-identical reward-model scores are worse than equal ones: a std of 0.005 multiplies tiny differences by 200, and four answers that are all about the same look like two right and two wrong. DAPO, a later repair of GRPO, filters out groups whose answers are all right or all wrong; Dr. GRPO removes the std division, and the length average, altogether. This is the low-reward-variance point of Part 6, seen from the formula.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 27 · Shao et al. 2024, Eq. 3, Eq. 4</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · Shao et al. 2024, Eq. 3, Eq. 4</p>
 
 ## What is GRPO's objective, and its KL estimate?
 
@@ -1138,7 +1073,7 @@ Optional, from Week 4. The paper doesn't discuss the case where every answer in 
 </div>
 </div>
 
-<p class="footnote">Video 58:32 to 1:00:57. Shao et al. 2024 §4.1.1, Eq. 3, Eq. 4; $\beta$ = 0.04 and $G$ = 64 from its RL training setup. $k_3$: Schulman 2020's name. The expectation is over $q \sim P(Q)$ and the group $\{o_i\} \sim \pi_{\theta_{\rm old}}$</p>
+<p class="footnote">Shao et al. 2024 §4.1.1, Eq. 3, Eq. 4; $\beta$ = 0.04 and $G$ = 64 from its RL training setup. $k_3$: Schulman 2020's name. The expectation is over $q \sim P(Q)$ and the group $\{o_i\} \sim \pi_{\theta_{\rm old}}$</p>
 
 Note:
 GRPO's objective is very like PPO's, adapted to groups. Instead of one answer per prompt, sample a group of G answers from the old policy. For each answer and each token, compute the importance ratio r i t: the token's probability under the current policy over its probability under the old policy, given the prompt and the earlier tokens. The advantage A hat i t is the group-relative reward from the last slide. The clipping is the same as PPO's: it stops the current policy moving too far from the old one in one update.
@@ -1147,7 +1082,7 @@ So in short: GRPO keeps PPO's clipped objective, removes the value model, replac
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 27 · Week 4, GRPO section · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · Week 4, GRPO section · optional</p>
 
 ## Why $k_3$ and not $k_1$?
 
@@ -1171,7 +1106,7 @@ The deeper reason is the gradient. As a loss term, k1's expected gradient is zer
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 5 · video slide 28 · one GRPO step</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, GRPO · one GRPO step</p>
 
 ## One GRPO step: what happens?
 
@@ -1198,7 +1133,7 @@ The deeper reason is the gradient. As a loss term, k1's expected gradient is zer
 </div>
 </div>
 
-<p class="footnote">Video 1:00:57 to 1:03:15. Reward source: a reward model or a rule, such as a checker of the final answer or unit tests for code</p>
+<p class="footnote">Reward source: a reward model or a rule, such as a checker of the final answer or unit tests for code</p>
 
 Note:
 One step of GRPO, as for PPO. First copy the current policy and freeze it as the old policy; for each prompt, sample a group of answers from it, o1 to oG. Next use a reward model, or more generally a reward function, to score each answer: a group of scores r1 to rG, r i being the score for prompt q and answer o i. Then for each answer and each token compute, in parallel: the importance ratio, comparing the token's probability under the current and the old policy; the advantage, the group-normalised reward assigned to every token of the answer; and the per-token KL term between the current policy and the reference, which is multiplied by beta and subtracted from the objective. Since J GRPO is to be maximised, in code we minimise its negative.
@@ -1206,20 +1141,7 @@ During GRPO training only the policy is updated. The reference model stays froze
 
 ---
 
-<!-- .slide: class="cover divider" -->
-
-<p class="kicker">Part 6 of 6</p>
-<h1>PPO or GRPO?</h1>
-<p class="subtitle">Video slides 29 to 31 · 1:03:15 to the end</p>
-<p class="question">What does each method assume about where credit comes from?</p>
-<ol class="track six"><li class="done">Part 1<span>motivation</span></li><li class="done">Part 2<span>SFT, reward model</span></li><li class="done">Part 3<span>PPO's parts</span></li><li class="done">Part 4<span>PPO's objective</span></li><li class="done">Part 5<span>GRPO</span></li><li class="now">Part 6<span>which to use</span></li></ol>
-
-Note:
-Part 6: the comparison, the video's guide to choosing, and the summary. The guide is the video's advice; where the papers or later work bear on it, a sub-slide says what they show.
-
----
-
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 6 · video slide 29</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO or GRPO</p>
 
 ## How do PPO and GRPO differ?
 
@@ -1229,14 +1151,14 @@ Part 6: the comparison, the video's guide to choosing, and the summary. The guid
   <tr><td>advantage</td><td>per token, by GAE</td><td>per answer, the same on every token</td></tr>
   <tr><td>models</td><td>4, two trained</td><td>3, one trained</td></tr>
   <tr><td>KL</td><td>$k_1$, inside the reward</td><td>$k_3$, in the objective</td></tr>
-  <tr><td>cost (the video's view)</td><td>heavier: policy and value model to train</td><td>simpler and cheaper, but $G$ answers per prompt</td></tr>
+  <tr><td>cost (rule of thumb)</td><td>heavier: policy and value model to train</td><td>simpler and cheaper, but $G$ answers per prompt</td></tr>
   <tr><td>the question it asks</td><td>"Was this token better than my value estimate?"</td><td>"Was this answer better than other answers to the same prompt?"</td></tr>
 </table>
 
 <p class="q"><b>Q.</b> Which is more general?</p>
-<p class="a"><b>A.</b> PPO, in the video's view: it works with rewards at every step; GRPO needs several answers to one prompt</p>
+<p class="a"><b>A.</b> PPO: it works with rewards at every step; GRPO needs several answers to one prompt</p>
 
-<p class="footnote">Video 1:03:15 to 1:04:32; the two questions are the video's. Week 4's comparison table adds: with one update per batch, as in DeepSeekMath's runs, GRPO's clip never binds</p>
+<p class="footnote">Week 4's comparison table adds: with one update per batch, as in DeepSeekMath's runs, GRPO's clip never binds</p>
 
 Note:
 At a high level the biggest difference between PPO and GRPO is the choice of baseline. PPO uses a learned value model, the critic, as its baseline; GRPO uses the group of sampled answers. That leads to different characteristics. PPO learns a value model and estimates the advantage token by token. It's more general, but the training pipeline is heavier, because we train and update both the policy and the value model. GRPO needs no value model: it samples several completions per prompt, scores them and normalises the rewards within the group, so it is usually simpler and cheaper to train.
@@ -1244,7 +1166,7 @@ Intuitively, PPO asks: was this token better than my value estimate? GRPO asks: 
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 6 · video slide 30 · the video's advice</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO or GRPO · rules of thumb</p>
 
 ## When would you choose PPO, and when GRPO?
 
@@ -1271,7 +1193,7 @@ Intuitively, PPO asks: was this token better than my value estimate? GRPO asks: 
 </div>
 </div>
 
-<p class="footnote">Video 1:04:32 to 1:06:57. This guide is the video's advice, not a result from either paper; the sub-slide below gives what the papers and later work show</p>
+<p class="footnote">These are rules of thumb from practice, not results from either paper; the sub-slide below gives what the papers and later work show</p>
 
 Note:
 When should we choose PPO? When token-level credit assignment matters. The reward model usually gives one score for the whole answer, not one per token; PPO uses the value model and GAE to propagate that sequence-level reward back and estimate token-level advantages. That is especially useful for long outputs, or where different parts of the answer contribute differently to its quality. PPO also helps when the reward variance within a group of sampled answers is low: then group normalisation gives a weak baseline, and a learned value model can be more robust. Another reason is stability: PPO is the more mature and widely tested recipe for general RLHF. Typical use: general RLHF for assistant alignment, making the model more helpful, honest and harmless.
@@ -1279,7 +1201,7 @@ And GRPO? When outcome-level supervision is enough: we only need to know whether
 
 --
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · Part 6 · video slide 30 · Week 4 critiques · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO or GRPO · Week 4 critiques · optional</p>
 
 ## What do the papers and later work say about this advice?
 
@@ -1303,11 +1225,11 @@ And GRPO? When outcome-level supervision is enough: we only need to know whether
 <p class="footnote">Our reading. DeepSeek-AI 2025, arXiv:2501.12948, supplement; Shao et al. 2024 §1, §6; Yu et al. 2025, DAPO, arXiv:2503.14476. Week 4, GRPO critiques</p>
 
 Note:
-Optional: the video's guide against the evidence in Week 4. Token-level credit: with one reward at the end, PPO's GAE at lambda 0.95 barely reaches the early tokens, and at lambda 1 its advantage is the final return minus the value, close to GRPO's score-the-whole-answer view; R1's supplement found PPO needed lambda 1 to come near GRPO on MATH. That is one run per setting, by GRPO's authors. Low within-group variance: true that the group baseline is weak there, and a group with identical rewards teaches nothing; DAPO's fix is to drop those groups and sample new ones, not to add a value model. Cost: DeepSeekMath says GRPO uses fewer resources but gives no number, and it samples 64 answers per question. Stability and maturity: fair as a description of practice, not something any of our readings tests.
+Optional: the rules of thumb against the evidence in Week 4. Token-level credit: with one reward at the end, PPO's GAE at lambda 0.95 barely reaches the early tokens, and at lambda 1 its advantage is the final return minus the value, close to GRPO's score-the-whole-answer view; R1's supplement found PPO needed lambda 1 to come near GRPO on MATH. That is one run per setting, by GRPO's authors. Low within-group variance: true that the group baseline is weak there, and a group with identical rewards teaches nothing; DAPO's fix is to drop those groups and sample new ones, not to add a value model. Cost: DeepSeekMath says GRPO uses fewer resources but gives no number, and it samples 64 answers per question. Stability and maturity: fair as a description of practice, not something any of our readings tests.
 
 ---
 
-<p class="eyebrow"><span class="paper">Mei Li 2026, video</span> · video slide 31 · summary</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · summary</p>
 
 ## What to keep from the hour
 
@@ -1335,8 +1257,8 @@ Optional: the video's guide against the evidence in Week 4. Token-level credit: 
 </div>
 </div>
 
-<p class="footnote">Video 1:06:57 to the end; the four papers are the video's references, read in depth in the Week 4 deck</p>
+<p class="footnote">Three of the four are read in depth in the Week 4 deck</p>
 
 Note:
-That covers the video: from the motivation for RLHF through supervised fine-tuning, reward modelling, PPO and GRPO. The video is a high-level walk-through, and recommends reading the original papers for the design choices and details. Those four papers are the references here, and three of them are Week 4's readings in depth.
+That is the whole pipeline: the motivation for RLHF, supervised fine-tuning, reward modelling, PPO and GRPO. This is a high-level walk-through; the original papers have the design choices and details. Those four papers are the references here, and three of them are Week 4's readings in depth.
 Four things to keep. SFT teaches imitation; a reward model trained on rankings gives a score to optimise. One backbone, three heads: the policy predicts tokens, the reward model gives one number for the answer, the value model one number per token. PPO turns the final score into per-token rewards with a KL penalty, estimates advantages with GAE and a value model, and clips the ratio so reused rollouts don't push too far. GRPO replaces the value model with a group of answers to the same prompt, and moves the KL into the loss.

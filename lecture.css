@@ -316,6 +316,3 @@
 .reveal .frame dl.where dd { margin: 0; }
 /* The equation read out in plain words, right under its legend. */
 .reveal .frame p.plain { font-size: 22px; margin: 0 0 12px 0; text-align: left; }
-
-/* companion decks: a six-part track (Week 4 RLHF companion) */
-.reveal .cover.divider .track.six { grid-template-columns: repeat(6, 1fr); gap: 14px; }
