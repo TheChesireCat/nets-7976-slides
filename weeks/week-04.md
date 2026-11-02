@@ -2231,11 +2231,12 @@ Two notation warnings. The paper uses r t for both the reward and the probabilit
 
 - A reward $k$ steps ahead counts $\gamma^k$ of one received now.
 - The objective becomes $J(\theta) = \mathbb{E}[G_0]$, the average scaled sum from the start.
-- The paper uses $\gamma = 0.99$ in every experiment.
 - Discounting cuts noise from far-off rewards, at the cost of some bias.
 
 </div>
 <div class="text">
+
+- The paper uses $\gamma = 0.99$ in every experiment.
 
 <p class="q"><b>Q.</b> With $\gamma = 0.99$, what is a reward 100 steps away worth?</p>
 <p class="a"><b>A.</b> $0.99^{100} = 0.366$ of one received now</p>
