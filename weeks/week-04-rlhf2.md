@@ -54,9 +54,9 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
   <tr><td>$\pi_\theta$, $\theta$</td><td>the policy (the language model), and its weights</td></tr>
   <tr><td>$\pi_{\theta_{\rm old}}$</td><td>the frozen copy that sampled the batch</td></tr>
   <tr><td>$\pi_{\rm ref}$</td><td>the reference: the frozen SFT model</td></tr>
-  <tr><td>$r_\phi(q, o)$, $R$</td><td>the reward model's score; an answer's total reward</td></tr>
+  <tr><td>$r_\phi(q, o)$, $R$</td><td>the reward model's score; an answer's total reward, $R_1$</td></tr>
   <tr><td>$r_t$</td><td>the step reward of token $t$</td></tr>
-  <tr><td>$G_t$</td><td>the return (reward-to-go) from step $t$</td></tr>
+  <tr><td>$R_t$</td><td>the return (reward-to-go) from step $t$</td></tr>
   <tr><td>$\gamma$</td><td>the discount factor</td></tr>
   <tr><td>$K$</td><td>answers per prompt: ranked (Part 2), or a GRPO group</td></tr>
 </table>
@@ -375,11 +375,11 @@ InstructGPT does the same and gives a second reason. The pairs within one rankin
 <div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$G_t = \sum_{k=t}^{T}\gamma^{k-t}r_k$$</div>
+<div class="eq">$$R_t = \sum_{k=t}^{T}\gamma^{k-t}r_k$$</div>
 
 <dl class="where">
 <dt>$r_t$, $T$</dt><dd>the <b>step reward</b> for token $t$; the last token</dd>
-<dt>$G_t$, $R$</dt><dd>the <b>return</b> from step $t$, all the reward still to come; the <b>total reward</b> $R = G_1$</dd>
+<dt>$R_t$, $R$</dt><dd>the <b>return</b> from step $t$, all the reward still to come; the <b>total reward</b> $R = R_1$</dd>
 <dt>$\gamma$</dt><dd>the <b>discount factor</b>, between 0 and 1; here 1</dd>
 </dl>
 
@@ -395,7 +395,7 @@ InstructGPT does the same and gives a second reason. The pairs within one rankin
 
 Note:
 Everything in this part and the next is built from the reward, so start there. In RLHF the reward has an unusual shape. The reward model gives one score for the whole answer, not one per token. So the step reward r t is zero for every token except the last, where it is the score.
-The return G t is everything still to come from step t: the sum of the later step rewards, each discounted by gamma to the power of how far ahead it is. In RLHF gamma is 1: InstructGPT says no discount is applied, and the summarisation paper that InstructGPT builds on, Stiennon et al., uses gamma 1 too. With one final score and no discount, every token's return is just that score.
+The return R t is everything still to come from step t: the sum of the later step rewards, each discounted by gamma to the power of how far ahead it is. In RLHF gamma is 1: InstructGPT says no discount is applied, and the summarisation paper that InstructGPT builds on, Stiennon et al., uses gamma 1 too. With one final score and no discount, every token's return is just that score.
 Our running example for the next three parts: the prompt "Explain gravity simply.", and two answers. "Gravity pulls objects together" gets a score of 2. "Gravity pulls objects apart" gets minus 1. Same first three words; only the last one differs. Keep the bad answer in mind: the first three words were fine, and only "apart" was wrong.
 
 ---
@@ -547,29 +547,57 @@ One fact we will use three times: the gradient of the log probability has mean z
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · a maze</p>
 
 ## Why is REINFORCE so noisy?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- Two actions at 0.5 each, a softmax with logit $z$: $\partial_z\log\pi = \pm 0.5$.
-- Rewards (left, right) = (1, 0): one sample gives 0.5 or 0. With (11, 10): 5.5 or −5.0.
-- Both average 0.25, the true gradient; the spread grows with the rewards' size. (The figure's third row is Part 4.)
+- A robot walks a maze to the exit; every move costs 1, so a walk's total reward $R$ is minus its length.
+- Two walks from one policy: A takes 12 moves ($R$ = −12), B takes 18 ($R$ = −18).
+- REINFORCE weights every move by its walk's $R$, so it pushes down every move of both walks, the shorter one too.
+- Only the gap, 6, says which walk was better; the shared part, about −15, is noise.
 
-<p class="plain">With rewards (11, 10), one "right" sample pushes toward right by −5.0: the wrong way.</p>
+<p class="plain">Averaged over many walks the pushes come out right; one walk at a time, they mostly say "every move was bad".</p>
 
 </div>
-<div class="fig"><img src="img/week-04-ppo-noise.svg" alt="Illustration: single-sample gradient estimates; rewards 1 and 0 give 0.5 or 0; rewards 11 and 10 give 5.5 or minus 5.0; with baseline 10.5 both samples give 0.25; the true gradient is 0.25 in every case"></div>
+<div class="fig"><img src="img/week-04-rlhf2-maze.svg" alt="Illustration: a 6 by 6 maze with walls, start S at bottom left and exit E at top right. Walk A, solid, takes 12 moves, R = minus 12. Walk B, dashed, takes 18 moves, R = minus 18. Each move has reward minus 1"></div>
 </div>
 
-<p class="footnote">Ours, from Week 4's PPO section: the standard deviation grows from 0.25 to 5.25, 21 times. $R$: an action's reward; $\partial_z$: the derivative with respect to $z$. The third row is Part 4's fix</p>
+<p class="footnote">Example ours. A move: one step up, down, left or right; the policy picks one in each cell, and REINFORCE adds up $R \times \nabla_\theta\log\pi_\theta$ over a walk's moves</p>
 
 Note:
-REINFORCE is unbiased: on average it gives the true gradient. Its problem is how much a single sample can miss by. The smallest example: two actions, left and right, a softmax with a logit z on left and 0 on right, starting at z = 0 so each has probability one half. The derivative of log pi with respect to z is one minus pi of left, 0.5, for left, and minus pi of left, minus 0.5, for right. The true gradient of the expected reward is 0.25 times the difference in rewards.
-With rewards 1 for left and 0 for right, one sample gives 1 times 0.5 or 0 times minus 0.5: 0.5 or 0. The mean is 0.25, correct, with standard deviation 0.25. Now add 10 to both rewards, 11 and 10. Nothing about which action is better has changed, and the true gradient is still 0.25. But one sample now gives 5.5 or minus 5.0. The mean is still 0.25; the standard deviation is 5.25, 21 times larger. A single "right" sample pushes toward right, the wrong way; only the average over many samples comes out right.
-So the variance depends on the absolute size of the rewards, not just their differences. Ignore the third row of the figure for now: it is the fix in Part 4.
+REINFORCE is unbiased: averaged over many samples it gives the true gradient. Its problem is how far a single sample can be from that average. A classic RL task shows it. A robot walks through a maze from S to the exit E. Every move costs 1, so the total reward of a walk is minus its number of moves: the shorter the walk, the better.
+The policy samples two walks. Walk A reaches the exit in 12 moves, so R is minus 12. Walk B wanders and takes 18, R minus 18. Walk A is clearly the better one. But REINFORCE weights every move of a walk by that walk's total reward, and both totals are negative. So it pushes down every move of B, and also every move of A, just a bit less hard. The only information about which walk was better is the gap between them, 6; the part they share, about minus 15, is the same for both and says nothing about which moves were good. Yet it is most of the signal REINFORCE sends.
+Averaged over many walks this comes out right: moves on short walks get pushed down less than moves on long walks, and the difference is the true gradient. But one walk at a time, the message is mostly "every move was bad", and a single walk of 18 random moves adds up 18 noisy terms. Part 4's baseline removes the shared part.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · a text task</p>
+
+## Does a reward model cause the same noise?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- Prompt "What is 17 × 19?"; the policy writes "323" (right) or "324", each with probability 0.5.
+- Bradley-Terry fixes only score gaps, so a reward model may score them 11 and 10, not 1 and 0.
+- One sample then pushes the logit of "323" by +5.5 or −5.0, while the true gradient is 0.25.
+- A single "324" sample pushes toward the wrong answer, 20 times harder than the signal.
+
+<p class="plain">With scores 1 and 0 the pushes are 0.5 or 0: the spread falls from 5.25 to 0.25 (standard deviation).</p>
+
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-text.svg" alt="Illustration: What is 17 times 19, both answers at probability 0.5. Sample 323 with R = 11 pushes the logit of 323 by plus 5.5; sample 324 with R = 10 pushes it by minus 5.0; the true gradient, 0.25, is a dotted line near zero"></div>
+</div>
+
+<p class="footnote">Ours. A logit $z$ on "323" and 0 on "324", at $z$ = 0: $\partial_z\log\pi$ is +0.5 for "323" and −0.5 for "324", so one sample pushes $z$ by $R \times (\pm 0.5)$</p>
+
+Note:
+Now a language-model version, with the reward model from Part 2. The prompt is "What is 17 times 19?". The policy, at this point, writes "323", the right answer, or "324" with equal probability. Picture the choice as one logit, z, on "323", with "324" at 0; at z equal to 0 both are at one half. The derivative of log pi with respect to z is plus 0.5 for "323" and minus 0.5 for "324".
+Which scores does the reward model give? Remember its loss: the sigmoid of the score gap, chosen minus rejected. Only gaps matter, so adding 10 to every score leaves the loss unchanged, and a trained reward model may well score these 11 and 10 rather than 1 and 0. The true gradient only depends on the gap: 0.25 times 1, which is 0.25.
+One sample, though: if we sample "323", REINFORCE pushes z by 11 times 0.5, plus 5.5. If we sample "324", by 10 times minus 0.5, minus 5.0: a push toward the wrong answer, 20 times bigger than the true signal. The average is right, 0.25; the standard deviation is 5.25. With scores 1 and 0 the same two samples push by 0.5 or 0, standard deviation 0.25. Same task, same preferences, 21 times the noise, only because of where the scores happen to sit.
 
 ---
 
@@ -604,13 +632,13 @@ What weight would "Gravity" deserve? About zero. It appears in both answers, so 
 
 ## Why count only the rewards after step $t$?
 
-<div class="eq">$$\nabla_\theta J = \mathbb E\Big[\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\thinspace G_t\Big]$$</div>
+<div class="eq">$$\nabla_\theta J = \mathbb E\Big[\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\thinspace R_t\Big]$$</div>
 
 <div class="cols">
 <div class="text">
 
 <dl class="where">
-<dt>$G_t$</dt><dd>the <b>reward-to-go</b>: the return from step $t$ on, in place of the whole $R(\tau)$</dd>
+<dt>$R_t$</dt><dd>the <b>reward-to-go</b>: the return from step $t$ on, in place of the whole $R(\tau)$</dd>
 <dt>$\nabla_\theta\log\pi_\theta(o_t \mid s_t)$</dt><dd>how to make token $o_t$ more likely</dd>
 </dl>
 
@@ -622,7 +650,7 @@ What weight would "Gravity" deserve? About zero. It appears in both answers, so 
 - Given $s_t$, an earlier reward is fixed, and $\nabla_\theta\log\pi_\theta(o_t \mid s_t)$ has mean 0, so their product averages to 0.
 - Dropping them lowers the variance and keeps the average.
 
-<p class="plain">It does not help "...apart": with one reward at the end every $G_t$ is −1. It matters once rewards arrive on every token (Part 6).</p>
+<p class="plain">It does not help "...apart": with one reward at the end every $R_t$ is −1. It matters once rewards arrive on every token (Part 6).</p>
 
 </div>
 </div>
@@ -630,7 +658,7 @@ What weight would "Gravity" deserve? About zero. It appears in both answers, so 
 <p class="footnote">GAE paper (Schulman et al. 2015, arXiv:1506.02438) §2 lists the weights we pass through: total reward, reward-to-go, minus a baseline, $Q$, the advantage, the TD residual</p>
 
 Note:
-The first fix is free. A token cannot affect rewards that were given before it was chosen. Formally: take the gradient term at step t and multiply it by a reward from an earlier step. Condition on the state at step t. That earlier reward is then fixed, and the gradient of log pi has mean zero given the state, by the fact from REINFORCE. So those cross terms are zero on average. Drop them, and each token is weighted only by the rewards from its own step on: the reward-to-go, which is just the return G t from Part 3.
+The first fix is free. A token cannot affect rewards that were given before it was chosen. Formally: take the gradient term at step t and multiply it by a reward from an earlier step. Condition on the state at step t. That earlier reward is then fixed, and the gradient of log pi has mean zero given the state, by the fact from REINFORCE. So those cross terms are zero on average. Drop them, and each token is weighted only by the rewards from its own step on: the reward-to-go, which is just the return R t from Part 3.
 The average is unchanged and the variance goes down, because we removed terms that were pure noise.
 Does it help our bad answer? Not at all: the only reward is at the end, so every token's reward-to-go is minus 1. It starts to matter in Part 6, when the KL penalty puts a small reward on every token. The footnote's list is the GAE paper's: the six choices of weight that this part walks through, in order.
 
@@ -649,21 +677,20 @@ Does it help our bad answer? Not at all: the only reward is at the end, so every
 <dt>$b(s)$</dt><dd>a <b>baseline</b>: any number that depends on the state, not the action</dd>
 </dl>
 
-- The mean of $\nabla_\theta\log\pi_\theta$ is 0 (REINFORCE slide), so weighting by $G_t - b(s_t)$ keeps the average.
-- With $b$ = 10.5, the two-action example gives 0.25 from either sample: no noise left.
-- The natural baseline is the expected return from the state: the **value**, defined next.
-
-<p class="plain">The noise is zero here, not just smaller, because the rewards are fixed, the actions equally likely, and the baseline at their midpoint (ours).</p>
+- The mean of $\nabla_\theta\log\pi_\theta$ is 0 (REINFORCE slide), so weighting by $R_t - b(s_t)$ keeps the average.
+- On 17 × 19, $b$ = 10.5 turns either sample's push into +0.25: no noise left.
+- In the maze, $b$ = −15 gives walk A +3 and walk B −3: the shorter walk is now pushed up.
+<p class="plain">The natural baseline is the expected return from the state: the <b>value</b>, defined next.</p>
 
 </div>
-<div class="fig"><img src="img/week-04-ppo-noise.svg" alt="Illustration: single-sample gradient estimates; rewards 1 and 0 give 0.5 or 0; rewards 11 and 10 give 5.5 or minus 5.0; with baseline 10.5 both samples give 0.25; the true gradient is 0.25 in every case"></div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-text-base.svg" alt="Illustration: the 17 times 19 samples. Raw scores push the logit of 323 by plus 5.5 or minus 5.0; after subtracting 10.5, both samples push by plus 0.25, the true gradient"></div>
 </div>
 
-<p class="footnote">Ours: $(11 - 10.5) \times 0.5 = 0.25$ and $(10 - 10.5) \times (-0.5) = 0.25$. In general a baseline lowers the variance; it does not remove it</p>
+<p class="footnote">Ours: $(11 - 10.5) \times 0.5 = 0.25$ and $(10 - 10.5) \times (-0.5) = 0.25$; maze: $-12 + 15 = 3$, $-18 + 15 = -3$. Zero noise is special to two fixed scores at 0.5 each; in general a baseline lowers it</p>
 
 Note:
 The second fix. Part 3's fact says the gradient of log pi has mean zero under the policy. So multiplying it by anything that does not depend on the action, a baseline b of s, still gives zero on average. That means we can subtract a baseline from the return without changing the average gradient.
-Why would we want to? Because of the noise problem. In the two-action example with rewards 11 and 10, subtract 10.5. Left gives 0.5 times 0.5, 0.25; right gives minus 0.5 times minus 0.5, also 0.25. Both samples now give exactly the true gradient: the noise is gone. That is the third row of the figure. It goes all the way to zero here only because the rewards are fixed, both actions are equally likely, and the baseline sits at their midpoint; in general a baseline lowers the variance without removing it.
+Why would we want to? Because it removes the shared part both noise examples suffered from. On 17 times 19, subtract 10.5 from the scores. A "323" sample now pushes by 0.5 times 0.5, plus 0.25; a "324" sample by minus 0.5 times minus 0.5, also plus 0.25. Both give exactly the true gradient: the noise is gone. It goes all the way to zero only because there are two fixed scores at probability one half each, with the baseline at their midpoint; in general a baseline lowers the variance without removing it. In the maze, subtract minus 15, the average walk: walk A's moves are now weighted by plus 3 and walk B's by minus 3. The shorter walk is pushed up and the longer one down, which is what we wanted all along.
 Which baseline? The natural one is what we expected to get from this state: the value. Next, what the value is, and its partner Q.
 
 ---
@@ -751,7 +778,7 @@ Why does this matter? Because it means we never need a separate network for Q. O
 <dt>$A^\pi(s, o)$</dt><dd>the <b>advantage</b>: how much better $o$ is than the policy's average in $s$</dd>
 </dl>
 
-- Take the baseline $b = V$, and replace $G_t$ by its average given $s_t$ and $o_t$, which is $Q$.
+- Take the baseline $b = V$, and replace $R_t$ by its average given $s_t$ and $o_t$, which is $Q$.
 - The second is allowed because $\nabla_\theta\log\pi_\theta(o_t \mid s_t)$ depends only on $s_t$ and $o_t$.
 
 </div>
@@ -767,7 +794,7 @@ Why does this matter? Because it means we never need a separate network for Q. O
 <p class="footnote">Check: $0.9 \times 0.3 + 0.1 \times (-2.7) = 0$. Positive advantage: make the action more likely; negative: less likely</p>
 
 Note:
-Now combine the two fixes. Subtract the baseline V of s t. And replace the reward-to-go G t by its average given the state and action, which by definition is Q. Why is that replacement allowed? The gradient term depends only on s t and o t; so inside the expectation we can first average G t over everything that happens after, given s t and o t, and that average is Q. The policy gradient then becomes the expectation of the gradient of log pi times the advantage, Q minus V.
+Now combine the two fixes. Subtract the baseline V of s t. And replace the reward-to-go R t by its average given the state and action, which by definition is Q. Why is that replacement allowed? The gradient term depends only on s t and o t; so inside the expectation we can first average R t over everything that happens after, given s t and o t, and that average is Q. The policy gradient then becomes the expectation of the gradient of log pi times the advantage, Q minus V.
 The advantage asks: how much better was this action than what the policy does on average in this state? At s4, "together" has advantage 2 minus 1.7, plus 0.3; "apart" has minus 1 minus 1.7, minus 2.7. Weighted by the policy, they average to zero: 0.9 times 0.3 plus 0.1 times minus 2.7. That is always true: advantages average to zero under the policy.
 The sizes make sense. "Together" was already the expected choice, 90% likely, so it beats the average only slightly. "Apart" is a rare, bad surprise, so it gets a big negative weight. And for the first three words, whose choice was certain, Q equals V and the advantage is zero: exactly the weight we said "Gravity" deserved.
 
@@ -862,7 +889,7 @@ On the bad answer, with the exact values, 1.7 before each of the first three wor
 <table class="rules">
   <tr><td>$k$</td><td>estimate</td><td>bias</td><td>variance</td></tr>
   <tr><td>1</td><td>$\delta_t$</td><td>from $V$'s errors</td><td>low</td></tr>
-  <tr><td>$\infty$</td><td>$G_t - V(s_t)$</td><td>none</td><td>high</td></tr>
+  <tr><td>$\infty$</td><td>$R_t - V(s_t)$</td><td>none</td><td>high</td></tr>
 </table>
 
 </div>
@@ -900,7 +927,7 @@ So we have a family of estimates, from low-variance-biased to unbiased-noisy. GA
 </dl>
 
 - $\lambda$ = 0 gives $\delta_t$: the blame falls on "apart" alone.
-- $\lambda$ = 1 gives $G_t - V(s_t)$: −2.7 on every token.
+- $\lambda$ = 1 gives $R_t - V(s_t)$: −2.7 on every token.
 
 <p class="plain">At $\lambda$ = 1, "Gravity" gets +0.3 in "together" (table below) and −2.7 in "apart": on average 0.9 × 0.3 + 0.1 × (−2.7) = 0, right but noisy.</p>
 
@@ -973,11 +1000,11 @@ The last line shows the bias. Suppose the value model is imperfect and predicts 
 <div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat G_t\big)^2$$</div>
+<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat R_t\big)^2$$</div>
 
 <dl class="where">
 <dt>$V_\psi$</dt><dd>the value model; $\psi$ its weights</dd>
-<dt>$\hat G_t$</dt><dd>the target return: $G_t$, or the GAE target $\hat A_t + V(s_t)$</dd>
+<dt>$\hat R_t$</dt><dd>the target return: $R_t$, or the GAE target $\hat A_t + V(s_t)$</dd>
 </dl>
 
 - The same backbone with a **value head**: one number per answer position.
@@ -992,7 +1019,7 @@ The last line shows the bias. Suppose the value model is imperfect and predicts 
 
 Note:
 Where does V come from? A value model: architecturally the same transformer backbone, with a value head that outputs one scalar at every answer position. Keep this picture: it is the third of the three heads, next to the policy's language-model head and the reward model's head.
-Train it by regression: the mean squared error between its prediction at each position and a target return. The target can be the sampled return G t; common PPO implementations use the advantage plus the old value, which is the GAE version of a return.
+Train it by regression: the mean squared error between its prediction at each position and a target return. The target can be the sampled return R t; common PPO implementations use the advantage plus the old value, which is the GAE version of a return.
 A subtle point. Even the exact value, 1.7, has a loss on any single answer: on "together", whose return is 2, it misses by 0.3, a squared error of 0.09 per token. On "apart" it misses by 2.7. Averaged over the answers the policy actually writes, 90% "together" and 10% "apart", the loss is 0.81 per token, and no other prediction does better, because a squared error is minimised by the mean. The value model learns the expected return, which is exactly what V is.
 
 ---
@@ -1544,14 +1571,14 @@ One thing the worked line shows: a single k1 term can be negative, a small bonus
 ## What do the KL terms do to "Gravity pulls objects together"?
 
 <table class="rules">
-  <tr><td>$t$</td><td>token $o_t$</td><td class="num">$\mathrm{KL}_t$</td><td class="num">step reward $r_t$</td><td class="num">reward-to-go $G_t$</td><td class="num">$\hat A_t$, $\lambda$ = 0.95</td><td class="num">$\hat A_t$, $\lambda$ = 1</td></tr>
+  <tr><td>$t$</td><td>token $o_t$</td><td class="num">$\mathrm{KL}_t$</td><td class="num">step reward $r_t$</td><td class="num">reward-to-go $R_t$</td><td class="num">$\hat A_t$, $\lambda$ = 0.95</td><td class="num">$\hat A_t$, $\lambda$ = 1</td></tr>
   <tr><td>1</td><td>Gravity</td><td class="num">0.03</td><td class="num">−0.03</td><td class="num">−0.03 + 1.93 = 1.90</td><td class="num">0.164</td><td class="num">0.20</td></tr>
   <tr><td>2</td><td>pulls</td><td class="num">0.02</td><td class="num">−0.02</td><td class="num">−0.02 + 1.95 = 1.93</td><td class="num">0.204</td><td class="num">0.23</td></tr>
   <tr><td>3</td><td>objects</td><td class="num">0.04</td><td class="num">−0.04</td><td class="num">−0.04 + 1.99 = 1.95</td><td class="num">0.236</td><td class="num">0.25</td></tr>
   <tr><td>4</td><td>together</td><td class="num">0.01</td><td class="num">2 − 0.01 = 1.99</td><td class="num">1.99</td><td class="num">0.290</td><td class="num">0.29</td></tr>
 </table>
 
-<p class="plain">Score $r_\phi(q, o) = 2$; $\beta = 1$, $\gamma = 1$; values kept at $V = 1.7$, so $\hat A_t = G_t - 1.7$ at $\lambda$ = 1.</p>
+<p class="plain">Score $r_\phi(q, o) = 2$; $\beta = 1$, $\gamma = 1$; values kept at $V = 1.7$, so $\hat A_t = R_t - 1.7$ at $\lambda$ = 1.</p>
 
 <p class="plain">"Gravity" now gets less than "objects" at $\lambda$ = 1: its reward-to-go carries all four KL penalties, "objects" only the last two (ours).</p>
 
@@ -1600,17 +1627,17 @@ With those two inputs, GAE produces the advantage in two steps. First the TD res
   <tr><td>3</td><td>for every token, in parallel: value and KL</td><td>$v_t = V_\psi(s_t)$; $\mathrm{KL}_t \approx \log\pi_{\theta_{\rm old}}(o_t \mid q, o_{\lt t}) - \log\pi_{\rm ref}(o_t \mid q, o_{\lt t})$</td></tr>
   <tr><td>4</td><td>step rewards</td><td>$r_t = -\beta\thinspace \mathrm{KL}_t$, plus $r_\phi(q, o)$ at $t = T$</td></tr>
   <tr><td>5</td><td>TD residuals</td><td>$\delta_t = r_t + \gamma v_{t+1} - v_t$, with $v_{T+1} = 0$</td></tr>
-  <tr><td>6</td><td>GAE backwards, and value targets</td><td>$\hat A_t = \delta_t + \gamma\lambda\hat A_{t+1}$, $\hat A_{T+1} = 0$; $\hat G_t = \hat A_t + v_t$</td></tr>
+  <tr><td>6</td><td>GAE backwards, and value targets</td><td>$\hat A_t = \delta_t + \gamma\lambda\hat A_{t+1}$, $\hat A_{T+1} = 0$; $\hat R_t = \hat A_t + v_t$</td></tr>
 </table>
 
 <p class="plain">Step 3 uses $\log\pi_{\theta_{\rm old}}$: at rollout time it is the same model as $\pi_\theta$, and sampling already computed it.</p>
 
-<p class="footnote">$\hat G_t$: the value model's return target (advantage plus value). $r_\phi$, $V_\psi$, $\pi_{\rm ref}$: reward, value and reference models; $\beta$, $\gamma$, $\lambda$ as before</p>
+<p class="footnote">$\hat R_t$: the value model's return target (advantage plus value). $r_\phi$, $V_\psi$, $\pi_{\rm ref}$: reward, value and reference models; $\beta$, $\gamma$, $\lambda$ as before</p>
 
 Note:
 To finish PPO, one step of the training loop. First, copy the current policy and freeze it as the old policy; for each prompt, sample an answer from it, a sequence of tokens o1 to oT. Next, compute the reward model's score for the complete answer: one scalar for the whole response. Then for all response tokens compute several token-level quantities in parallel. The value model predicts v t for each state, the prompt plus the tokens before position t. And the per-token KL estimate: conceptually it compares pi theta with the reference; we use log pi theta old because at rollout time the old policy is a frozen copy of pi theta and we already have its log probabilities.
 From the score and the KL estimates form the step rewards: for tokens before the last, just the negative KL penalty; for the last, add the reward model's score. With step rewards and values, compute the TD residual: r t plus gamma times the next value minus the current value. At the final token the next value is zero, because the answer ends there.
-Then the advantages, backwards from the final token with the recursive GAE formula, starting from A T plus 1 equal to zero. We also compute the return target for the value model: since an advantage is a return minus a value, adding the value back gives an estimated return, G hat t = A hat t + v t.
+Then the advantages, backwards from the final token with the recursive GAE formula, starting from A T plus 1 equal to zero. We also compute the return target for the value model: since an advantage is a return minus a value, adding the value back gives an estimated return, R hat t = A hat t + v t.
 
 ---
 
@@ -1622,7 +1649,7 @@ Then the advantages, backwards from the final token with the recursive GAE formu
   <tr><td>step</td><td>what</td><td>formula</td></tr>
   <tr><td>7</td><td>recompute the current policy's log-probabilities on the same rollout</td><td>$\log\pi_\theta(o_t \mid q, o_{\lt t})$</td></tr>
   <tr><td>8</td><td>importance ratios</td><td>$\rho_t(\theta) = \exp\big(\log\pi_\theta(o_t \mid q, o_{\lt t}) - \log\pi_{\theta_{\rm old}}(o_t \mid q, o_{\lt t})\big)$</td></tr>
-  <tr><td>9</td><td>minimise the combined loss</td><td>$L = -J_{\rm PPO} + c_1 L_V$, with $L_V = \frac1T\sum_t\big(V_\psi(s_t) - \hat G_t\big)^2$</td></tr>
+  <tr><td>9</td><td>minimise the combined loss</td><td>$L = -J_{\rm PPO} + c_1 L_V$, with $L_V = \frac1T\sum_t\big(V_\psi(s_t) - \hat R_t\big)^2$</td></tr>
 </table>
 
 <div class="cols">
