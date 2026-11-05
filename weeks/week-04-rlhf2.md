@@ -54,7 +54,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
   <tr><td>$\pi_\theta$, $\theta$</td><td>the policy (the language model), and its weights</td></tr>
   <tr><td>$\pi_{\theta_{\rm old}}$</td><td>the frozen copy that sampled the batch</td></tr>
   <tr><td>$\pi_{\rm ref}$</td><td>the reference: the frozen SFT model</td></tr>
-  <tr><td>$r_\phi(q, o)$</td><td>the reward model's score of a whole answer</td></tr>
+  <tr><td>$r_\phi(q, o)$, $R$</td><td>the reward model's score; an answer's total reward</td></tr>
   <tr><td>$r_t$</td><td>the step reward of token $t$</td></tr>
   <tr><td>$G_t$</td><td>the return (reward-to-go) from step $t$</td></tr>
   <tr><td>$\gamma$</td><td>the discount factor</td></tr>
@@ -81,7 +81,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 </div>
 </div>
 
-<p class="footnote">One letter, one meaning. Where a paper differs: PPO writes $r_t(\theta)$ for $\rho_t(\theta)$ and $S$ for $H$; GRPO writes $G$ for $K$</p>
+<p class="footnote">One letter, one meaning. Where a paper differs: PPO writes $r_t(\theta)$ for $\rho_t(\theta)$ and $S$ for $H$; GRPO writes $G$ for $K$ and $r_i$ for $R_i$</p>
 
 Note:
 Optional, a reference card. Every letter in the deck keeps one meaning from start to finish; each is also defined again on the slides that use it. Three places differ from the papers, so the figures taken from them may show the paper's letter: PPO writes r t of theta for the importance ratio, which we call rho to keep r for rewards; PPO writes S for entropy, we use H; and GRPO writes G for its group size, which we call K, since G is the return here.
@@ -379,7 +379,7 @@ InstructGPT does the same and gives a second reason. The pairs within one rankin
 
 <dl class="where">
 <dt>$r_t$, $T$</dt><dd>the <b>step reward</b> for token $t$; the last token</dd>
-<dt>$G_t$</dt><dd>the <b>return</b> from step $t$: all the reward still to come</dd>
+<dt>$G_t$, $R$</dt><dd>the <b>return</b> from step $t$, all the reward still to come; the <b>total reward</b> $R = G_1$</dd>
 <dt>$\gamma$</dt><dd>the <b>discount factor</b>, between 0 and 1; here 1</dd>
 </dl>
 
@@ -404,14 +404,14 @@ Our running example for the next three parts: the prompt "Explain gravity simply
 
 ## What exactly does RL maximise?
 
-<div class="eq">$$J(\theta) = \mathbb E_{\tau\sim\pi_\theta}\big[G(\tau)\big],\qquad p_\theta(\tau) = p(s_0)\prod_{t=0}^{T}\pi_\theta(o_t \mid s_t)\thinspace P(s_{t+1} \mid s_t, o_t)$$</div>
+<div class="eq">$$J(\theta) = \mathbb E_{\tau\sim\pi_\theta}\big[R(\tau)\big],\qquad p_\theta(\tau) = p(s_0)\prod_{t=0}^{T}\pi_\theta(o_t \mid s_t)\thinspace P(s_{t+1} \mid s_t, o_t)$$</div>
 
 <div class="cols">
 <div class="text">
 
 <dl class="where">
 <dt>$\tau$</dt><dd>a <b>trajectory</b>, $(s_0, o_1, s_1, o_2, \dots)$: for us, a prompt and its answer</dd>
-<dt>$G(\tau)$</dt><dd>the trajectory's return, its total reward</dd>
+<dt>$R(\tau)$</dt><dd>the trajectory's <b>total reward</b>, $\sum_t r_t$</dd>
 <dt>$J(\theta)$</dt><dd>the <b>objective</b>: the return averaged over trajectories</dd>
 <dt>$p(s_0)$, $P$</dt><dd>the start-state distribution (the prompts) and the environment's transition probability</dd>
 <dt>$\pi_\theta(o_t \mid s_t)$</dt><dd>the policy's probability of $o_t$ in $s_t$; $\theta$ its weights</dd>
@@ -440,7 +440,7 @@ The goal is the expected return: J of theta, the average total reward over traje
 
 ## How do you take the gradient of an average over samples?
 
-<div class="eq">$$\nabla_\theta J(\theta) = \sum_\tau G(\tau)\thinspace\nabla_\theta p_\theta(\tau) = \sum_\tau p_\theta(\tau)\thinspace G(\tau)\thinspace\nabla_\theta\log p_\theta(\tau) = \mathbb E_{\tau\sim\pi_\theta}\big[G(\tau)\thinspace\nabla_\theta\log p_\theta(\tau)\big]$$</div>
+<div class="eq">$$\nabla_\theta J(\theta) = \sum_\tau R(\tau)\thinspace\nabla_\theta p_\theta(\tau) = \sum_\tau p_\theta(\tau)\thinspace R(\tau)\thinspace\nabla_\theta\log p_\theta(\tau) = \mathbb E_{\tau\sim\pi_\theta}\big[R(\tau)\thinspace\nabla_\theta\log p_\theta(\tau)\big]$$</div>
 
 <div class="cols">
 <div class="text">
@@ -448,7 +448,7 @@ The goal is the expected return: J of theta, the average total reward over traje
 <dl class="where">
 <dt>$\nabla_\theta$</dt><dd>the gradient with respect to the policy's weights $\theta$</dd>
 <dt>$p_\theta(\tau)$</dt><dd>the probability the policy gives trajectory $\tau$</dd>
-<dt>$G(\tau)$</dt><dd>its return</dd>
+<dt>$R(\tau)$</dt><dd>its total reward</dd>
 </dl>
 
 - The **log-derivative trick**: $\nabla_\theta p_\theta = p_\theta\thinspace\nabla_\theta\log p_\theta$.
@@ -500,7 +500,7 @@ Notice what we never needed: the gradient of G. The reward can be any black box:
 </div>
 </div>
 
-<p class="footnote">So $\nabla_\theta J = \mathbb E\big[G(\tau)\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\big]$: the policy gradient. In a robot task $P$ is unknown physics, and it still drops out</p>
+<p class="footnote">So $\nabla_\theta J = \mathbb E\big[R(\tau)\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\big]$: the policy gradient. In a robot task $P$ is unknown physics, and it still drops out</p>
 
 Note:
 Now expand the trajectory's probability. It is the start-state probability, times every policy probability, times every transition probability. Take the log and the products become sums. Only the policy terms depend on theta: the start distribution and the transitions don't, so their gradients vanish. What is left is the sum over time of the gradient of log pi theta of o t given s t.
@@ -513,7 +513,7 @@ And look at what the sum is for a language model: the sum over the answer's toke
 
 ## What is REINFORCE?
 
-<div class="eq">$$\hat g = \frac1N\sum_{i=1}^{N}G(\tau_i)\sum_t\nabla_\theta\log\pi_\theta(o_{i,t} \mid s_{i,t})$$</div>
+<div class="eq">$$\hat g = \frac1N\sum_{i=1}^{N}R(\tau_i)\sum_t\nabla_\theta\log\pi_\theta(o_{i,t} \mid s_{i,t})$$</div>
 
 <div class="cols">
 <div class="text">
@@ -538,7 +538,7 @@ And look at what the sum is for a language model: the sum over the answer's toke
 </div>
 </div>
 
-<p class="footnote">Williams 1992, "Simple statistical gradient-following algorithms for connectionist reinforcement learning", Machine Learning 8. As a loss to minimise: $-\frac1N\sum_i G(\tau_i)\sum_t\log\pi_\theta(o_{i,t} \mid s_{i,t})$</p>
+<p class="footnote">Williams 1992, "Simple statistical gradient-following algorithms for connectionist reinforcement learning", Machine Learning 8. As a loss to minimise: $-\frac1N\sum_i R(\tau_i)\sum_t\log\pi_\theta(o_{i,t} \mid s_{i,t})$</p>
 
 Note:
 Put the last two slides together and replace the expectation by an average over N sampled answers. That is REINFORCE, from Williams in 1992: for each answer, its return times the gradient of its log-likelihood, averaged. In code you write a loss: minus the return times the log-likelihood. Read it as SFT on the model's own samples, with each answer weighted by its score. A high score makes all of the answer's tokens more likely; a negative score makes them all less likely.
@@ -610,7 +610,7 @@ What weight would "Gravity" deserve? About zero. It appears in both answers, so 
 <div class="text">
 
 <dl class="where">
-<dt>$G_t$</dt><dd>the <b>reward-to-go</b>: the return from step $t$ on, in place of the whole $G(\tau)$</dd>
+<dt>$G_t$</dt><dd>the <b>reward-to-go</b>: the return from step $t$ on, in place of the whole $R(\tau)$</dd>
 <dt>$\nabla_\theta\log\pi_\theta(o_t \mid s_t)$</dt><dd>how to make token $o_t$ more likely</dd>
 </dl>
 
@@ -1684,12 +1684,12 @@ The value model V psi: GRPO removes it entirely. And because there is no value m
 <div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$\hat A_{i,t} = \tilde r_i = \frac{r_i - \mathrm{mean}(r_1, \dots, r_K)}{\mathrm{std}(r_1, \dots, r_K)}$$</div>
+<div class="eq">$$\hat A_{i,t} = \tilde R_i = \frac{R_i - \mathrm{mean}(R_1, \dots, R_K)}{\mathrm{std}(R_1, \dots, R_K)}$$</div>
 
 <dl class="where">
 <dt>$o_1, \dots, o_K$</dt><dd>a <b>group</b> of $K$ answers to one prompt, sampled from $\pi_{\theta_{\rm old}}$</dd>
-<dt>$r_i$</dt><dd>answer $i$'s reward, $r_\phi(q, o_i)$</dd>
-<dt>$\tilde r_i$</dt><dd>its normalised reward, given to every token $t$ of $o_i$</dd>
+<dt>$R_i$</dt><dd>answer $i$'s total reward, $r_\phi(q, o_i)$</dd>
+<dt>$\tilde R_i$</dt><dd>its normalised reward, given to every token $t$ of $o_i$</dd>
 </dl>
 
 - An answer above the group's average gets a positive advantage.
@@ -1700,10 +1700,10 @@ The value model V psi: GRPO removes it entirely. And because there is no value m
 <div class="fig"><img src="img/week-04-grpo-adv.svg" alt="Illustration: two groups of four answers with 0/1 rewards. Hard question, one right: the right answer gets +1.73, each wrong one -0.58. Easy question, three right: each right answer +0.58, the wrong one -1.73"></div>
 </div>
 
-<p class="footnote">$r_i$ is a reward, not the ratio $\rho_{i,t}(\theta)$ of the next slide. Shao et al. 2024 §4.1.2, outcome supervision; the paper samples 64 and writes $G$ for our $K$. std: standard deviation, population form in our numbers. Figure from Week 4 (ours)</p>
+<p class="footnote">Shao et al. 2024 §4.1.2, outcome supervision; the paper samples 64 and writes $G$ for our $K$. std: standard deviation, population form in our numbers. Figure from Week 4 (ours)</p>
 
 Note:
-How does GRPO compute the advantage? For each question q, sample a group of answers from the old policy, o1 up to oK. The reward model scores each, giving K rewards r1 up to rK. Instead of a value model as the baseline, GRPO uses the rewards within the same group: for each answer, subtract the group's mean reward and divide by the group's standard deviation. That normalised reward is the advantage for the answer, and the same advantage is assigned to every token in it.
+How does GRPO compute the advantage? For each question q, sample a group of answers from the old policy, o1 up to oK. The reward model scores each, giving K rewards R1 up to RK. Instead of a value model as the baseline, GRPO uses the rewards within the same group: for each answer, subtract the group's mean reward and divide by the group's standard deviation. That normalised reward is the advantage for the answer, and the same advantage is assigned to every token in it.
 If an answer scores above the group average its advantage is positive, and GRPO encourages answers like it; below average, negative, and GRPO discourages it. That's what "group as baseline" means: an answer is judged relative to other answers to the same prompt, not relative to a learned value estimate.
 Worked numbers from Week 4: one right answer in four gets plus 1.73, each wrong one minus 0.58; on an easy question with three right, each right answer gets only plus 0.58 and the wrong one minus 1.73.
 
@@ -1747,7 +1747,7 @@ Optional, from Week 4. The paper doesn't discuss the case where every answer in 
 
 <dl class="where">
 <dt>$\rho_{i,t}(\theta)$</dt><dd>the importance ratio for token $t$ of answer $i$</dd>
-<dt>$\hat A_{i,t}$</dt><dd>the group advantage $\tilde r_i$</dd>
+<dt>$\hat A_{i,t}$</dt><dd>the group advantage $\tilde R_i$</dd>
 <dt>$\mathrm{KL}_{i,t}$</dt><dd>the per-token KL, by the <b>$k_3$ estimator</b>: $u_{i,t} - \log u_{i,t} - 1$</dd>
 <dt>$u_{i,t}$</dt><dd>$\pi_{\rm ref}(o_{i,t} \mid q, o_{i,\lt t})/\pi_\theta(o_{i,t} \mid q, o_{i,\lt t})$</dd>
 <dt>$K$, $T_i$</dt><dd>the group size, and answer $i$'s length</dd>
@@ -1769,7 +1769,7 @@ Optional, from Week 4. The paper doesn't discuss the case where every answer in 
 <p class="footnote">Shao et al. 2024 §4.1.1, Eq. 3, Eq. 4; $\beta$ = 0.04 and $K$ = 64 from its RL training setup. $k_3$: Schulman 2020's name. The expectation is over $q \sim \mathcal D$ and the group $\{o_i\} \sim \pi_{\theta_{\rm old}}$</p>
 
 Note:
-GRPO's objective is very like PPO's, adapted to groups. Instead of one answer per prompt, sample a group of K answers from the old policy. For each answer and each token, compute the importance ratio r i t: the token's probability under the current policy over its probability under the old policy, given the prompt and the earlier tokens. The advantage A hat i t is the group-relative reward from the last slide. The clipping is the same as PPO's: it stops the current policy moving too far from the old one in one update.
+GRPO's objective is very like PPO's, adapted to groups. Instead of one answer per prompt, sample a group of K answers from the old policy. For each answer and each token, compute the importance ratio R i t: the token's probability under the current policy over its probability under the old policy, given the prompt and the earlier tokens. The advantage A hat i t is the group-relative reward from the last slide. The clipping is the same as PPO's: it stops the current policy moving too far from the old one in one update.
 One difference from the PPO we built: where the KL goes. In PPO the KL penalty was inside the reward signal. In GRPO it is subtracted directly in the objective as a separate regularisation term, and it uses the k3 estimator: u minus log u minus 1, where u is the reference's probability of the token over the current policy's. Compared with the k1 estimate PPO uses, k3 is always non-negative and usually has lower variance.
 So in short: GRPO keeps PPO's clipped objective, removes the value model, replaces the value baseline with a group-relative one, and adds the KL term directly to the objective.
 
@@ -1806,8 +1806,8 @@ The deeper reason is the gradient. As a loss term, k1's expected gradient is zer
 <table class="rules">
   <tr><td>step</td><td>what</td><td>formula</td></tr>
   <tr><td>1</td><td>freeze the policy; sample a group per prompt</td><td>$\pi_{\theta_{\rm old}} \leftarrow \pi_\theta$; $\{o_1, \dots, o_K\} \sim \pi_{\theta_{\rm old}}(\cdot \mid q)$</td></tr>
-  <tr><td>2</td><td>score every answer, with a reward model or a checker</td><td>$r_i = r_\phi(q, o_i)$</td></tr>
-  <tr><td>3</td><td>for every answer and token, in parallel: ratio, advantage, KL</td><td>$\rho_{i,t}(\theta)$; $\hat A_{i,t} = (r_i - \mathrm{mean}(r))/\mathrm{std}(r)$; $u_{i,t} - \log u_{i,t} - 1$</td></tr>
+  <tr><td>2</td><td>score every answer, with a reward model or a checker</td><td>$R_i = r_\phi(q, o_i)$</td></tr>
+  <tr><td>3</td><td>for every answer and token, in parallel: ratio, advantage, KL</td><td>$\rho_{i,t}(\theta)$; $\hat A_{i,t} = (R_i - \mathrm{mean}(R))/\mathrm{std}(R)$; $u_{i,t} - \log u_{i,t} - 1$</td></tr>
   <tr><td>4</td><td>minimise the negative objective</td><td>$L_{\rm GRPO} = -J_{\rm GRPO}$</td></tr>
 </table>
 
@@ -1828,7 +1828,7 @@ The deeper reason is the gradient. As a loss term, k1's expected gradient is zer
 <p class="footnote">Reward source: a reward model or a rule, such as a checker of the final answer or unit tests for code</p>
 
 Note:
-One step of GRPO, as for PPO. First copy the current policy and freeze it as the old policy; for each prompt, sample a group of answers from it, o1 to oK. Next use a reward model, or more generally a reward function, to score each answer: a group of scores r1 to rK, r i being the score for prompt q and answer o i. Then for each answer and each token compute, in parallel: the importance ratio, comparing the token's probability under the current and the old policy; the advantage, the group-normalised reward assigned to every token of the answer; and the per-token KL term between the current policy and the reference, which is multiplied by beta and subtracted from the objective. Since J GRPO is to be maximised, in code we minimise its negative.
+One step of GRPO, as for PPO. First copy the current policy and freeze it as the old policy; for each prompt, sample a group of answers from it, o1 to oK. Next use a reward model, or more generally a reward function, to score each answer: a group of scores R1 to RK, R i being the score for prompt q and answer o i. Then for each answer and each token compute, in parallel: the importance ratio, comparing the token's probability under the current and the old policy; the advantage, the group-normalised reward assigned to every token of the answer; and the per-token KL term between the current policy and the reference, which is multiplied by beta and subtracted from the objective. Since J GRPO is to be maximised, in code we minimise its negative.
 During GRPO training only the policy is updated. The reference model stays frozen, and so does the reward source, whether a reward model or a reward function.
 
 ---
