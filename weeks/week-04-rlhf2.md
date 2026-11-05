@@ -66,7 +66,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 
 <table class="rules nohead" style="font-size:19px">
   <tr><td>$V_\psi$, $v_t$</td><td>the value model, and its prediction $V_\psi(s_t)$</td></tr>
-  <tr><td>$Q$, $A$, $\hat A_t$</td><td>action value, advantage, estimated advantage</td></tr>
+  <tr><td>$Q$, $A$, $\hat A_t$</td><td>action value $\mathbb E[R_t \mid s_t, o_t]$, advantage, estimated advantage</td></tr>
   <tr><td>$\delta_t$</td><td>the TD residual, a one-step advantage estimate</td></tr>
   <tr><td>$\lambda$</td><td>the GAE parameter</td></tr>
   <tr><td>$\rho_t(\theta)$</td><td>the importance ratio $\pi_\theta / \pi_{\theta_{\rm old}}$ of token $t$</td></tr>
@@ -84,7 +84,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 <p class="footnote">One letter, one meaning. Where a paper differs: PPO writes $r_t(\theta)$ for $\rho_t(\theta)$ and $S$ for $H$; GRPO writes $G$ for $K$ and $r_i$ for $R_i$</p>
 
 Note:
-Optional, a reference card. Every letter in the deck keeps one meaning from start to finish; each is also defined again on the slides that use it. Three places differ from the papers, so the figures taken from them may show the paper's letter: PPO writes r t of theta for the importance ratio, which we call rho to keep r for rewards; PPO writes S for entropy, we use H; and GRPO writes G for its group size, which we call K, since G is the return here.
+Optional, a reference card. Every letter in the deck keeps one meaning from start to finish; each is also defined again on the slides that use it. Three places differ from the papers, so the figures taken from them may show the paper's letter: PPO writes r t of theta for the importance ratio, which we call rho to keep r for rewards; PPO writes S for entropy, we use H; and GRPO writes G for its group size, which we call K.
 
 ---
 
@@ -547,57 +547,62 @@ One fact we will use three times: the gradient of the log probability has mean z
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · a maze</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · one good word</p>
 
 ## Why is REINFORCE so noisy?
 
-<div class="cols wide-fig">
+<div class="rows">
+<div class="points">
 <div class="text">
 
-- A robot walks a maze to the exit; every move costs 1, so a walk's total reward $R$ is minus its length.
-- Two walks from one policy: A takes 12 moves ($R$ = −12), B takes 18 ($R$ = −18).
-- REINFORCE weights every move by its walk's $R$, so it pushes down every move of both walks, the shorter one too.
-- Only the gap, 6, says which walk was better; the shared part, about −15, is noise.
-
-<p class="plain">Averaged over many walks the pushes come out right; one walk at a time, they mostly say "every move was bad".</p>
+- Both answers open with the same good word, "Subtract"; one slips at token 8.
+- REINFORCE weights every token by $R(\tau)$, so "Subtract" gets +100 or −100.
 
 </div>
-<div class="fig"><img src="img/week-04-rlhf2-maze.svg" alt="Illustration: a 6 by 6 maze with walls, start S at bottom left and exit E at top right. Walk A, solid, takes 12 moves, R = minus 12. Walk B, dashed, takes 18 moves, R = minus 18. Each move has reward minus 1"></div>
+<div class="text">
+
+- Which answer the batch drew decides the sign; "Subtract" did nothing different.
+
+<p class="plain">On average the pushes come out right; one batch at a time they can point anywhere.</p>
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-subtract.svg" alt="Illustration: prompt Solve 2x + 4 = 10. Answer 1: Subtract 4 from both sides, 2x = 6 so x = 3, R = +100, push on Subtract +100 times its gradient. Answer 2: Subtract 4 from both sides, 2x = 14 so x = 7, R = minus 100, push on Subtract minus 100 times its gradient; 14 for 6 is the slip"></div>
 </div>
 
-<p class="footnote">Example ours. A move: one step up, down, left or right; the policy picks one in each cell, and REINFORCE adds up $R \times \nabla_\theta\log\pi_\theta$ over a walk's moves</p>
+<p class="footnote">Example ours. Noise, or variance: how much the estimated gradient $\hat g$ swings from one batch to the next</p>
 
 Note:
-REINFORCE is unbiased: averaged over many samples it gives the true gradient. Its problem is how far a single sample can be from that average. A classic RL task shows it. A robot walks through a maze from S to the exit E. Every move costs 1, so the total reward of a walk is minus its number of moves: the shorter the walk, the better.
-The policy samples two walks. Walk A reaches the exit in 12 moves, so R is minus 12. Walk B wanders and takes 18, R minus 18. Walk A is clearly the better one. But REINFORCE weights every move of a walk by that walk's total reward, and both totals are negative. So it pushes down every move of B, and also every move of A, just a bit less hard. The only information about which walk was better is the gap between them, 6; the part they share, about minus 15, is the same for both and says nothing about which moves were good. Yet it is most of the signal REINFORCE sends.
-Averaged over many walks this comes out right: moves on short walks get pushed down less than moves on long walks, and the difference is the true gradient. But one walk at a time, the message is mostly "every move was bad", and a single walk of 18 random moves adds up 18 noisy terms. Part 4's baseline removes the shared part.
+REINFORCE is unbiased: averaged over many samples it gives the true gradient. Its problem is how far one sample can be from that average. Here is a maths prompt: "Solve 2x plus 4 equals 10." The policy samples two answers. Both open the same way: "Subtract 4 from both sides." The first goes on correctly, 2x equals 6, so x equals 3, and scores plus 100. The second slips at token 8: it writes 14 instead of 6, ends at x equals 7, and scores minus 100.
+Look at the first word, "Subtract". It is a perfectly good first step, and it is the same in both answers. But REINFORCE weights every token of an answer by that answer's total reward. If the batch drew the first answer, "Subtract" is pushed up with weight plus 100. If it drew the second, it is pushed down with weight minus 100, a huge push against a valid step, for a mistake seven tokens later.
+That is what noise means here: variance, how much the gradient estimate swings from one batch to the next. On average the pushes come out right, but one batch at a time they can point anywhere, and every token of a long answer adds its own swing.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · a text task</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · an offset</p>
 
-## Does a reward model cause the same noise?
+## What if every score is positive?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- Prompt "What is 17 × 19?"; the policy writes "323" (right) or "324", each with probability 0.5.
-- Bradley-Terry fixes only score gaps, so a reward model may score them 11 and 10, not 1 and 0.
-- One sample then pushes the logit of "323" by +5.5 or −5.0, while the true gradient is 0.25.
-- A single "324" sample pushes toward the wrong answer, 20 times harder than the signal.
+- Bradley-Terry fixes only score gaps (Part 2), so scores can sit anywhere.
+- Say a reward model scores every answer between 90 and 100.
+- A terrible answer gets 90, a great one 100: REINFORCE pushes both up.
+- The great one is pushed only 11% harder; only the gap of 10 says which was better.
 
-<p class="plain">With scores 1 and 0 the pushes are 0.5 or 0: the spread falls from 5.25 to 0.25 (standard deviation).</p>
+<p class="plain">The shared 90 is pure noise; it takes many samples for the gap to win out.</p>
 
 </div>
-<div class="fig"><img src="img/week-04-rlhf2-noise-text.svg" alt="Illustration: What is 17 times 19, both answers at probability 0.5. Sample 323 with R = 11 pushes the logit of 323 by plus 5.5; sample 324 with R = 10 pushes it by minus 5.0; the true gradient, 0.25, is a dotted line near zero"></div>
+<div class="fig"><img src="img/week-04-rlhf2-offset.svg" alt="Illustration: weight on the answer's tokens: great answer, R = 100, weight +100; terrible answer, R = 90, weight +90"></div>
 </div>
 
-<p class="footnote">Ours. A logit $z$ on "323" and 0 on "324", at $z$ = 0: $\partial_z\log\pi$ is +0.5 for "323" and −0.5 for "324", so one sample pushes $z$ by $R \times (\pm 0.5)$</p>
+<p class="footnote">Example ours. Adding a constant to every score leaves the Bradley-Terry loss unchanged, so a trained reward model's scores have no fixed zero</p>
 
 Note:
-Now a language-model version, with the reward model from Part 2. The prompt is "What is 17 times 19?". The policy, at this point, writes "323", the right answer, or "324" with equal probability. Picture the choice as one logit, z, on "323", with "324" at 0; at z equal to 0 both are at one half. The derivative of log pi with respect to z is plus 0.5 for "323" and minus 0.5 for "324".
-Which scores does the reward model give? Remember its loss: the sigmoid of the score gap, chosen minus rejected. Only gaps matter, so adding 10 to every score leaves the loss unchanged, and a trained reward model may well score these 11 and 10 rather than 1 and 0. The true gradient only depends on the gap: 0.25 times 1, which is 0.25.
-One sample, though: if we sample "323", REINFORCE pushes z by 11 times 0.5, plus 5.5. If we sample "324", by 10 times minus 0.5, minus 5.0: a push toward the wrong answer, 20 times bigger than the true signal. The average is right, 0.25; the standard deviation is 5.25. With scores 1 and 0 the same two samples push by 0.5 or 0, standard deviation 0.25. Same task, same preferences, 21 times the noise, only because of where the scores happen to sit.
+A second source of the same noise, from the reward model itself. Remember its loss from Part 2: the sigmoid of the score gap, chosen minus rejected. Only gaps matter. Add 90 to every score and the loss is unchanged, so a trained reward model's scores can sit anywhere.
+Say ours scores everything between 90 and 100. A terrible answer gets 90 and a great one gets 100. REINFORCE weights every token of each by its score, so both answers are pushed up, the terrible one included. The great one is pushed only about 11 percent harder: 100 over 90. The only information about which was better is the gap, 10; the shared 90 says nothing, yet it is most of the push.
+On average this still comes out right, because the mean-zero fact cancels the shared part. But one sample at a time, the direction is mostly that shared offset, and it takes many samples before the gap wins out. Part 4's baseline removes the offset directly.
 
 ---
 
@@ -610,7 +615,7 @@ One sample, though: if we sample "323", REINFORCE pushes z by 11 times 0.5, plus
 
 - "Gravity pulls objects apart" scores −1; only "apart" is wrong.
 - REINFORCE weights every token by −1, so the three good words are pushed down too.
-- The good words recover only on average over many answers: slowly, and noisily.
+- Long answers make it worse: 490 good tokens before a 10-token hallucination are all pushed down.
 - This is the **credit-assignment** problem: which action caused the reward?
 
 <p class="plain">"Gravity" deserves a weight of about 0: it is in both answers, so it was no better or worse than expected.</p>
@@ -623,7 +628,7 @@ One sample, though: if we sample "323", REINFORCE pushes z by 11 times 0.5, plus
 
 Note:
 The second problem. Take the bad answer, "Gravity pulls objects apart", score minus 1. Only the last word is wrong. But REINFORCE multiplies the whole answer's log-likelihood by the score, so every token gets the same weight, minus 1. "Gravity", "pulls" and "objects" are pushed down exactly as hard as "apart".
-Over many answers this washes out: "Gravity" also appears in the good answers, where it is pushed up, so on average it ends up right. But it washes out slowly and noisily. That is the credit-assignment problem: when the reward arrives at the end, which of the actions earned it? The longer the answer, the worse it gets. A long, good answer that hallucinates one fact at the end is punished everywhere.
+Over many answers this washes out: "Gravity" also appears in the good answers, where it is pushed up, so on average it ends up right. But it washes out slowly and noisily. That is the credit-assignment problem: when the reward arrives at the end, which of the actions earned it? The longer the answer, the worse it gets. A long, good answer that hallucinates one fact at the end is punished everywhere: write 490 good tokens and hallucinate in the last 10, and all 500 are pushed down alike. The good words recover only on average, over many answers, slowly and noisily.
 What weight would "Gravity" deserve? About zero. It appears in both answers, so choosing it told us nothing about the outcome. Part 4 builds a weight that knows that.
 
 ---
@@ -678,19 +683,20 @@ Does it help our bad answer? Not at all: the only reward is at the end, so every
 </dl>
 
 - The mean of $\nabla_\theta\log\pi_\theta$ is 0 (REINFORCE slide), so weighting by $R_t - b(s_t)$ keeps the average.
-- On 17 × 19, $b$ = 10.5 turns either sample's push into +0.25: no noise left.
-- In the maze, $b$ = −15 gives walk A +3 and walk B −3: the shorter walk is now pushed up.
+- Scores 90 and 100, equally likely: $b$ = 95 gives +5 and −5, so the terrible answer is pushed down.
+- It cannot save "Subtract": both answers start in the same state, so they share $b$.
 <p class="plain">The natural baseline is the expected return from the state: the <b>value</b>, defined next.</p>
 
 </div>
-<div class="fig"><img src="img/week-04-rlhf2-noise-text-base.svg" alt="Illustration: the 17 times 19 samples. Raw scores push the logit of 323 by plus 5.5 or minus 5.0; after subtracting 10.5, both samples push by plus 0.25, the true gradient"></div>
+<div class="fig"><img src="img/week-04-rlhf2-offset-base.svg" alt="Illustration: weights on the answer's tokens. Raw: great answer +100, terrible answer +90. After subtracting the baseline 95: great +5, terrible minus 5"></div>
 </div>
 
-<p class="footnote">Ours: $(11 - 10.5) \times 0.5 = 0.25$ and $(10 - 10.5) \times (-0.5) = 0.25$; maze: $-12 + 15 = 3$, $-18 + 15 = -3$. Zero noise is special to two fixed scores at 0.5 each; in general a baseline lowers it</p>
+<p class="footnote">Ours: $100 - 95 = +5$, $90 - 95 = -5$. Splitting the two "Subtract" answers needs a baseline at every token, after the slip: the value model, Part 4's one-step estimate</p>
 
 Note:
 The second fix. Part 3's fact says the gradient of log pi has mean zero under the policy. So multiplying it by anything that does not depend on the action, a baseline b of s, still gives zero on average. That means we can subtract a baseline from the return without changing the average gradient.
-Why would we want to? Because it removes the shared part both noise examples suffered from. On 17 times 19, subtract 10.5 from the scores. A "323" sample now pushes by 0.5 times 0.5, plus 0.25; a "324" sample by minus 0.5 times minus 0.5, also plus 0.25. Both give exactly the true gradient: the noise is gone. It goes all the way to zero only because there are two fixed scores at probability one half each, with the baseline at their midpoint; in general a baseline lowers the variance without removing it. In the maze, subtract minus 15, the average walk: walk A's moves are now weighted by plus 3 and walk B's by minus 3. The shorter walk is pushed up and the longer one down, which is what we wanted all along.
+Why would we want to? Because it removes the shared offset. Take the reward model that scores everything between 90 and 100, with the two answers equally likely. Subtract 95, the average: the great answer is now weighted by plus 5 and the terrible one by minus 5. The terrible answer is actively pushed down instead of up, and the shared 90 that was pure noise is gone.
+What a single baseline cannot do is save "Subtract". Both maths answers start from the same prompt, the same state, so they get the same baseline. If the value of the prompt is 80, "Subtract" is weighted plus 20 in the good answer and minus 180 in the slipped one: still a big swing, for a mistake that came later. To split them we need a baseline that moves along the answer, one that notices the slip when it happens. That is the value at every token, and the one-step estimate later in this part.
 Which baseline? The natural one is what we expected to get from this state: the value. Next, what the value is, and its partner Q.
 
 ---
@@ -704,25 +710,24 @@ Which baseline? The natural one is what we expected to get from this state: the 
 
 <dl class="where">
 <dt>$V^\pi(s)$</dt><dd>the <b>state-value function</b>: the expected return from $s$, following the policy $\pi$</dd>
-<dt>$Q^\pi(s, o)$</dt><dd>the <b>action-value function</b>: the expected return if we take $o$ first, then follow $\pi$</dd>
+<dt>$Q^\pi(s, o)$</dt><dd>the <b>action-value function</b>: the expected return if we take $o$ first, then follow $\pi$; $Q^\pi(s_t, o_t) = \mathbb E[R_t \mid s_t, o_t]$</dd>
 </dl>
 
-- At $s_4$ = "Gravity pulls objects", the policy picks "together" (0.9) or "apart" (0.1).
-- That word is the last, so each choice's $Q$ is its score: 2 or −1.
-- $V$ averages over what the policy would do: 1.7.
+- At $s_4$ = "Gravity pulls objects", the last word is "together" (0.9) or "apart" (0.1), so their $Q$s are their scores: 2 and −1.
+- $V$ averages them: 0.9 × 2 + 0.1 × (−1) = 1.7, a score no answer gets.
 
-<p class="plain">No answer scores 1.7: $V$ is the average, 0.9 × 2 + 0.1 × (−1).</p>
+<p class="plain">$R_t$ is one sample; $Q$ is its average. At "Gravity", $R_1$ is 2 or −1; $Q$ is 1.7.</p>
 
 </div>
 <div class="fig"><img src="img/week-04-rlhf2-qv.svg" alt="Illustration: the state Gravity pulls objects branches to together with probability 0.9, Q = 2, advantage +0.3, and to apart with probability 0.1, Q = minus 1, advantage minus 2.7; V of s4 = 0.9 times 2 plus 0.1 times minus 1 = 1.7"></div>
 </div>
 
-<p class="footnote">Example ours: $s_4$ is the prompt plus "Gravity pulls objects", which we assume the policy writes for sure; the answer ends at the fourth word. The figure's $A$ is two slides on</p>
+<p class="footnote">Example ours: $s_4$ is the prompt plus "Gravity pulls objects", assumed certain; the answer ends at word 4. The figure's $A$ comes two slides on</p>
 
 Note:
-Two functions. V of s, the state-value function: the expected return from state s if we follow the policy from there. Q of s and a, the action-value function: the expected return if we take action a first, and then follow the policy.
+Two functions. V of s, the state-value function: the expected return from state s if we follow the policy from there. Q of s and a, the action-value function: the expected return if we take action a first, and then follow the policy. Keep it apart from R t. R t is what one sampled answer actually got from step t on, so it is random. Q is the average of R t over every way the rest of the answer could go, so it is fixed.
 Our example. Assume the policy always writes "Gravity pulls objects"; at that state, s4, it picks "together" with probability 0.9 and "apart" with 0.1. That word is the last action, so Q of each is just its score: Q of together is 2, Q of apart is minus 1. V of s4 averages over what the policy would do: 0.9 times 2 plus 0.1 times minus 1, which is 1.7.
-No answer actually scores 1.7. V is an expectation: what we expect before the last word is chosen. Because the first three words are certain, V is also 1.7 at every earlier state: nothing has been decided yet. Remember that; it is why "Gravity" deserves a weight of zero.
+No answer actually scores 1.7. V is an expectation: what we expect before the last word is chosen. Because the first three words are certain, V is also 1.7 at every earlier state: nothing has been decided yet. The same goes for Q of "Gravity": it is 1.7, while R 1 for that token is 2 or minus 1 depending on which last word was sampled. On the last word nothing random is left, so R t and Q are the same number. Remember that; it is why "Gravity" deserves a weight of zero.
 
 ---
 
@@ -872,6 +877,38 @@ On the bad answer, with the exact values, 1.7 before each of the first three wor
 
 ---
 
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · one-step estimate · the slip</p>
+
+## How does the value model find the slip?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- The reward model is silent until the end: it scores only the finished answer, so $r_t = 0$ before.
+- The value model runs on every prefix, trained to predict the final score from it.
+
+</div>
+<div class="text">
+
+- Before "14" it says 80; after "14", −95: the equation is now broken.
+- So $\delta$ on "14" is $0 + (-95) - 80 = -175$; on "Subtract", $0 + 80 - 80 = 0$.
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-critic.svg" alt="Illustration: the slipped answer Subtract 4 from both sides, 2x = 14 so x = 7. Top: the value model's V before each token, 80 for the first eight tokens and minus 95 for the last four; the final score is minus 100. Bottom: TD residuals, 0 on every token except minus 175 on 14 and minus 5 on the last token, 7"></div>
+</div>
+
+<p class="footnote">Ours: $\gamma$ = 1, KL left out; 80 = 0.9 × 100 + 0.1 × (−100), a slip one time in ten. The last token's −5 is what −95 missed of −100</p>
+
+Note:
+Back to the slipped maths answer, because it shows what the value model is for. The reward model only scores the finished answer, so the step reward is zero on every token but the last (leaving out the KL penalty, which comes in Part 6). With r t equal to zero, the TD residual is just gamma times the next value minus this value: the change in the value model's opinion.
+The value model is not silent. It runs on every prefix of the answer, and it was trained on earlier batches to predict the final score from a partial answer. So it turns one score at the end into an opinion at every token.
+Before "14", at "Subtract 4 from both sides, 2x equals", it says 80: from here, answers are usually right, nine times in ten. After "14" it says minus 95: the equation is broken, and the answer will almost surely fail. The residual on "14" is zero plus minus 95 minus 80, minus 175: almost all the blame, on the token that caused it. The residual on "Subtract" is zero plus 80 minus 80, zero: no blame for a good step. On the last token there is a small minus 5, the part of the final minus 100 that the value model's minus 95 did not foresee.
+Compare REINFORCE, which gave "Subtract" minus 100 for the same answer.
+
+---
+
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · $k$-step estimates · Schulman et al. 2015</p>
 
 ## How many steps should you look ahead?
@@ -941,6 +978,37 @@ Note:
 GAE, generalised advantage estimation, averages all the k-step estimates, with weights 1 minus lambda times lambda to the k minus 1, which sum to one. Collect the terms and each TD residual l steps ahead ends up with weight gamma lambda to the l. So GAE is a discounted sum of future residuals, and the recursive form is what we implement: the advantage at step t is delta t plus gamma lambda times the advantage at the next step, one pass backwards from the end.
 Lambda is the knob. At lambda 0 we get delta t, the one-step estimate: on our bad answer, the blame lands only on "apart". At lambda 1 we get the reward-to-go minus the value: minus 2.7 on every token. That looks like REINFORCE's mistake again, but it isn't quite. It is measured against the right baseline, and it is unbiased: in the good answers, "Gravity" gets plus 0.3, and averaged over both answers its weight is exactly zero. It is just noisy, one answer at a time. Lambda 0.95 sits in between: weights shrink by 0.95 per step back from "apart".
 So: lambda near 0 trusts the value model and assigns blame sharply, but inherits the value model's errors; lambda near 1 trusts the rewards and is unbiased but noisy. Our exact value model makes lambda 0 look perfect; with a real value model it isn't.
+
+--
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · GAE · the slip (ours)</p>
+
+## How far back does a late drop reach?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- In GAE a residual $l$ tokens ahead gets weight $(\gamma\lambda)^l$, so a drop fades going back.
+- "Subtract" is 7 tokens before "14": at $\lambda$ = 0.95 it keeps $0.95^7 = 0.70$ of the drop, −125.
+
+</div>
+<div class="text">
+
+- 100 tokens back it keeps $0.95^{100} = 0.006$: early tokens of a long answer go almost free.
+- If the value model misses the slip, $\lambda$ near 1 still carries the real −100 back.
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-slip-gae.svg" alt="Illustration: weight on each token of the slipped answer. GAE at lambda 1: minus 180 on the first eight tokens, minus 5 on the last four. At lambda 0.95: minus 125 on Subtract, rising in size to minus 179 on 14, then about minus 4 to minus 5. At lambda 0: 0 everywhere except minus 175 on 14 and minus 5 on the last token"></div>
+</div>
+
+<p class="footnote">Ours, values as on the value-model slide, $\gamma$ = 1. At $\lambda$ = 1 the residuals telescope to $R_t - V(s_t)$: $-100 - 80 = -180$ on the first eight tokens</p>
+
+Note:
+How sharp is GAE's blame in practice? Run the slipped answer through it. A residual l tokens ahead gets weight gamma lambda to the l. At lambda 0, only the residuals themselves: zero on "Subtract", minus 175 on "14". At lambda 1, the residuals telescope to the return minus the value: minus 100 minus 80, minus 180 on every token up to "14", and minus 5 after it.
+At the usual 0.95, the drop at "14" fades by 0.95 per token backwards. "Subtract" is only 7 tokens earlier, so it still takes 0.95 to the 7th, 70 percent of the drop: minus 125. In a 12-token answer, lambda 0.95 is close to lambda 1. In a long answer it is not: 100 tokens back the weight is 0.95 to the 100th, about 0.006, so the opening of a 500-token answer barely hears a slip near the end.
+Why not lambda 0, then? Because it trusts the value model completely. Early in training the value model may not notice the slip at all; then lambda 0 blames nothing, while lambda near 1 still carries the real minus 100 back from the end. Lambda trades the value model's sharpness for the reward's honesty.
 
 --
 
@@ -1544,6 +1612,8 @@ Why is a penalty acceptable here when TRPO rejected one? Because the jobs differ
 <dt>$T$</dt><dd>the answer's last token</dd>
 </dl>
 
+<p class="plain">Put the KL in the loss instead, as GRPO does (Part 7), and $r_t = 0$ before the end, $r_T = r_\phi(q, o)$.</p>
+
 </div>
 <div class="text">
 
@@ -1562,6 +1632,7 @@ Note:
 Now the per-token reward can land: we know what the policy maximises, why the reference is there, and why the KL is the policy-first one. Summed over the answer, the per-token log ratios give the answer's log ratio, by the chain rule, so the per-token form is equivalent to the reward of the last slide.
 In PPO the reward combines two parts: the reward model's final score r phi of q and o, and per-token KL penalties. The reward model gives one score for the whole answer, but in LLM PPO each generated token is an action, so we need token-level quantities: log probabilities, KL penalties, advantages. The score is only available for the complete answer, so we add it at the final token. For every earlier token the step reward is just minus beta times the per-token KL estimate; for the last token it's the reward model's score minus beta times its KL estimate.
 The KL estimate is the k1 estimator: for each token, compare its probability under the current policy with its probability under the reference, given the same context, and take the log ratio. Beta sets the strength. A larger beta keeps the policy closer to the reference; a smaller beta lets it move more aggressively toward answers with a high score. The KL penalty is an anchor to the reference policy: it stops the policy drifting too far during RL, and stops it finding answers the reward model overrates.
+Either way the reward model speaks only at the last token. If the KL goes into the loss instead of the reward, as GRPO does, the step reward is exactly zero before the end and the score at the end. What gives PPO a signal at every token is the value model, as on the slipped maths answer in Part 4.
 One thing the worked line shows: a single k1 term can be negative, a small bonus for a token the policy now likes less than the reference. On average over the policy's own tokens the sum is still the KL. GRPO, in Part 7, uses a different estimator that is never negative.
 
 --
