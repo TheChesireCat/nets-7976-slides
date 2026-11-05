@@ -1505,134 +1505,70 @@ Why KL and not, say, a small learning rate? Because what we care about is how th
 
 ## What does TRPO add?
 
-<div class="eq">$$\max_\theta\ L(\theta)\quad\text{subject to}\quad \mathbb E_{s}\big[\mathrm{KL}\big(\pi_{\theta_{\rm old}}(\cdot \mid s)\thinspace\Vert\thinspace\pi_\theta(\cdot \mid s)\big)\big] \le \delta_{\rm KL}$$</div>
-
-<div class="cols">
-<div class="text">
-
-<dl class="where">
-<dt>$\delta_{\rm KL}$</dt><dd>the trust region's size: 0.01 in all of TRPO's experiments</dd>
-<dt>$\mathbb E_s$</dt><dd>the average over states the old policy visited</dd>
-<dt>$\pi(\cdot \mid s)$</dt><dd>the policy's whole next-action distribution in $s$</dd>
-</dl>
-
-- A **trust region** limits the step to where the surrogate $L$ can be trusted.
-
-</div>
-<div class="text">
-
-- A constraint, not a penalty: "it is hard to robustly choose the penalty coefficient".
-- It costs an inner solver every update (conjugate gradient, a line search), with second derivatives.
-- This KL limits one step, between the policy and its own previous version.
-
-<p class="plain">As a one-state toy, the 50/50 to 60/40 move, 0.0204 nats, is outside $\delta_{\rm KL}$ = 0.01: TRPO would step less.</p>
-
-</div>
+<div class="rows">
+<div class="eq">$$\begin{aligned} &\max_\theta\ L(\theta)\\ &\text{subject to}\quad \mathbb E_{s}\big[\mathrm{KL}\big(\pi_{\theta_{\rm old}}(\cdot \mid s)\thinspace\Vert\thinspace\pi_\theta(\cdot \mid s)\big)\big] \le \delta_{\rm KL} \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-trpo-region.svg" alt="Illustration: one state, two answers, old policy 50/50. The KL from the old policy rises on both sides of 0.5; the band where it stays below 0.01 runs from 0.43 to 0.57, the trust region. The 60/40 move has KL 0.0204, outside. The surrogate keeps rising toward 1"></div>
+<p class="plain">Climb the surrogate, but only as far as the policy stays within a KL of $\delta_{\rm KL}$ = 0.01 of the old one.</p>
 </div>
 
-<p class="footnote">TRPO: trust region policy optimization, Schulman et al. 2015, arXiv:1502.05477, Eq. 12; old policy first. PPO adds that TRPO does not fit dropout or a network shared by policy and value</p>
+<p class="footnote">TRPO: Schulman et al. 2015, arXiv:1502.05477, Eq. 12; $\delta_{\rm KL}$ = 0.01 in all its experiments. It needs an inner solver with second derivatives every update</p>
 
 Note:
-TRPO, trust region policy optimization, is the method PPO set out to simplify. It maximises the surrogate subject to a constraint: the average, over the states the old policy visited, of the KL from the old policy's next-action distribution to the new one must stay below delta. Delta was 0.01 in all of TRPO's experiments. The idea of a trust region: the surrogate is a local approximation, so only move within the region where it can be trusted.
-Note the direction: old policy first. The batch came from the old policy, so that is the distribution we can average under.
-Why a constraint and not just subtracting a penalty coefficient times the KL? TRPO's theory actually suggests a penalty, but "it is hard to robustly choose the penalty coefficient": one beta does not work across problems, or even through one run. The cost of the constraint: every update solves a constrained problem with conjugate gradient and a line search, second-order machinery. PPO adds that it does not fit architectures with dropout or a backbone shared between policy and value.
-Remember: this KL is between the policy and its own previous version, and it limits one step. In Part 6 we meet a second KL, which is a different thing.
+TRPO, trust region policy optimization, answers problem 4 directly: maximise the surrogate, subject to a limit on how far the policy moves, measured as the average KL between the old policy and the new one over the states in the batch. The limit is delta, 0.01 in all of TRPO's experiments.
+The picture is one state with two answers. The old policy is 50/50. The curve is the KL from it to each possible new policy. The trust region is where that KL stays below 0.01: from 0.43 to 0.57. The surrogate is linear in the ratio, so on its own it would push toward 1, but TRPO stops at the edge. A move to 60/40, KL 0.0204, is already outside.
+Why a constraint and not a penalty? The paper: "it is hard to robustly choose the penalty coefficient". The cost: solving a constrained problem every update, with conjugate gradients and a line search, using second derivatives. That is what PPO replaces.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 4, instability · PPO's clip</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 4, instability · the clip</p>
+
+## What does clip do to a ratio?
+
+<div class="rows">
+<div class="eq">$$\mathrm{clip}(\rho, 1-\epsilon, 1+\epsilon) = \min\big(\max(\rho,\ 1-\epsilon),\ 1+\epsilon\big)$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-clipfn.svg" alt="Illustration: clip of rho between 0.8 and 1.2 against rho. Inside 0.8 to 1.2 it follows rho; below it is flat at 0.8, above flat at 1.2. Examples: 0.7 becomes 0.8, 1.05 stays 1.05, 1.3 becomes 1.2"></div>
+<p class="plain">A ratio inside $1 \pm \epsilon$ passes unchanged; outside, it is held at the edge. With $\epsilon$ = 0.2, 1.3 becomes 1.2.</p>
+</div>
+
+<p class="footnote">$\rho$: the importance ratio (Part 5); $\epsilon$: the clip range, 0.2 in PPO's robot runs</p>
+
+Note:
+PPO's replacement for the trust region is one simple function. Clip holds a number inside a band: here the importance ratio, inside 1 minus epsilon to 1 plus epsilon. With epsilon 0.2 the band is 0.8 to 1.2. Inside the band the ratio passes unchanged: 1.05 stays 1.05. Outside it is held at the edge: 1.3 becomes 1.2, 0.7 becomes 0.8. Flat means no gradient: once a token's ratio is held at the edge, moving it further changes nothing. Next: how PPO puts that into its objective.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 4, instability · PPO's objective · Schulman et al. 2017</p>
 
 ## What is PPO's objective?
 
-<div class="eq">$$J_{\rm PPO}(\theta) = \mathbb E_{q\sim\mathcal D,\ o\sim\pi_{\theta_{\rm old}}(\cdot \mid q)}\Big[\frac1T\sum_{t=1}^{T}\min\big(\rho_t(\theta)\hat A_t,\ \mathrm{clip}(\rho_t(\theta), 1-\epsilon, 1+\epsilon)\thinspace \hat A_t\big)\Big]$$</div>
-
-<div class="cols">
-<div class="text">
-
-<dl class="where">
-<dt>$q$, $o$</dt><dd>a prompt from the prompt set $\mathcal D$, and an answer sampled from the old policy</dd>
-<dt>$\rho_t(\theta)$</dt><dd>the importance ratio, $\pi_\theta(o_t \mid q, o_{\lt t})/\pi_{\theta_{\rm old}}(o_t \mid q, o_{\lt t})$</dd>
-<dt>$\hat A_t$</dt><dd>token $t$'s GAE advantage</dd>
-<dt>$\mathrm{clip}(r, 1-\epsilon, 1+\epsilon)$</dt><dd>$r$ held inside the band; $\epsilon$ the <b>clip range</b>, often 0.2</dd>
-<dt>$T$, $o_t$</dt><dd>the answer's length; its token $t$</dd>
-</dl>
-
-</div>
-<div class="text">
-
-- PPO swaps TRPO's constraint for a clipped ratio: first-order, plain Adam.
-- Take the smaller of the plain and the clipped term, so no token is pushed too far.
-
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017 §3, Eq. 7; $\epsilon$ = 0.2 in its robot runs. The $1/T$ token average is the language-model form, as in Shao et al. 2024 Eq. 1</p>
-
-Note:
-PPO, proximal policy optimization, keeps the surrogate and replaces TRPO's constraint with something an ordinary optimiser can handle: clip the ratio. For each token compute two terms. The unclipped one is the ratio times the advantage: the surrogate. The clipped one clips the ratio to between 1 minus epsilon and 1 plus epsilon before multiplying. PPO takes the minimum of the two. That removes the incentive to move any token's ratio far outside the band, so the policy stays near the old one without any second-order machinery: just several epochs of Adam on the batch.
-We write it here in the language-model form: sample a prompt q from the prompt dataset, an answer o from the old policy, and average the per-token terms over the answer's length. The letters: like the PPO paper, r t is the step reward and rho t of theta is the ratio.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · Schulman et al. 2017, Fig. 1</p>
-
-## What does the clip do when the advantage is positive, and when negative?
-
-<div class="cols">
-<div class="text">
-
-<table class="rules">
-  <tr><td></td><td>$\hat A_t > 0$, good</td><td>$\hat A_t \lt 0$, bad</td></tr>
-  <tr><td>goal</td><td>push $\rho$ up</td><td>push $\rho$ down</td></tr>
-  <tr><td>clipped</td><td>$\rho > 1+\epsilon$</td><td>$\rho \lt 1-\epsilon$</td></tr>
-  <tr><td>active</td><td>$\rho \lt 1-\epsilon$: push back up</td><td>$\rho > 1+\epsilon$: push back down</td></tr>
-</table>
-
-<p class="plain">Every token starts at $\rho$ = 1, the red dot: before the update the two policies are the same.</p>
-
-</div>
+<div class="rows">
+<div class="eq">$$\begin{aligned} J_{\rm PPO}(\theta) &= \mathbb E\Big[\frac1T\sum_{t=1}^{T} c_t(\theta)\Big]\\ c_t(\theta) &= \min\big(\rho_t\hat A_t,\ \mathrm{clip}(\rho_t, 1-\epsilon, 1+\epsilon)\thinspace\hat A_t\big) \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-ppo-fig1.png" alt="Schulman et al. Figure 1: one term of L CLIP against the ratio r. Left, positive advantage: rising from the origin, flat beyond 1 plus epsilon. Right, negative advantage: flat below 1 minus epsilon, then falling. A red dot marks the start at r = 1"></div>
+<p class="plain">Good token ($\hat A > 0$): nothing gained past 1.2. Bad token: nothing below 0.8. All start at the red dot, $\rho$ = 1.</p>
 </div>
 
-<p class="footnote">Schulman et al. 2017, Fig. 1: one token's term against the ratio $\rho$ (the paper's $r$). $\epsilon$: the clip range. A move the wrong way is never clipped</p>
+<p class="footnote">Schulman et al. 2017 §3, Eq. 7, Fig. 1 (the paper writes $r$ for $\rho$). The min keeps the clip one-sided: a move the wrong way is never clipped</p>
 
 Note:
-A closer look at the clipping. The plot shows the objective for a single time step t; the horizontal axis is the importance ratio rho. The red dot is where the update starts: rho equals 1, because before the update the current policy is the old one.
-Positive advantage: the token was better than expected, so we want it more often. PPO wants to raise rho, but not too far: once rho passes 1 plus epsilon the objective is flat, and raising the probability further gives no extra gradient. If rho is below 1 minus epsilon, a good token's probability has dropped too much; there the unclipped objective stays active, so the gradient can push it back up.
-Negative advantage: the token was worse than expected, so we want it less. Once rho is below 1 minus epsilon, it's flat: no extra benefit from lowering it more. If rho is above 1 plus epsilon, a bad token is still too likely; the unclipped term stays active and the gradient pushes it back down. So clipping allows useful updates but stops the policy changing too aggressively in one step.
+Now the objective, in two lines. The second line is one token's term: the smaller of the plain term, ratio times advantage, and the clipped one. The first line averages those terms over the answer's tokens and over the batch.
+The paper's figure shows what the min does. Left, a good token, positive advantage: the term rises as the ratio rises, until 1 plus epsilon, then goes flat. Past 1.2 there is nothing more to gain, so the optimiser stops pushing that token. Right, a bad token, negative advantage: the term rises as the ratio falls, until 1 minus epsilon, then flat. Every token starts at the red dot, ratio 1, because before the update the two policies are the same.
+Why the min, and not just the clip? It makes the clip one-sided. If a good token's ratio has fallen below 1 minus epsilon, the plain term is the smaller one, so the gradient still pushes it back up. Only moves in the helpful direction get capped; mistakes are always corrected. PPO trades TRPO's second-order solver for this one line, and plain Adam.
 
 --
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · Week 4, PPO section · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · four worked cases (ours) · optional</p>
 
-## Four worked cases of the clip
+## Where does the clip stop the gradient?
 
-<div class="cols wide-fig">
-<div class="text">
-
-<table class="rules">
-  <tr><td></td><td class="num">$A$</td><td class="num">$\rho$</td><td class="num">$\rho A$</td><td class="num">clip</td><td class="num">min</td><td class="num">slope</td></tr>
-  <tr><td>a</td><td class="num">+2</td><td class="num">1.3</td><td class="num">2.6</td><td class="num">2.4</td><td class="num">2.4</td><td class="num">0</td></tr>
-  <tr><td>b</td><td class="num">+2</td><td class="num">0.7</td><td class="num">1.4</td><td class="num">1.6</td><td class="num">1.4</td><td class="num">+2</td></tr>
-  <tr><td>c</td><td class="num">−2</td><td class="num">0.7</td><td class="num">−1.4</td><td class="num">−1.6</td><td class="num">−1.6</td><td class="num">0</td></tr>
-  <tr><td>d</td><td class="num">−2</td><td class="num">1.3</td><td class="num">−2.6</td><td class="num">−2.4</td><td class="num">−2.6</td><td class="num">−2</td></tr>
-</table>
-
-<dl class="where" style="margin-top:12px">
-<dt>clip</dt><dd>$\mathrm{clip}(\rho, 0.8, 1.2)\thinspace A$</dd>
-<dt>min</dt><dd>the smaller of $\rho A$ and clip: what PPO uses</dd>
-<dt>slope</dt><dd>change of min with $\rho$; 0 means no gradient</dd>
-</dl>
-
-</div>
+<div class="rows">
 <div class="fig"><img src="img/week-04-ppo-cases.svg" alt="Illustration: one term of the clipped objective against the ratio for advantage plus 2 and minus 2, epsilon 0.2, with the unclipped line dashed; cases a, 2.4, and c, minus 1.6, sit on flat parts; cases b, 1.4, and d, minus 2.6, sit on sloped parts"></div>
+<p class="plain">a and c have already moved the helpful way past the edge: flat, no gradient. b and d moved the wrong way: still sloped, pushed back.</p>
 </div>
 
-<p class="footnote">Ours, from Eq. 7 with $\epsilon$ = 0.2; $A$: advantage, $\rho$: importance ratio (the figure's $r$). A token at 0.30 under the old policy and 0.39 now has $\rho = 1.3$</p>
+<p class="footnote">Ours, $\epsilon$ = 0.2. a: $\hat A$ = +2, $\rho$ = 1.3, term 2.4. b: +2, 0.7, 1.4. c: −2, 0.7, −1.6. d: −2, 1.3, −2.6</p>
 
 Note:
-Optional, from Week 4. Case a: a good token already 30% more likely, past the 20% allowance: the clipped term, 2.4, is smaller, so the min picks it, and it's flat; stop pushing. Case b: a good token that became less likely: the unclipped term, 1.4, is smaller, and the full gradient pushes it back up. Case c: a bad token already cut by 30%: flat, stop. Case d: a bad token that became more likely: unclipped, full gradient to push it down. The rule: a token's gradient is switched off only when it has already moved the way its advantage wanted by more than epsilon. Moves that made things worse are never clipped; that is what the min is for.
+Optional: four tokens, two good and two bad, each with a ratio of 0.7 or 1.3. Case a: a good token whose probability already rose 30 percent. Its plain term would be 2.6, its clipped term 2.4, and the min is 2.4, on the flat part: no gradient, the clip has stopped it. Case b: a good token whose probability fell to 0.7. Plain 1.4, clipped 1.6, min 1.4, on the sloped part: the gradient still pushes it back up. Case c: a bad token already down to 0.7: min minus 1.6, flat, stopped. Case d: a bad token that rose to 1.3: min minus 2.6, sloped, pushed back down. The pattern: the clip caps progress, never correction.
 
 ---
 
@@ -1856,18 +1792,13 @@ For RLHF, the outputs in the gap are the worry: text the reference would almost 
 
 ## Is this the same KL as TRPO's?
 
-<table class="rules">
-  <tr><td></td><td>trust-region KL (Part 5)</td><td>drift KL (here)</td></tr>
-  <tr><td>between</td><td>the policy and its own previous version</td><td>the policy and the frozen SFT model</td></tr>
-  <tr><td>written</td><td>$\mathrm{KL}(\pi_{\theta_{\rm old}} \Vert \pi_\theta)$, old first</td><td>$\mathrm{KL}(\pi_\theta \Vert \pi_{\rm ref})$, policy first</td></tr>
-  <tr><td>limits</td><td>one update</td><td>all of training</td></tr>
-  <tr><td>strength</td><td>$\delta_{\rm KL}$, a safe step size</td><td>$\beta$, the trade-off of reward against drift</td></tr>
-  <tr><td>in PPO</td><td>replaced by the clip (an adaptive penalty did worse)</td><td>a penalty in the reward</td></tr>
-</table>
+<div class="rows">
+<div class="eq">$$\begin{aligned} \text{trust region (Part 5):}&\quad \mathrm{KL}\big(\pi_{\theta_{\rm old}} \Vert \pi_\theta\big) \le \delta_{\rm KL}\\ \text{drift (here):}&\quad -\beta\thinspace\mathrm{KL}\big(\pi_\theta \Vert \pi_{\rm ref}\big) \text{ in the reward} \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-two-kls.svg" alt="Illustration: a path of policy dots from pi ref, the SFT model, to pi theta now. Dashed circles around each dot limit one step: the trust region, each step against the step before. A long double arrow joins pi ref to pi theta now: the drift KL, the policy against the reference over all of training"></div>
+<p class="plain">The trust region limits one step, and PPO replaces it with the clip. The drift KL limits the whole journey, as a penalty $\beta$ we choose.</p>
+</div>
 
-<p class="plain">A penalty is fine here: $\beta$ is a trade-off we set and sweep on purpose; TRPO needed a safe step size, a different job.</p>
-
-<p class="footnote">$\pi_{\rm ref}$: the frozen SFT model. PPO §4's adaptive KL penalty scored 0.74 against the clip's 0.82 (Table 1). Stiennon et al.'s Fig. 5 is a sweep of $\beta$; they used $\beta$ = 0.05 for their main runs (App. B)</p>
+<p class="footnote">PPO §4: an adaptive KL penalty for the trust region scored 0.74 against the clip's 0.82 (Table 1). Stiennon et al.'s Fig. 5 sweeps $\beta$; their main runs used 0.05</p>
 
 Note:
 Two KL divergences appear in this story, and they are easy to mix up. Here they are side by side.
@@ -2000,14 +1931,14 @@ Step 3. The reward model, also frozen, reads the prompt and the whole answer and
 
 <div class="rows">
 <div class="eq">$$r_t = -\beta\thinspace\mathrm{KL}_t \quad (t \lt T), \qquad r_T = r_\phi(q, o) - \beta\thinspace\mathrm{KL}_T$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step04.svg" alt="Left: no model runs, arithmetic on the table. Right: the table gains the row step reward r t: minus 0.03, minus 0.02, minus 0.04, 1.99"></div>
+<div class="fig"><img src="img/week-04-rlhf2-step04.svg" alt="Left: the reward model, as on the last slide. Right: the table gains the row step reward r t: minus 0.03, minus 0.02, minus 0.04, 1.99"></div>
 <p class="plain">Every token pays its KL; the last token also gets the score.</p>
 </div>
 
 <p class="footnote">$\beta$: the KL coefficient, 1 here to keep the arithmetic visible; $T$: the last token</p>
 
 Note:
-Step 4 runs no model: it is arithmetic on the table. Each token's step reward is minus beta times its KL. The last token also gets the score. With beta 1: minus 0.03, minus 0.02, minus 0.04, and 2 minus 0.01, which is 1.99. This is the per-token reward from earlier in Part 6, now filled in.
+Step 4 runs no new model: it is arithmetic on the table, using the reward model's score from step 3. Each token's step reward is minus beta times its KL. The last token also gets the score. With beta 1: minus 0.03, minus 0.02, minus 0.04, and 2 minus 0.01, which is 1.99. This is the per-token reward from earlier in Part 6, now filled in.
 
 ---
 
@@ -2034,14 +1965,14 @@ Step 5. The value model reads the same finished answer. Its value head gives one
 
 <div class="rows">
 <div class="eq">$$\delta_t = r_t + \gamma\thinspace v_{t+1} - v_t, \qquad v_{T+1} = 0$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step06.svg" alt="Left: no model runs. Right: the table gains the row TD residual delta t: minus 0.03, minus 0.02, minus 0.04, 0.29; the step reward, value and residual under together are boxed"></div>
+<div class="fig"><img src="img/week-04-rlhf2-step06.svg" alt="Left: the value model, as on the last slide. Right: the table gains the row TD residual delta t: minus 0.03, minus 0.02, minus 0.04, 0.29; the step reward, value and residual under together are boxed"></div>
 <p class="plain">Only the last token surprises: 1.99 + 0 − 1.7 = 0.29. Before it, each token just pays its KL.</p>
 </div>
 
 <p class="footnote">$\delta_t$: the TD residual (Part 4); $\gamma$ = 1. Boxed: the three numbers behind the last token's $\delta$</p>
 
 Note:
-Step 6, arithmetic again: the TD residual at every token, the step reward plus the next value minus this value. After the last token the answer has ended, so the next value is 0. Under together, boxed: 1.99 plus 0 minus 1.7, which is 0.29. Under the first three words the values cancel, 1.7 minus 1.7, so each residual is just the token's KL bill.
+Step 6 runs no new model, it is arithmetic on the values from step 5: the TD residual at every token, the step reward plus the next value minus this value. After the last token the answer has ended, so the next value is 0. Under together, boxed: 1.99 plus 0 minus 1.7, which is 0.29. Under the first three words the values cancel, 1.7 minus 1.7, so each residual is just the token's KL bill.
 
 ---
 
@@ -2051,7 +1982,7 @@ Step 6, arithmetic again: the TD residual at every token, the step reward plus t
 
 <div class="rows">
 <div class="eq">$$\hat A_t = \delta_t + \gamma\lambda\thinspace\hat A_{t+1}, \qquad \hat A_{T+1} = 0$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step07.svg" alt="Left: no model runs. Right: the table gains the row advantage A hat t: 0.164, 0.204, 0.236, 0.290, with arrows from right to left marked times 0.95"></div>
+<div class="fig"><img src="img/week-04-rlhf2-step07.svg" alt="Left: the value model, as before. Right: the table gains the row advantage A hat t: 0.164, 0.204, 0.236, 0.290, with arrows from right to left marked times 0.95"></div>
 <p class="plain">Start at the last token and walk back; each step keeps 0.95 of the advantage ahead of it.</p>
 </div>
 
@@ -2068,7 +1999,7 @@ Step 7, GAE, one pass backwards from the last token. The last token's advantage 
 
 <div class="rows">
 <div class="eq">$$\hat R_t = \hat A_t + v_t$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step08.svg" alt="Left: no model runs. Right: the table gains the row value target R hat t: 1.864, 1.904, 1.936, 1.990"></div>
+<div class="fig"><img src="img/week-04-rlhf2-step08.svg" alt="Left: the value model, as before. Right: the table gains the row value target R hat t: 1.864, 1.904, 1.936, 1.990"></div>
 <p class="plain">An advantage is a return minus a value, so adding the value back gives an estimated return: the target.</p>
 </div>
 
@@ -2102,7 +2033,7 @@ Now the update. Step 9. The policy being trained, pi theta, reads the same answe
 
 <div class="rows">
 <div class="eq">$$\min\big(\rho_t\hat A_t,\ \mathrm{clip}(\rho_t, 1-\epsilon, 1+\epsilon)\thinspace\hat A_t\big)$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step10.svg" alt="Left: no model runs. Right: the table gains the row clipped term: 0.196, 0.214, 0.229, 0.314; the ratio 1.30 and the term 0.196 under Gravity are boxed"></div>
+<div class="fig"><img src="img/week-04-rlhf2-step10.svg" alt="Left: the policy being trained, as on the last slide. Right: the table gains the row clipped term: 0.196, 0.214, 0.229, 0.314; the ratio 1.30 and the term 0.196 under Gravity are boxed"></div>
 <p class="plain">Gravity's ratio, 1.30, is clipped to 1.2: its push stops growing. $J_{
 m PPO}$ is the average, 0.238.</p>
 </div>
@@ -2110,7 +2041,7 @@ m PPO}$ is the average, 0.238.</p>
 <p class="footnote">$\epsilon$ = 0.2, the clip range (Part 5); $J_{\rm PPO}$: the clipped objective. Check: $\min(1.30 \times 0.164,\ 1.2 \times 0.164) = 0.196$</p>
 
 Note:
-Step 10, arithmetic: each token's clipped term. Pulls, objects and together have ratios inside 0.8 to 1.2, so their terms are just ratio times advantage. Gravity's ratio is 1.30, beyond 1.2, and its advantage is positive, so the clip holds it at 1.2 times 0.164, 0.196: pushing Gravity further earns nothing more on this batch. The PPO objective is the average of these terms, 0.238; the optimiser maximises it.
+Step 10 runs no new model, it is arithmetic on the ratios from step 9: each token's clipped term. Pulls, objects and together have ratios inside 0.8 to 1.2, so their terms are just ratio times advantage. Gravity's ratio is 1.30, beyond 1.2, and its advantage is positive, so the clip holds it at 1.2 times 0.164, 0.196: pushing Gravity further earns nothing more on this batch. The PPO objective is the average of these terms, 0.238; the optimiser maximises it.
 
 ---
 
