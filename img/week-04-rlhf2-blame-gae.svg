@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-11-05T10:57:31.891407</dc:date>
+    <dc:date>2026-11-05T11:11:01.960318</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -45,7 +45,7 @@ L 229.579902 25.95731
 L 229.579902 40.142619 
 L 161.554909 40.142619 
 z
-" clip-path="url(#pddc7da1de7)"/>
+" clip-path="url(#pc3f7aa9edb)"/>
    </g>
    <g id="patch_4">
     <path d="M 271.272639 25.95731 
@@ -53,7 +53,7 @@ L 339.297631 25.95731
 L 339.297631 40.142619 
 L 271.272639 40.142619 
 z
-" clip-path="url(#pddc7da1de7)"/>
+" clip-path="url(#pc3f7aa9edb)"/>
    </g>
    <g id="patch_5">
     <path d="M 380.990369 25.95731 
@@ -61,7 +61,7 @@ L 449.015361 25.95731
 L 449.015361 40.142619 
 L 380.990369 40.142619 
 z
-" clip-path="url(#pddc7da1de7)"/>
+" clip-path="url(#pc3f7aa9edb)"/>
    </g>
    <g id="patch_6">
     <path d="M 490.708098 25.95731 
@@ -69,7 +69,7 @@ L 558.733091 25.95731
 L 558.733091 40.142619 
 L 490.708098 40.142619 
 z
-" clip-path="url(#pddc7da1de7)"/>
+" clip-path="url(#pc3f7aa9edb)"/>
    </g>
    <g id="matplotlib.axis_1">
     <g id="xtick_1">
@@ -89,7 +89,7 @@ z
    <g id="line2d_5">
     <path d="M 141.696 25.95731 
 L 578.592 25.95731 
-" clip-path="url(#pddc7da1de7)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pc3f7aa9edb)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
    </g>
    <g id="text_1">
     <!-- REINFORCE -->
@@ -367,7 +367,7 @@ L 229.579902 108.303032
 L 229.579902 146.603369 
 L 161.554909 146.603369 
 z
-" clip-path="url(#pdc8fd01546)" style="fill: #555555"/>
+" clip-path="url(#pb992dbf40a)" style="fill: #555555"/>
    </g>
    <g id="patch_9">
     <path d="M 271.272639 108.303032 
@@ -375,7 +375,7 @@ L 339.297631 108.303032
 L 339.297631 146.603369 
 L 271.272639 146.603369 
 z
-" clip-path="url(#pdc8fd01546)" style="fill: #555555"/>
+" clip-path="url(#pb992dbf40a)" style="fill: #555555"/>
    </g>
    <g id="patch_10">
     <path d="M 380.990369 108.303032 
@@ -383,7 +383,7 @@ L 449.015361 108.303032
 L 449.015361 146.603369 
 L 380.990369 146.603369 
 z
-" clip-path="url(#pdc8fd01546)" style="fill: #555555"/>
+" clip-path="url(#pb992dbf40a)" style="fill: #555555"/>
    </g>
    <g id="patch_11">
     <path d="M 490.708098 108.303032 
@@ -391,7 +391,7 @@ L 558.733091 108.303032
 L 558.733091 146.603369 
 L 490.708098 146.603369 
 z
-" clip-path="url(#pdc8fd01546)" style="fill: #555555"/>
+" clip-path="url(#pb992dbf40a)" style="fill: #555555"/>
    </g>
    <g id="matplotlib.axis_3">
     <g id="xtick_5">
@@ -411,7 +411,7 @@ z
    <g id="line2d_10">
     <path d="M 141.696 108.303032 
 L 578.592 108.303032 
-" clip-path="url(#pdc8fd01546)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pb992dbf40a)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
    </g>
    <g id="text_6">
     <!-- GAE, $\lambda$ = 1 -->
@@ -638,7 +638,7 @@ L 229.579902 190.648755
 L 229.579902 223.486506 
 L 161.554909 223.486506 
 z
-" clip-path="url(#pb047bc9f3e)" style="fill: #888888"/>
+" clip-path="url(#pbc1c7cf35e)" style="fill: #888888"/>
    </g>
    <g id="patch_14">
     <path d="M 271.272639 190.648755 
@@ -646,7 +646,7 @@ L 339.297631 190.648755
 L 339.297631 225.214809 
 L 271.272639 225.214809 
 z
-" clip-path="url(#pb047bc9f3e)" style="fill: #888888"/>
+" clip-path="url(#pbc1c7cf35e)" style="fill: #888888"/>
    </g>
    <g id="patch_15">
     <path d="M 380.990369 190.648755 
@@ -654,7 +654,7 @@ L 449.015361 190.648755
 L 449.015361 227.034075 
 L 380.990369 227.034075 
 z
-" clip-path="url(#pb047bc9f3e)" style="fill: #888888"/>
+" clip-path="url(#pbc1c7cf35e)" style="fill: #888888"/>
    </g>
    <g id="patch_16">
     <path d="M 490.708098 190.648755 
@@ -662,7 +662,7 @@ L 558.733091 190.648755
 L 558.733091 228.949091 
 L 490.708098 228.949091 
 z
-" clip-path="url(#pb047bc9f3e)" style="fill: #888888"/>
+" clip-path="url(#pbc1c7cf35e)" style="fill: #888888"/>
    </g>
    <g id="matplotlib.axis_5">
     <g id="xtick_9">
@@ -682,7 +682,7 @@ z
    <g id="line2d_15">
     <path d="M 141.696 190.648755 
 L 578.592 190.648755 
-" clip-path="url(#pb047bc9f3e)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pbc1c7cf35e)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
    </g>
    <g id="text_11">
     <!-- GAE, $\lambda$ = 0.95 -->
@@ -887,7 +887,7 @@ L 229.579902 272.994478
 L 229.579902 272.994478 
 L 161.554909 272.994478 
 z
-" clip-path="url(#pf146ff57e9)" style="fill: #bbbbbb"/>
+" clip-path="url(#pfcbe3d4ea2)" style="fill: #bbbbbb"/>
    </g>
    <g id="patch_19">
     <path d="M 271.272639 272.994478 
@@ -895,7 +895,7 @@ L 339.297631 272.994478
 L 339.297631 272.994478 
 L 271.272639 272.994478 
 z
-" clip-path="url(#pf146ff57e9)" style="fill: #bbbbbb"/>
+" clip-path="url(#pfcbe3d4ea2)" style="fill: #bbbbbb"/>
    </g>
    <g id="patch_20">
     <path d="M 380.990369 272.994478 
@@ -903,7 +903,7 @@ L 449.015361 272.994478
 L 449.015361 272.994478 
 L 380.990369 272.994478 
 z
-" clip-path="url(#pf146ff57e9)" style="fill: #bbbbbb"/>
+" clip-path="url(#pfcbe3d4ea2)" style="fill: #bbbbbb"/>
    </g>
    <g id="patch_21">
     <path d="M 490.708098 272.994478 
@@ -911,7 +911,7 @@ L 558.733091 272.994478
 L 558.733091 311.294814 
 L 490.708098 311.294814 
 z
-" clip-path="url(#pf146ff57e9)" style="fill: #bbbbbb"/>
+" clip-path="url(#pfcbe3d4ea2)" style="fill: #bbbbbb"/>
    </g>
    <g id="matplotlib.axis_7">
     <g id="xtick_13">
@@ -1369,7 +1369,7 @@ z
    <g id="line2d_20">
     <path d="M 141.696 272.994478 
 L 578.592 272.994478 
-" clip-path="url(#pf146ff57e9)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pfcbe3d4ea2)" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linecap: square"/>
    </g>
    <g id="text_20">
     <!-- GAE, $\lambda$ = 0 -->
@@ -1868,16 +1868,16 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pddc7da1de7">
+  <clipPath id="pc3f7aa9edb">
    <rect x="141.696" y="11.772" width="436.896" height="60.996832"/>
   </clipPath>
-  <clipPath id="pdc8fd01546">
+  <clipPath id="pb992dbf40a">
    <rect x="141.696" y="94.117723" width="436.896" height="60.996832"/>
   </clipPath>
-  <clipPath id="pb047bc9f3e">
+  <clipPath id="pbc1c7cf35e">
    <rect x="141.696" y="176.463446" width="436.896" height="60.996832"/>
   </clipPath>
-  <clipPath id="pf146ff57e9">
+  <clipPath id="pfcbe3d4ea2">
    <rect x="141.696" y="258.809168" width="436.896" height="60.996832"/>
   </clipPath>
  </defs>
