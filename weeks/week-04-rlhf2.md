@@ -667,16 +667,34 @@ A terrible answer gets 90 and a great one gets 100. Both scores are big and posi
 ## Which way should the policy move?
 
 <div class="rows">
-<div class="eq">$$\begin{aligned} J(z) &= p\cdot 100 + (1-p)\cdot 90, \qquad p = \sigma(z)\\ \frac{dJ}{dz} &= p(1-p)\times(100 - 90) = 0.5 \times 0.5 \times 10 = 2.5 \end{aligned}$$</div>
+<div class="eq">$$\begin{aligned} J(z) &= p\cdot 100 + (1-p)\cdot 90 = 90 + 10\thinspace p, \qquad p = \sigma(z) = \frac{1}{1 + e^{-z}}\\ \frac{dp}{dz} &= \frac{e^{-z}}{(1 + e^{-z})^2} = \frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}} = p\thinspace(1-p)\\ \frac{dJ}{dz} &= 10\thinspace\frac{dp}{dz} = 10 \times 0.5 \times 0.5 = 2.5 \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-noise-knob.svg" alt="Illustration: expected score J against the knob z, the great answer's logit; an S-curve from 90 to 100. At z = 0 both answers are at 0.5, J = 95, and the slope is 2.5: turn z up, gently"></div>
-<p class="plain">The same knob $z$, now for great against terrible. The right move is to turn it up, gently: slope 2.5.</p>
+<p class="plain">Turning $z$ up by a little raises the expected score $J$ by 2.5 times that: so turn $z$ up, toward $J$ = 100.</p>
 </div>
 
-<p class="footnote">$z$: the great answer's logit; $\sigma$: the sigmoid, so $p = 0.5$ at $z = 0$; $J$: the expected score. Example ours</p>
+<p class="footnote">$z$: the great answer's logit, the same knob as before; $\sigma$: the sigmoid, so $p = 0.5$ at $z = 0$. Line 2: $\frac{e^{-z}}{1+e^{-z}} = 1 - p$</p>
 
 Note:
 To see the noise, make the example as small as possible. The policy writes one of the two answers, each half the time, and one knob, z, the great answer's logit, controls the split: turning z up makes the great answer more likely. The expected score is p times 100 plus one minus p times 90: 95 right now.
 Which way should the knob turn? The derivative is p times one minus p times the gap: 0.5 times 0.5 times 10, which is 2.5. Up, gently. That is the true gradient, the thing REINFORCE is trying to estimate. It is small because the answers differ by only 10 points.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · each answer's pull</p>
+
+## Which way does each answer pull the knob?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \text{great:}&\quad \frac{d}{dz}\log p = \frac{1}{p}\thinspace\frac{dp}{dz} = \frac{p(1-p)}{p} = 1 - p = +0.5\\ \text{terrible:}&\quad \frac{d}{dz}\log(1-p) = \frac{1}{1-p}\thinspace\Big(-\frac{dp}{dz}\Big) = -\frac{p(1-p)}{1-p} = -p = -0.5 \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-pulls.svg" alt="Illustration: at p = 0.5, the great answer would turn the knob z by plus 0.5 and the terrible answer by minus 0.5; weighted half and half, the average is 0"></div>
+<p class="plain">This is $\nabla_\theta\log\pi$ from Part 3, with the knob $z$ in place of $\theta$: the direction that makes each answer more likely.</p>
+</div>
+
+<p class="footnote">The chain rule: $\frac{d}{dz}\log x = \frac{1}{x}\frac{dx}{dz}$, and $\frac{dp}{dz} = p(1-p)$ from the last slide. No score yet: that comes next</p>
+
+Note:
+Before REINFORCE can push, it needs a direction for each answer: which way to turn the knob to make that answer more likely. That is the gradient of the log-probability, the first factor in Part 3's policy gradient, with the knob z standing in for all of theta.
+For the great answer, its probability is p. The derivative of log p is one over p times dp by dz, by the chain rule, and dp by dz is p times one minus p, from the last slide. The p cancels: one minus p, which is plus 0.5. For the terrible answer, the probability is one minus p, and its derivative is minus dp by dz. The same steps give minus p, minus 0.5. So the great answer pulls the knob up by 0.5 and the terrible one pulls it down by 0.5. These pulls have nothing to do with the scores yet. The next slide multiplies them by the scores.
 
 ---
 
@@ -685,12 +703,12 @@ Which way should the knob turn? The derivative is p times one minus p times the 
 ## What does one sample say?
 
 <div class="rows">
-<div class="eq">$$\begin{aligned} \text{great sample:}&\quad 100 \times \tfrac{d}{dz}\log p = 100 \times (+0.5) = +50\\ \text{terrible sample:}&\quad 90 \times \tfrac{d}{dz}\log(1-p) = 90 \times (-0.5) = -45 \end{aligned}$$</div>
+<div class="eq">$$\begin{aligned} \text{push} &= \text{score} \times \text{pull}\\ \text{great sample:}&\quad 100 \times (+0.5) = +50\\ \text{terrible sample:}&\quad 90 \times (-0.5) = -45 \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-noise-pushes.svg" alt="Illustration: a black arrow from 0 to plus 50, great sample, 100 times plus 0.5; a grey arrow from 0 to minus 45, terrible sample, 90 times minus 0.5; a dotted line at 2.5, their average, the true gradient"></div>
 <p class="plain">A terrible sample still scores 90, so it pushes hard toward itself. The two pushes nearly cancel; only their average, 2.5, is signal.</p>
 </div>
 
-<p class="footnote">At $p = 0.5$: $\frac{d}{dz}\log p = 1 - p = 0.5$ and $\frac{d}{dz}\log(1-p) = -p = -0.5$. Each push is REINFORCE's score times log-probability gradient</p>
+<p class="footnote">The push is REINFORCE's $R \times \nabla_\theta\log\pi$ for one sample, with $z$ for $\theta$; the pulls, +0.5 and −0.5, are from the last slide</p>
 
 Note:
 REINFORCE does not know the 2.5. It estimates it from samples, and each sample pushes the knob by its score times the direction that makes that answer more likely. A great sample: 100 times plus 0.5, a push of plus 50, turn the knob up hard. A terrible sample: 90 times minus 0.5, minus 45, turn it down hard, toward the terrible answer. Because the terrible answer still scored a big positive 90, REINFORCE reads it as "do more of that".
@@ -703,12 +721,12 @@ The two pushes are huge and nearly opposite. Averaged, half the time each, they 
 ## What does a batch of 16 say?
 
 <div class="rows">
-<div class="eq">$$\hat g = \frac{50\thinspace k - 45\thinspace(16 - k)}{16}, \qquad k = \text{great answers in the batch}$$</div>
+<div class="eq">$$\begin{aligned} \hat g &= \frac{k}{16}\times 50\ +\ \frac{16-k}{16}\times(-45)\\ k = 7:\quad \hat g &= \frac{7}{16}\times 50\ -\ \frac{9}{16}\times 45 = 21.9 - 25.3 = -3.4 \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-noise-batches.svg" alt="Illustration: 40 dots, one per batch of 16 answers, on a line of batch estimates from minus 40 to 40. 8 great and 8 terrible gives plus 2.5, the true gradient; 9 great and 7 terrible gives plus 8.4; 7 great and 9 terrible gives minus 3.4, the wrong way. 17 hollow dots lie left of zero"></div>
-<p class="plain">On average the batches are right, 2.5; one at a time they scatter, and 40% point the wrong way. That scatter is the noise.</p>
+<p class="plain">Batches are right on average (2.5), but they scatter, and 40% point the wrong way: that scatter is the noise.</p>
 </div>
 
-<p class="footnote">Ours: $k$ is a coin-flip count, Binomial(16, 0.5); a batch points the wrong way when $k \le 7$, $P = 0.40$; 17 of these 40 simulated batches</p>
+<p class="footnote">Ours: $k$, the great answers among the 16, is a coin-flip count, Binomial(16, 0.5); the batch points the wrong way when $k \le 7$, $P = 0.40$</p>
 
 Note:
 A batch averages 16 pushes, and how many great answers it contains is a coin flip. With exactly 8 and 8, the average is plus 2.5, exactly right. With 9 great, plus 8.4: right direction, too hard. With 7 great and 9 terrible: 7 times 50 minus 9 times 45, over 16, minus 3.4. That batch turns the knob toward the terrible answer.
