@@ -24,10 +24,6 @@
 - Part 3 ends with REINFORCE's four problems; Parts 4 and 5 fix them in turn.
 - The KL penalty comes last, once the policy gradient and PPO are in place.
 
-<dl class="where">
-<dt>$q$, $o$</dt><dd>the prompt (question) and the model's output (answer)</dd>
-<dt>$o_t$</dt><dd>token $t$ of the answer; $o_{\lt t}$ the tokens before it</dd>
-</dl>
 
 </div>
 </div>
@@ -47,11 +43,12 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 <div class="cols">
 <div class="text">
 
-<table class="rules nohead" style="font-size:19px">
+<table class="rules nohead" style="font-size:17px">
   <tr><td>$q$, $o$</td><td>the prompt, and the answer</td></tr>
   <tr><td>$o_t$, $o_{\lt t}$, $T$</td><td>token $t$, the tokens before it, the answer's length</td></tr>
   <tr><td>$s_t$</td><td>the state, $(q, o_{\lt t})$; the action is the token $o_t$</td></tr>
   <tr><td>$\pi_\theta$, $\theta$</td><td>the policy (the language model), and its weights</td></tr>
+  <tr><td>$\tau$, $p_\theta(\tau)$</td><td>a trajectory (prompt and answer), and its probability</td></tr>
   <tr><td>$\pi_{\theta_{\rm old}}$</td><td>the frozen copy that sampled the batch</td></tr>
   <tr><td>$\pi_{\rm ref}$</td><td>the reference: the frozen SFT model</td></tr>
   <tr><td>$r_\phi(q, o)$, $R$</td><td>the reward model's score; an answer's total reward, $R_1$</td></tr>
@@ -65,7 +62,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 </div>
 <div class="text">
 
-<table class="rules nohead" style="font-size:19px">
+<table class="rules nohead" style="font-size:17px">
   <tr><td>$V$, $V_\psi$, $v_t$</td><td>state value $\mathbb E[R_t \mid s_t]$; the value model, and its prediction $V_\psi(s_t)$</td></tr>
   <tr><td>$Q$, $A$, $\hat A_t$</td><td>action value $\mathbb E[R_t \mid s_t, o_t]$, advantage, estimated advantage</td></tr>
   <tr><td>$\delta_t$</td><td>the TD residual, a one-step advantage estimate</td></tr>
@@ -123,7 +120,7 @@ What we actually need: given the same prompt and two candidate answers A and B, 
 <div class="text">
 
 - An **agent** learns by acting in an **environment** and getting rewards or penalties.
-- In state $s$ its **policy** picks action $a$; it gets a **reward** $r$ ($R_t$ in the figure) and a new state $s'$.
+- In state $s$ its **policy** picks action $a$; it gets a **reward** $r$ and a new state $s'$.
 - The goal: behaviour that maximises the total reward over time.
 
 <p class="plain">RL scores the model's own action instead of giving it a label to copy.</p>
@@ -132,7 +129,7 @@ What we actually need: given the same prompt and two candidate answers A and B, 
 <div class="fig"><img src="img/week-04-ppo-agent.svg" alt="Illustration: the policy, the agent, sends an action to the environment; the environment returns the next state and a reward"></div>
 </div>
 
-<p class="footnote">Figure from the Week 4 PPO section, which writes the reward $R_t$; here it is $r$</p>
+<p class="footnote">Figure from the Week 4 PPO section, which labels the reward $R_t$; this deck writes $r$ and keeps $R_t$ for the return (Part 4)</p>
 
 Note:
 Reinforcement learning is close to how we learn as people: since we were babies we've learned by interacting with the world, trying things, seeing the results, and gradually learning which actions lead to better outcomes. More formally, it's a kind of machine learning in which an agent learns to make good decisions by interacting with an environment and receiving feedback as rewards or penalties.
@@ -182,6 +179,7 @@ One clarification: tokens are drawn as whole words only for simplicity. In real 
 <div class="text">
 
 - **Stage 3, RL**: optimise the policy against the reward model, so its answers score higher.
+- The reward model stands in for the people: RL needs millions of scores, far more than anyone could rank.
 - This is OpenAI's InstructGPT pipeline; Parts 2 to 6 take the stages one at a time.
 
 </div>
@@ -194,23 +192,6 @@ One clarification: tokens are drawn as whole words only for simplicity. In real 
 Note:
 How do we usually apply RL to language models? The classic example is InstructGPT from OpenAI, which introduced the RLHF pipeline for aligning language models. It has three stages. First, supervised fine-tuning: collect demonstration data and train a supervised policy. Second, reward modelling: collect comparison data, where people compare different answers to the same prompt, and train a reward model to predict which answer is preferred. Third, reinforcement learning: optimise the policy against the reward model, so it learns to write answers that get higher preference scores.
 The figure is the paper's own. Note step 2's prompt, "Explain the moon landing to a 6 year old": it comes back as the ranking example in Part 2.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model</p>
-
-## How does SFT differ from pre-training?
-
-<div class="rows">
-<div class="eq">$$L(\theta) = -\sum_{t} m_t \log\pi_\theta(x_t \mid x_{\lt t})$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-sft-pt.svg" alt="Illustration: pre-training, the web text The moon orbits the Earth every 27 days, with a loss marker under every token. SFT, the prompt Explain the moon landing simply in grey and masked, then the answer People flew a rocket to the moon, with a loss marker under every answer token only"></div>
-<p class="plain">The same loss; only the mask $m_t$ changes. SFT's data, a prompt followed by a good answer, is what changes behaviour.</p>
-</div>
-
-<p class="footnote">$x_t$: token $t$ of the text; $m_t$ = 1 where the loss counts, 0 where it is masked. InstructGPT's SFT data: about 13,000 prompts with labeler-written answers (§3.2)</p>
-
-Note:
-Most of us already know pre-training and SFT. In pre-training the model sees a very large collection of text, web pages, books, code, articles, and the objective is simple: given the previous tokens, predict the next one. SFT is teacher-forced next-token prediction on a reference answer: the same objective, but the data is prompt and answer pairs instead of arbitrary text. The goal is to make the model more useful as an assistant, teaching it how to answer questions and follow instructions. The one mechanical difference, next slide: the loss is computed only on the answer.
 
 ---
 
@@ -242,6 +223,23 @@ Note:
 Suppose q is the prompt and o the target answer. We concatenate their tokens and feed the whole sequence into the model. At each position the model predicts the next token, so the target sequence is the input shifted by one. That shifted setup is what teacher forcing means: at every position the model is shown the true previous token from the reference answer, not its own previous prediction, so even if it would have generated a different token, training continues along the reference.
 The loss is the standard cross-entropy, the negative log-likelihood of the target tokens: at each position the model gives a distribution over the vocabulary, and we want high probability on the correct next token. The difference from pre-training: the loss counts only the answer's tokens. The prompt tokens are used as context but masked out. So the SFT loss teaches the model to generate the target answer conditioned on the prompt.
 Keep the picture: one backbone, a head that scores the vocabulary at every position. The reward model and the value model are the same picture with the head swapped.
+
+--
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · optional</p>
+
+## How does SFT differ from pre-training?
+
+<div class="rows">
+<div class="eq">$$L(\theta) = -\sum_{t} m_t \log\pi_\theta(x_t \mid x_{\lt t})$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-sft-pt.svg" alt="Illustration: pre-training, the web text The moon orbits the Earth every 27 days, with a loss marker under every token. SFT, the prompt Explain the moon landing simply in grey and masked, then the answer People flew a rocket to the moon, with a loss marker under every answer token only"></div>
+<p class="plain">The same loss; only the mask $m_t$ changes. SFT's data, a prompt followed by a good answer, is what changes behaviour.</p>
+</div>
+
+<p class="footnote">$x_t$: token $t$ of the text; $m_t$ = 1 where the loss counts, 0 where it is masked. InstructGPT's SFT data: about 13,000 prompts with labeler-written answers (§3.2)</p>
+
+Note:
+Most of us already know pre-training and SFT. In pre-training the model sees a very large collection of text, web pages, books, code, articles, and the objective is simple: given the previous tokens, predict the next one. SFT is teacher-forced next-token prediction on a reference answer: the same objective, but the data is prompt and answer pairs instead of arbitrary text. The goal is to make the model more useful as an assistant, teaching it how to answer questions and follow instructions. The one mechanical difference, next slide: the loss is computed only on the answer.
 
 ---
 
@@ -275,11 +273,12 @@ The example: "Explain the moon landing to a 6-year-old", four answers. A: "The m
 <dl class="where">
 <dt>$r_\phi(q, o)$</dt><dd>the <b>reward model</b>'s score; $\phi$ its weights</dd>
 <dt>$\sigma(x)$</dt><dd>the sigmoid, $1/(1+e^{-x})$</dd>
-<dt>$N$</dt><dd>the number of preference pairs</dd>
+<dt>$N$</dt><dd>the number of preference pairs (a simplified average; the paper averages per prompt)</dd>
 </dl>
 
 - A language model with its language-model head swapped for a **reward head**: one number, read at the last token.
 - **Bradley-Terry**: the chance the chosen answer wins is $\sigma$ of the score gap.
+- Only gaps count: add 90 to every score and the loss is unchanged, so scores have no fixed zero.
 
 <p class="plain">If the chosen answer scores 1.0 higher, the loss is $-\ln\sigma(1) = -\ln 0.731 = 0.313$ (ours).</p>
 
@@ -293,34 +292,6 @@ Note:
 The reward model takes a prompt q and an answer o and returns a single number; a better answer should get a higher score. In practice it starts from a trained language model, often the SFT model: reuse the backbone, remove the language-model head that predicts the next token, and add a reward head, which turns the final token's hidden state into one scalar score for the whole answer.
 For each pair we have the chosen answer, the one people preferred, and the rejected one. The reward model scores both, and we want the chosen one higher. The Bradley-Terry model says that if two candidates have scores, the probability one is preferred depends on the difference: here, the sigmoid of chosen minus rejected. If the chosen answer scores much higher, the difference is very positive, the sigmoid is near one and the loss near zero. If it scores lower, the difference is negative, the sigmoid is near zero and minus the log is very large: strongly penalised. The loss is the negative log probability of people's preferences under Bradley-Terry, averaged over pairs.
 InstructGPT's §3.5 describes starting from the SFT model; its appendix says the final 6B reward model started from a GPT-3 fine-tuned on public NLP datasets, with similar results either way. Worked numbers from Week 4: a gap of 1.0 gives 0.313; equal scores give log 2, 0.693; wrong way round by 1.0 gives 1.313.
-
---
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 2, SFT and reward model · Ouyang et al. 2022 §3.5 · optional</p>
-
-## Why average a prompt's pairs first?
-
-<div class="cols">
-<div class="text">
-
-- A prompt with 9 ranked answers gives 36 pairs; one with 4 gives 6.
-- Averaged pair by pair, the 9-answer prompt would count six times as much.
-- The fix: average over each prompt's pairs, then over prompts (the main slide's $1/N$ is the simple form).
-- InstructGPT does this with the $1/\binom K2$ in Eq. 1, and puts all of a prompt's pairs in one batch element.
-
-</div>
-<div class="text">
-
-<p class="plain">Pairs from one ranking are correlated, so shuffled they overfit; kept together, each answer passes through the reward model once: 9 forward passes, not 36.</p>
-
-</div>
-</div>
-
-<p class="footnote">Ouyang et al. 2022 §3.5: shuffled pairs made the model overfit; "we train on all $\binom K2$ comparisons from each prompt as a single batch element". Week 4, InstructGPT section</p>
-
-Note:
-Optional, a practical detail and InstructGPT's version of it. Different prompts give different numbers of pairs, so averaging pair by pair lets prompts with many ranked answers dominate. So first average a prompt's pairs, then average across prompts.
-InstructGPT does the same and gives a second reason. The pairs within one ranking are highly correlated: if you shuffle them into the dataset as separate examples, each answer is seen many times in one epoch, and the reward model overfits. So they train on all of a prompt's comparisons as one batch element. That is also cheaper: "a single forward pass of the RM for each completion", 9 for K = 9, instead of one per pair, 36, as the paper counts it.
 
 ---
 
@@ -376,7 +347,7 @@ One score per answer is all we need to build the policy gradient and REINFORCE. 
 - Sample answers from the model, score each, and average.
 - Training should raise that average.
 
-<p class="plain">"Together" (0.9) scores 2 and "apart" (0.1) scores −1, so $J$ = 0.9 × 2 + 0.1 × (−1) = 1.7.</p>
+<p class="plain">The first three words are certain; then "together" (0.9) scores 2 and "apart" (0.1) scores −1, so $J$ = 0.9 × 2 + 0.1 × (−1) = 1.7.</p>
 
 </div>
 </div>
@@ -407,9 +378,9 @@ Our example: the policy always writes "Gravity pulls objects", then "together" w
 </div>
 <div class="text">
 
-- $\theta$ only decides which answers get sampled; it sits under the $\mathbb E$.
-- Sampling a token is a discrete pick: no gradient flows through it.
-- The score may not be differentiable at all: a unit test, a human.
+- Sampling a token is a discrete pick: no gradient flows through "which token came out".
+- A differentiable reward model does not help: the pick sits between $\theta$ and the score.
+- And some scores are not differentiable at all: a unit test, a human.
 
 <p class="plain">The gradient has to reach $\theta$ through the probabilities, not through the samples.</p>
 
@@ -509,7 +480,7 @@ That is progress, but it is stuck. It is a plain sum over every possible answer,
 </div>
 </div>
 
-<p class="footnote">Check on $p = e^\theta$: $\nabla p = e^\theta$, and $p\thinspace\nabla\log p = e^\theta \times 1 = e^\theta$</p>
+<p class="footnote">Check on $p = \sigma(z)$, the sigmoid: $\frac{dp}{dz} = p(1-p)$, and $p\thinspace\frac{d}{dz}\log p = p \times (1-p)$, the same</p>
 
 Note:
 The log-derivative trick is one line of calculus. The gradient of log p is the gradient of p divided by p, by the chain rule, since the derivative of log x is one over x. Multiply both sides by p, and the gradient of a probability equals the probability times the gradient of its log. That is exactly what we wanted: a probability in front.
@@ -614,14 +585,14 @@ Now replace R of tau by a general weight, Phi t. This one form covers everything
 
 ## What is REINFORCE?
 
-<div class="eq">$$\hat g = \frac1N\sum_{i=1}^{N}R(\tau_i)\sum_t\nabla_\theta\log\pi_\theta(o_{i,t} \mid s_{i,t})$$</div>
+<div class="eq">$$\hat g = \frac1M\sum_{i=1}^{M}R(\tau_i)\sum_t\nabla_\theta\log\pi_\theta(o_{i,t} \mid s_{i,t})$$</div>
 
 <div class="cols">
 <div class="text">
 
 <dl class="where">
 <dt>$\hat g$</dt><dd>the estimated gradient; a hat means estimated from samples</dd>
-<dt>$N$, $\tau_i$</dt><dd>the number of sampled answers, and answer $i$</dd>
+<dt>$M$, $\tau_i$</dt><dd>the number of sampled answers, and answer $i$</dd>
 <dt>$o_{i,t}$, $s_{i,t}$</dt><dd>token $t$ of answer $i$, and the text before it</dd>
 </dl>
 
@@ -632,19 +603,37 @@ Now replace R of tau by a general weight, Phi t. This one form covers everything
 
 - **REINFORCE**: $\Phi_t = R(\tau)$; sample answers, score them, take one gradient step, repeat.
 - **On-policy**: the samples must come from the current policy, so each batch is used once.
-- One fact used below: $\mathbb E_{o\sim\pi_\theta}[\nabla_\theta\log\pi_\theta(o)] = \nabla_\theta\sum_o\pi_\theta(o) = \nabla_\theta 1 = 0$.
 
-<p class="plain">If every answer scores exactly 1, REINFORCE does nothing on average, by that fact; each sample still adds noise.</p>
+<p class="plain">A high score makes every token of the answer more likely; a negative score, less likely.</p>
 
 </div>
 </div>
 
-<p class="footnote">Williams 1992, "Simple statistical gradient-following algorithms for connectionist reinforcement learning", Machine Learning 8. As a loss to minimise: $-\frac1N\sum_i R(\tau_i)\sum_t\log\pi_\theta(o_{i,t} \mid s_{i,t})$</p>
+<p class="footnote">Williams 1992, "Simple statistical gradient-following algorithms for connectionist reinforcement learning", Machine Learning 8. As a loss to minimise: $-\frac1M\sum_i R(\tau_i)\sum_t\log\pi_\theta(o_{i,t} \mid s_{i,t})$</p>
 
 Note:
 Put the last two slides together and replace the expectation by an average over N sampled answers. That is REINFORCE, from Williams in 1992: for each answer, its total reward times the gradient of its log-likelihood, averaged. In code you write a loss: minus the total reward times the log-likelihood. Read it as SFT on the model's own samples, with each answer weighted by its score. A high score makes all of the answer's tokens more likely; a negative score makes them all less likely.
 The loop: sample a batch of answers from the current policy, score them, take one gradient step, and sample again. That is what on-policy means: the gradient is only right for the policy that produced the samples, so after one step the batch is stale.
-One fact we will use three times: the gradient of the log probability has mean zero under the policy, because the probabilities sum to one and the gradient of one is zero. So if every answer scores the same, say 1, REINFORCE's expected gradient is zero: imitating yourself does not move you on average. Each single sample still pushes somewhere, which is noise. Only differences in score carry signal.
+The next slide proves one fact about this gradient that we will lean on three times.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · a fact used three times</p>
+
+## Why does the average push vanish?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \mathbb E_{o\sim\pi_\theta}\big[\nabla_\theta\log\pi_\theta(o)\big] &= \sum_o \pi_\theta(o)\thinspace\nabla_\theta\log\pi_\theta(o)\\ &= \sum_o \nabla_\theta\thinspace\pi_\theta(o) = \nabla_\theta\sum_o \pi_\theta(o) = \nabla_\theta 1 = 0 \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-meanzero.svg" alt="Illustration: two answers at 0.5 each and one knob z, answer A's logit. Answer A would turn z by plus 0.5, answer B by minus 0.5; the average, 0.5 times plus 0.5 plus 0.5 times minus 0.5, is 0"></div>
+<p class="plain">If every answer scored the same, REINFORCE's pushes would cancel on average: only differences in score carry signal.</p>
+</div>
+
+<p class="footnote">Line 2 is the log-derivative trick run backwards; the probabilities always sum to 1. $z$: one knob for the policy's choice, a stand-in for $\theta$, used again in problem 1</p>
+
+Note:
+One fact about the policy gradient that we will use three times: for the baseline, for the reward-to-go, and for the noise. Average the gradient of log pi over the policy's own samples and you get zero. Line one writes the average as a sum. Line two is the log-derivative trick run backwards: a probability times the gradient of its log is the gradient of the probability. The gradients of all the probabilities add up to the gradient of their sum, and the sum is always 1, so its gradient is 0.
+The picture makes it concrete. Two answers, half the time each, and one knob z, the logit of answer A, standing in for all of theta. Sampling A says "turn z up by 0.5"; sampling B says "turn it down by 0.5". Weighted by how often each happens, they cancel.
+So if every answer scored the same, say 1, REINFORCE's pushes would cancel on average: imitating yourself goes nowhere. Only differences in score carry signal. Keep this knob: problem 1 uses it.
 
 ---
 
@@ -680,7 +669,7 @@ A terrible answer gets 90 and a great one gets 100. Both scores are big and posi
 <div class="rows">
 <div class="eq">$$\begin{aligned} J(z) &= p\cdot 100 + (1-p)\cdot 90, \qquad p = \sigma(z)\\ \frac{dJ}{dz} &= p(1-p)\times(100 - 90) = 0.5 \times 0.5 \times 10 = 2.5 \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-noise-knob.svg" alt="Illustration: expected score J against the knob z, the great answer's logit; an S-curve from 90 to 100. At z = 0 both answers are at 0.5, J = 95, and the slope is 2.5: turn z up, gently"></div>
-<p class="plain">One knob $z$ sets how often the great answer is written. The right move is to turn it up, gently: slope 2.5.</p>
+<p class="plain">The same knob $z$, now for great against terrible. The right move is to turn it up, gently: slope 2.5.</p>
 </div>
 
 <p class="footnote">$z$: the great answer's logit; $\sigma$: the sigmoid, so $p = 0.5$ at $z = 0$; $J$: the expected score. Example ours</p>
@@ -716,10 +705,10 @@ The two pushes are huge and nearly opposite. Averaged, half the time each, they 
 <div class="rows">
 <div class="eq">$$\hat g = \frac{50\thinspace k - 45\thinspace(16 - k)}{16}, \qquad k = \text{great answers in the batch}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-noise-batches.svg" alt="Illustration: 40 dots, one per batch of 16 answers, on a line of batch estimates from minus 40 to 40. 8 great and 8 terrible gives plus 2.5, the true gradient; 9 great and 7 terrible gives plus 8.4; 7 great and 9 terrible gives minus 3.4, the wrong way. 17 hollow dots lie left of zero"></div>
-<p class="plain">With 7 or fewer great answers, the batch turns the knob the wrong way: a 40% chance, and 17 of these 40 batches.</p>
+<p class="plain">On average the batches are right, 2.5; one at a time they scatter, and 40% point the wrong way. That scatter is the noise.</p>
 </div>
 
-<p class="footnote">Ours: $k$ is a coin-flip count, Binomial(16, 0.5); $P(k \le 7) = 0.40$. 40 simulated batches, seed fixed</p>
+<p class="footnote">Ours: $k$ is a coin-flip count, Binomial(16, 0.5); a batch points the wrong way when $k \le 7$, $P = 0.40$; 17 of these 40 simulated batches</p>
 
 Note:
 A batch averages 16 pushes, and how many great answers it contains is a coin flip. With exactly 8 and 8, the average is plus 2.5, exactly right. With 9 great, plus 8.4: right direction, too hard. With 7 great and 9 terrible: 7 times 50 minus 9 times 45, over 16, minus 3.4. That batch turns the knob toward the terrible answer.
@@ -736,7 +725,7 @@ Any batch with 7 or fewer great answers points the wrong way, and that happens 4
 
 - "Gravity pulls objects apart" scores −1; only "apart" is wrong.
 - REINFORCE puts the score −1 on every token, so the three good words are pushed down too.
-- Long answers make it worse: 490 good tokens before a 10-token hallucination are all pushed down.
+- Over many answers it averages out, but slowly: it is noise, and it grows with length.
 - This is the **credit-assignment** problem: which action caused the reward?
 
 <p class="plain">"Gravity" deserves a weight of about 0: it is in both answers, so it was no better or worse than expected.</p>
@@ -745,7 +734,7 @@ Any batch with 7 or fewer great answers points the wrong way, and that happens 4
 <div class="fig"><img src="img/week-04-rlhf2-blame.svg" alt="Illustration: bar chart over the four tokens Gravity, pulls, objects, apart; REINFORCE puts weight minus 1 on each"></div>
 </div>
 
-<p class="footnote">Example ours. Problem 1 was the size of the score; this is where it lands, whatever its size</p>
+<p class="footnote">Example ours. Problem 1 was the size of the score; this is where it lands, and centring the scores does not fix it (next slide)</p>
 
 Note:
 The second problem. Take the bad answer, "Gravity pulls objects apart", score minus 1. Only the last word is wrong. But REINFORCE multiplies the whole answer's log-likelihood by the score, so every token gets the same weight, minus 1. "Gravity", "pulls" and "objects" are pushed down exactly as hard as "apart".
@@ -798,7 +787,7 @@ Notice what is different from problem 1. These scores are perfectly centred: plu
 </div>
 <div class="text">
 
-- The gradient is right only at the policy that wrote the batch: **on-policy**.
+- The gradient is right only for the policy that wrote the batch: **on-policy**. After one step the knob may move $p$ from 0.5 to 0.6, but the batch was drawn at 50/50.
 
 <p class="plain">So every expensive batch buys exactly one gradient step.</p>
 
@@ -867,6 +856,55 @@ Notice that three and four pull against each other: reusing a batch means severa
 
 ---
 
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · the plan</p>
+
+## What will Part 4 change?
+
+<div class="rows">
+<div class="eq">$$\nabla_\theta J = \mathbb E\Big[\sum_t \nabla_\theta\log\pi_\theta(o_t \mid s_t)\cdot\Phi_t\Big]$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-ladder.svg" alt="Illustration: a ladder of weights. Phi t = R, REINFORCE, the whole score on every token. Phi t = R minus b, minus a baseline, fixes noise. Phi t = A of s t and o t, the advantage Q minus V, better or worse than expected, fixes blame. Phi t = delta t, one step plus the value model, estimates it. Phi t = A hat t, GAE, a blend of steps, estimates it"></div>
+<p class="plain">The direction stays; only the weight $\Phi_t$ changes, one rung at a time, until it fixes noise and blame.</p>
+</div>
+
+<p class="footnote">$\Phi_t$: the weight on token $t$'s push (Part 3). The GAE paper (Schulman et al. 2015, arXiv:1506.02438) §2 lists these choices</p>
+
+Note:
+Part 4 in one picture. The policy gradient from Part 3 has two factors per token: the direction that makes the token more likely, and a weight, Phi t. REINFORCE uses the whole answer's score as the weight, and that gave us problems 1 and 2. Part 4 never touches the direction; it only climbs this ladder of weights. Subtract a baseline: that fixes the noise. Use the advantage, Q minus V, how much better the token was than expected: that fixes the blame. Then two ways to estimate the advantage in practice: one step plus a value model, and GAE, a blend of steps.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 1, noise · a baseline</p>
+
+## What does subtracting a baseline change?
+
+<div class="rows">
+<div class="eq">$$\mathbb E_{o\sim\pi_\theta}\big[\nabla_\theta\log\pi_\theta(o \mid s)\thinspace b(s)\big] = b(s)\cdot 0 = 0$$</div>
+<div class="points">
+<div class="text">
+
+- A **baseline** $b(s)$ depends on the state, not the action, so weighting by $R - b(s)$ keeps the average.
+
+</div>
+<div class="text">
+
+- 95 = 0.5 × 100 + 0.5 × 90, the expected score: minus 95 gives +5 and −5, and all 40 batches land on 2.5.
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-batches-base.svg" alt="Illustration: the 40 batches again. Raw scores: dots spread from about minus 27 to plus 32, 17 of them the wrong way. Minus 95: all 40 batches at exactly 2.5, the true gradient"></div>
+<p class="plain">The best baseline is the expected score from the state, here 95: the <b>value</b>, two slides on.</p>
+</div>
+
+<p class="footnote">Ours. Zero spread is special to two scores; in general a baseline shrinks it. A baseline cannot save "Subtract": both answers share its state</p>
+
+Note:
+The second fix. Part 3's fact says the gradient of log pi has mean zero under the policy. So multiplying it by anything that does not depend on the action, a baseline b of s, still gives zero on average. That means we can subtract a baseline from the return without changing the average gradient.
+Why would we want to? Because it removes the shared offset. Take the reward model that scores everything between 90 and 100, with the two answers equally likely. Subtract 95, the average: the great answer is now weighted by plus 5 and the terrible one by minus 5. The terrible answer is actively pushed down instead of up, and the shared 90 that was pure noise is gone.
+What a single baseline cannot do is save "Subtract". Both maths answers start from the same prompt, the same state, so they get the same baseline. If the value of the prompt is 80, "Subtract" is weighted plus 20 in the good answer and minus 180 in the slipped one: still a big swing, for a mistake that came later. To split them we need a baseline that moves along the answer, one that notices the slip when it happens. That is the value at every token, and the one-step estimate later in this part.
+Which baseline? The natural one is what we expected to get from this state: the value. Next, what the value is, and its partner Q.
+
+---
+
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · per-token reward</p>
 
 ## What reward does each token get?
@@ -898,9 +936,9 @@ REINFORCE needed only one number per answer. To ask which tokens deserve the cre
 The return R t is everything still to come from step t: the sum of the later step rewards, each discounted by gamma to the power of how far ahead it is. The return from the first token, R 1, is the total reward R from Part 3. In RLHF gamma is 1: InstructGPT says no discount is applied, and the summarisation paper that InstructGPT builds on, Stiennon et al., uses gamma 1 too. With one final score and no discount, every token's return is just that score, as in the figure.
 Part 6 will add a small KL penalty to every token's step reward, so in real PPO the earlier r t are not exactly zero. And from here on, the value model will give us an opinion at every token even where the reward model is silent.
 
----
+--
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · reward-to-go</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · reward-to-go · optional</p>
 
 ## Why count only the rewards after step $t$?
 
@@ -936,38 +974,6 @@ Does it help our bad answer? Not at all: the only reward is at the end, so every
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 1, noise · a baseline</p>
-
-## What does subtracting a baseline change?
-
-<div class="rows">
-<div class="eq">$$\mathbb E_{o\sim\pi_\theta}\big[\nabla_\theta\log\pi_\theta(o \mid s)\thinspace b(s)\big] = b(s)\cdot 0 = 0$$</div>
-<div class="points">
-<div class="text">
-
-- A **baseline** $b(s)$ depends on the state, not the action, so weighting by $R - b(s)$ keeps the average.
-
-</div>
-<div class="text">
-
-- Scores 100 and 90 minus 95 give +5 and −5: all 40 batches land on 2.5.
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-rlhf2-noise-batches-base.svg" alt="Illustration: the 40 batches again. Raw scores: dots spread from about minus 27 to plus 32, 17 of them the wrong way. Minus 95: all 40 batches at exactly 2.5, the true gradient"></div>
-<p class="plain">The natural baseline is the expected return from the state: the <b>value</b>, defined next.</p>
-</div>
-
-<p class="footnote">Ours. Zero spread is special to two scores; in general a baseline shrinks it. A baseline cannot save "Subtract": both answers share its state</p>
-
-Note:
-The second fix. Part 3's fact says the gradient of log pi has mean zero under the policy. So multiplying it by anything that does not depend on the action, a baseline b of s, still gives zero on average. That means we can subtract a baseline from the return without changing the average gradient.
-Why would we want to? Because it removes the shared offset. Take the reward model that scores everything between 90 and 100, with the two answers equally likely. Subtract 95, the average: the great answer is now weighted by plus 5 and the terrible one by minus 5. The terrible answer is actively pushed down instead of up, and the shared 90 that was pure noise is gone.
-What a single baseline cannot do is save "Subtract". Both maths answers start from the same prompt, the same state, so they get the same baseline. If the value of the prompt is 80, "Subtract" is weighted plus 20 in the good answer and minus 180 in the slipped one: still a big swing, for a mistake that came later. To split them we need a baseline that moves along the answer, one that notices the slip when it happens. That is the value at every token, and the one-step estimate later in this part.
-Which baseline? The natural one is what we expected to get from this state: the value. Next, what the value is, and its partner Q.
-
----
-
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · $V$ and $Q$</p>
 
 ## What do $V(s)$ and $Q(s, o)$ measure?
@@ -997,6 +1003,72 @@ Note:
 Two functions. V of s, the state-value function: the expected return from state s if we follow the policy from there, the average of R t given only the state. Q of s and a, the action-value function: the expected return if we take action a first, and then follow the policy. Keep it apart from R t. R t is what one sampled answer actually got from step t on, so it is random. Q is the average of R t over every way the rest of the answer could go, so it is fixed.
 Our example. Assume the policy always writes "Gravity pulls objects"; at that state, s4, it picks "together" with probability 0.9 and "apart" with 0.1. That word is the last action, so Q of each is just its score: Q of together is 2, Q of apart is minus 1. V of s4 averages over what the policy would do: 0.9 times 2 plus 0.1 times minus 1, which is 1.7.
 No answer actually scores 1.7. V is an expectation: what we expect before the last word is chosen. Because the first three words are certain, V is also 1.7 at every earlier state: nothing has been decided yet. The same goes for Q of "Gravity": it is 1.7, while R 1 for that token is 2 or minus 1 depending on which last word was sampled. On the last word nothing random is left, so R t and Q are the same number. Remember that; it is why "Gravity" deserves a weight of zero.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · the advantage</p>
+
+## Why is the advantage $Q - V$?
+
+<div class="eq">$$\nabla_\theta J = \mathbb E\Big[\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\thinspace A^\pi(s_t, o_t)\Big],\qquad A^\pi(s, o) = Q^\pi(s, o) - V^\pi(s)$$</div>
+
+<div class="cols">
+<div class="text">
+
+<dl class="where">
+<dt>$A^\pi(s, o)$</dt><dd>the <b>advantage</b>: how much better $o$ is than the policy's average in $s$</dd>
+</dl>
+
+- Take the baseline $b = V$, and replace $R_t$ by its average given $s_t$ and $o_t$, which is $Q$.
+- The second is allowed because $\nabla_\theta\log\pi_\theta(o_t \mid s_t)$ depends only on $s_t$ and $o_t$.
+
+</div>
+<div class="text">
+
+- At $s_4$: "together" +0.3, "apart" −2.7; they average to 0 under the policy.
+
+<p class="plain">"Together" was expected (90%), so it beats the average by little; "apart" is a rare, bad surprise.</p>
+
+</div>
+</div>
+
+<p class="footnote">Check: $0.9 \times 0.3 + 0.1 \times (-2.7) = 0$. Positive advantage: make the action more likely; negative: less likely</p>
+
+Note:
+Now combine the two fixes. Subtract the baseline V of s t. And replace the reward-to-go R t by its average given the state and action, which by definition is Q. Why is that replacement allowed? The gradient term depends only on s t and o t; so inside the expectation we can first average R t over everything that happens after, given s t and o t, and that average is Q. The policy gradient then becomes the expectation of the gradient of log pi times the advantage, Q minus V.
+The advantage asks: how much better was this action than what the policy does on average in this state? At s4, "together" has advantage 2 minus 1.7, plus 0.3; "apart" has minus 1 minus 1.7, minus 2.7. Weighted by the policy, they average to zero: 0.9 times 0.3 plus 0.1 times minus 2.7. That is always true: advantages average to zero under the policy.
+The sizes make sense. "Together" was already the expected choice, 90% likely, so it beats the average only slightly. "Apart" is a rare, bad surprise, so it gets a big negative weight. And for the first three words, whose choice was certain, Q equals V and the advantage is zero: exactly the weight we said "Gravity" deserved.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · the value model's head</p>
+
+## How is the value model trained?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat R_t\big)^2$$</div>
+
+<dl class="where">
+<dt>$V_\psi$</dt><dd>the value model; $\psi$ its weights</dd>
+<dt>$\hat R_t$</dt><dd>the target: the return $R_t$ (in PPO, the GAE target of step 8)</dd>
+</dl>
+
+- The same backbone with a **value head**: one number per answer position.
+
+<p class="plain">1.7 misses "together" by 0.3, but over both answers the loss is 0.9 × 0.09 + 0.1 × 2.7² = 0.81 per token, and no other number does better (ours).</p>
+
+</div>
+<div class="fig"><img src="img/week-04-rlhf-heads-value.svg" alt="Illustration: the same inputs and backbone design, with a value head over the answer positions q4, o1, o2 and o3, giving one value each, v1 to v4"></div>
+</div>
+
+<p class="footnote">Mean squared error is minimised by the mean, here the expected return 1.7. Value head: a last layer that turns each position's hidden state into one number</p>
+
+Note:
+Where does V come from? A value model: architecturally the same transformer backbone, with a value head that outputs one scalar at every answer position. Keep this picture: it is the third of the three heads, next to the policy's language-model head and the reward model's head.
+Train it by regression: the mean squared error between its prediction at each position and a target return. The target can be the sampled return R t; common PPO implementations use the advantage plus the old value, which is the GAE version of a return.
+A subtle point. Even the exact value, 1.7, has a loss on any single answer: on "together", whose return is 2, it misses by 0.3, a squared error of 0.09 per token. On "apart" it misses by 2.7. Averaged over the answers the policy actually writes, 90% "together" and 10% "apart", the loss is 0.81 per token, and no other prediction does better, because a squared error is minimised by the mean. The value model learns the expected return, which is exactly what V is.
 
 ---
 
@@ -1036,75 +1108,6 @@ Two identities connect Q and V, and the second one is what the rest of the part 
 First: V is Q averaged over the policy's actions. In a state, the policy picks each action with some probability; V is the probability-weighted average of the Q values. Our check: 0.9 times 2 plus 0.1 times minus 1 is 1.7.
 Second: Q is one real step plus the value of where it lands. If I take action o t in state s t, I get the step reward r t, and then I am in state s t plus 1, from which I expect V of s t plus 1. In general the next state is random, so you average over it; for a language model the next state is just the text with the token appended, which is certain, so no average is needed. And after the last token there is no future, so V is zero and the last token's Q is its reward.
 Why does this matter? Because it means we never need a separate network for Q. One sampled step and a value model give us an estimate of Q. That is where the next three slides go.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · the advantage</p>
-
-## Why is the advantage $Q - V$?
-
-<div class="eq">$$\nabla_\theta J = \mathbb E\Big[\sum_t\nabla_\theta\log\pi_\theta(o_t \mid s_t)\thinspace A^\pi(s_t, o_t)\Big],\qquad A^\pi(s, o) = Q^\pi(s, o) - V^\pi(s)$$</div>
-
-<div class="cols">
-<div class="text">
-
-<dl class="where">
-<dt>$A^\pi(s, o)$</dt><dd>the <b>advantage</b>: how much better $o$ is than the policy's average in $s$</dd>
-</dl>
-
-- Take the baseline $b = V$, and replace $R_t$ by its average given $s_t$ and $o_t$, which is $Q$.
-- The second is allowed because $\nabla_\theta\log\pi_\theta(o_t \mid s_t)$ depends only on $s_t$ and $o_t$.
-
-</div>
-<div class="text">
-
-- At $s_4$: "together" +0.3, "apart" −2.7; they average to 0 under the policy.
-
-<p class="plain">"Together" was expected (90%), so it beats the average by little; "apart" is a rare, bad surprise.</p>
-
-</div>
-</div>
-
-<p class="footnote">Check: $0.9 \times 0.3 + 0.1 \times (-2.7) = 0$. Positive advantage: make the action more likely; negative: less likely</p>
-
-Note:
-Now combine the two fixes. Subtract the baseline V of s t. And replace the reward-to-go R t by its average given the state and action, which by definition is Q. Why is that replacement allowed? The gradient term depends only on s t and o t; so inside the expectation we can first average R t over everything that happens after, given s t and o t, and that average is Q. The policy gradient then becomes the expectation of the gradient of log pi times the advantage, Q minus V.
-The advantage asks: how much better was this action than what the policy does on average in this state? At s4, "together" has advantage 2 minus 1.7, plus 0.3; "apart" has minus 1 minus 1.7, minus 2.7. Weighted by the policy, they average to zero: 0.9 times 0.3 plus 0.1 times minus 2.7. That is always true: advantages average to zero under the policy.
-The sizes make sense. "Together" was already the expected choice, 90% likely, so it beats the average only slightly. "Apart" is a rare, bad surprise, so it gets a big negative weight. And for the first three words, whose choice was certain, Q equals V and the advantage is zero: exactly the weight we said "Gravity" deserved.
-
---
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 1, noise · across prompts · optional</p>
-
-## Does a high reward always mean a good answer?
-
-<div class="cols">
-<div class="text">
-
-- No: a reward is high or low relative to what the prompt allows.
-- The advantage judges each answer against its own prompt's value $V$.
-- This is the noise fix of the baseline, seen across prompts of different difficulty.
-
-</div>
-<div class="text">
-
-<table class="rules">
-  <tr><td>prompt</td><td class="num">$V$</td><td class="num">reward</td><td class="num">advantage</td></tr>
-  <tr><td>easy, answer 1</td><td class="num">0.90</td><td class="num">0.95</td><td class="num">+0.05</td></tr>
-  <tr><td>easy, answer 2</td><td class="num">0.90</td><td class="num">0.85</td><td class="num">−0.05</td></tr>
-  <tr><td>hard, answer 1</td><td class="num">0.20</td><td class="num">0.40</td><td class="num">+0.20</td></tr>
-  <tr><td>hard, answer 2</td><td class="num">0.20</td><td class="num">0.10</td><td class="num">−0.10</td></tr>
-</table>
-
-<p class="plain">Hard 1 beat expectations: its reward, 0.40, is below easy 2's 0.85, but its advantage is +0.20 against −0.05.</p>
-
-</div>
-</div>
-
-<p class="footnote">Numbers ours. $V$: the prompt's expected reward; advantage here: reward minus $V$, a one-answer estimate</p>
-
-Note:
-Optional. Imagine two prompts. Prompt A is easy, so most completions get high scores. Prompt B is hard, so even the best completions get relatively low scores. Looking only at raw reward, the easy prompt always looks good and the hard one always looks bad, and REINFORCE would push up every easy-prompt answer. What we want to know is whether a completion was better or worse than expected for that prompt. Subtracting the value makes the signal reflect better-than-expected quality, not prompt difficulty. In our numbers, the easy prompt's weaker answer, 0.85, has a much higher raw reward than the hard prompt's best, 0.40, but its advantage is negative, and the hard prompt's 0.40 has the largest positive advantage.
 
 ---
 
@@ -1185,10 +1188,10 @@ Compare REINFORCE, which gave "Subtract" minus 100 for the same answer.
 <div class="rows">
 <div class="eq">$$\begin{aligned} \hat A^{(k)}_t &= \sum_{l=0}^{k-1}\gamma^l\delta_{t+l}\\ &= r_t + \gamma r_{t+1} + \dots + \gamma^{k-1}r_{t+k-1} + \gamma^k V(s_{t+k}) - V(s_t) \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-kstep.svg" alt="Illustration: k = 1 adds r t then the value model's guess V of s t+1; k = 2 adds r t and r t+1 then V of s t+2; k to the end adds only real rewards to the last one. Leaning on V is biased if V is wrong but low noise; only real rewards is unbiased but noisy"></div>
-<p class="plain">The sum collapses because each $+\gamma V(s_{t+1})$ cancels the next residual's $-\gamma V(s_{t+1})$.</p>
+<p class="plain">On the slip: $k$ = 1 gives −175 on "14" and 0 on "Subtract"; to the end, −180 on every token up to "14".</p>
 </div>
 
-<p class="footnote">$\hat A^{(k)}_t$: $k$ real rewards, then trust $V$; $l$: steps ahead of $t$. GAE paper (Schulman et al. 2015, arXiv:1506.02438) §3</p>
+<p class="footnote">$\hat A^{(k)}_t$: $k$ real rewards, then trust $V$; $l$: steps ahead. The sum collapses: each $+\gamma V(s_{t+1})$ cancels the next $-\gamma V(s_{t+1})$. GAE paper §3</p>
 
 Note:
 Why stop at one step? We can take k real rewards before trusting the value model. The k-step estimate adds up the next k rewards, discounted, then the discounted value of the state k steps ahead, minus the value now. And it equals the sum of the first k TD residuals, because the sum telescopes: each plus gamma V of the next state cancels the minus gamma V of the next residual.
@@ -1214,7 +1217,7 @@ So we have a family of estimates, from low-variance-biased to unbiased-noisy. GA
 - $\lambda$ = 0 gives $\delta_t$: the blame falls on "apart" alone.
 - $\lambda$ = 1 gives $R_t - V(s_t)$: −2.7 on every token.
 
-<p class="plain">At $\lambda$ = 1, "Gravity" gets +0.3 in "together" (table below) and −2.7 in "apart": on average 0.9 × 0.3 + 0.1 × (−2.7) = 0, right but noisy.</p>
+<p class="plain">At $\lambda$ = 1, "Gravity" gets +0.3 in "together" and −2.7 in "apart": on average 0.9 × 0.3 + 0.1 × (−2.7) = 0, right but noisy.</p>
 
 </div>
 <div class="fig"><img src="img/week-04-rlhf2-blame-gae.svg" alt="Illustration: weight on each token of Gravity pulls objects apart. REINFORCE minus 1 on every token. GAE at lambda 1, minus 2.7 on every token. At lambda 0.95, minus 2.31, minus 2.44, minus 2.57, minus 2.70. At lambda 0, 0, 0, 0 and minus 2.70 on apart"></div>
@@ -1238,7 +1241,7 @@ So: lambda near 0 trusts the value model and assigns blame sharply, but inherits
 <div class="text">
 
 - In GAE a residual $l$ tokens ahead gets weight $(\gamma\lambda)^l$, so a drop fades going back.
-- "Subtract" is 7 tokens before "14": at $\lambda$ = 0.95 it keeps $0.95^7 = 0.70$ of the drop, −125.
+- "Subtract" is 7 tokens before "14": at $\lambda$ = 0.95 it keeps $0.95^7 = 0.70$ of the drop: about −125 with the last token's −5.
 
 </div>
 <div class="text">
@@ -1258,112 +1261,52 @@ How sharp is GAE's blame in practice? Run the slipped answer through it. A resid
 At the usual 0.95, the drop at "14" fades by 0.95 per token backwards. "Subtract" is only 7 tokens earlier, so it still takes 0.95 to the 7th, 70 percent of the drop: minus 125. In a 12-token answer, lambda 0.95 is close to lambda 1. In a long answer it is not: 100 tokens back the weight is 0.95 to the 100th, about 0.006, so the opening of a 500-token answer barely hears a slip near the end.
 Why not lambda 0, then? Because it trusts the value model completely. Early in training the value model may not notice the slip at all; then lambda 0 blames nothing, while lambda near 1 still carries the real minus 100 back from the end. Lambda trades the value model's sharpness for the reward's honesty.
 
---
+---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · Schulman et al. 2017 · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · where GAE's weights come from</p>
 
-## What does $\gamma$ below 1 do to a final reward?
+## Why does GAE weight a residual by $(\gamma\lambda)^l$?
+
+<div class="eq">$$\begin{aligned} \hat A_t &= (1-\lambda)\big(\hat A^{(1)}_t + \lambda\hat A^{(2)}_t + \lambda^2\hat A^{(3)}_t + \dots\big)\\ &= (1-\lambda)\big(\delta_t(1 + \lambda + \lambda^2 + \dots) + \gamma\delta_{t+1}(\lambda + \lambda^2 + \dots) + \dots\big)\\ &= \delta_t + \gamma\lambda\thinspace\delta_{t+1} + (\gamma\lambda)^2\delta_{t+2} + \dots = \sum_{l\ge 0}(\gamma\lambda)^l\delta_{t+l} \end{aligned}$$</div>
 
 <div class="cols">
 <div class="text">
 
-- A reward $k$ steps ahead counts $\gamma^k$ of one received now.
-- With one reward at the end, the first token of a 500-token answer sees $\gamma^{499}$ of it.
-- At $\gamma$ = 0.99 that is 0.007: the early tokens barely hear the score (ours).
-- InstructGPT applies no discount, $\gamma$ = 1; a plausible reason (ours).
+- Line 1: average every $k$-step estimate, with weights $(1-\lambda)\lambda^{k-1}$ that sum to 1.
+- Line 2: collect the terms of each residual; $\delta_{t+l}$ appears in every estimate with $k > l$.
 
 </div>
 <div class="text">
 
-<p class="plain">With $\gamma$ = 0.99, a reward 100 steps away is worth $0.99^{100} = 0.366$ of one received now.</p>
+- Line 3: $1 + \lambda + \lambda^2 + \dots = 1/(1-\lambda)$, which cancels the $(1-\lambda)$.
+
+<p class="plain">So GAE is a discounted sum of future residuals; blame lands sharply only as far as $V$ is right.</p>
 
 </div>
 </div>
 
-<p class="footnote">Schulman et al. 2017, App. A: $\gamma$ = 0.99 in every robot and Atari run. GAE paper (Schulman et al. 2015): $\gamma$ cuts variance "at the cost of introducing bias"</p>
+<p class="footnote">$\hat A^{(k)}_t$: the $k$-step estimate, $\sum_{l \lt k}\gamma^l\delta_{t+l}$ (two slides back). GAE paper §3, Eq. 16</p>
 
 Note:
-Optional: why gamma near 1 matters so much here. With a single reward at the end and gamma 0.99, a token 499 steps before the end sees 0.99 to the 499, about 0.007 of it (our arithmetic). The first sentence of a long answer would learn almost nothing from the score. PPO's robot settings use 0.99, where rewards arrive at every step (our reading); InstructGPT applies no discount.
-
---
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · the good answer (ours) · optional</p>
-
-## What advantages does GAE give "Gravity pulls objects together"?
-
-<table class="rules">
-  <tr><td>$t$</td><td>token</td><td class="num">$r_t$</td><td class="num">$v_t$</td><td class="num">$\delta_t = r_t + v_{t+1} - v_t$</td><td class="num">$\hat A_t$, $\lambda$ = 0</td><td class="num">$\hat A_t$, $\lambda$ = 0.95</td><td class="num">$\hat A_t$, $\lambda$ = 1</td></tr>
-  <tr><td>1</td><td>Gravity</td><td class="num">0</td><td class="num">1.7</td><td class="num">0 + 1.7 − 1.7 = 0</td><td class="num">0</td><td class="num">0.257</td><td class="num">0.3</td></tr>
-  <tr><td>2</td><td>pulls</td><td class="num">0</td><td class="num">1.7</td><td class="num">0</td><td class="num">0</td><td class="num">0.271</td><td class="num">0.3</td></tr>
-  <tr><td>3</td><td>objects</td><td class="num">0</td><td class="num">1.7</td><td class="num">0</td><td class="num">0</td><td class="num">0.285</td><td class="num">0.3</td></tr>
-  <tr><td>4</td><td>together</td><td class="num">2</td><td class="num">1.7</td><td class="num">2 + 0 − 1.7 = 0.3</td><td class="num">0.3</td><td class="num">0.300</td><td class="num">0.3</td></tr>
-</table>
-
-<p class="plain">Had the value model guessed $v_1$ = 1.4, $\lambda$ = 0 would give "Gravity" $\delta_1 = 0 + 1.7 - 1.4 = 0.3$: credit from the value model's error, not the word.</p>
-
-<p class="footnote">Ours: $\gamma$ = 1; $v_t = V(s_t)$, exact; $v_5 = 0$ after the end. Check $\hat A_3$ at 0.95: $0 + 0.95 \times 0.3 = 0.285$</p>
-
-Note:
-Optional, the good answer through GAE. Rewards 0, 0, 0 and 2; the exact values are 1.7 at every step and 0 after the end. The TD residuals are 0, 0, 0 and 0.3. Backwards with lambda 0.95: A4 = 0.3, A3 = 0.95 times 0.3 = 0.285, A2 = 0.95 times 0.285 = 0.271, A1 = 0.257. With lambda 1 every token gets 0.3; with lambda 0 only "together" does.
-The last line shows the bias. Suppose the value model is imperfect and predicts 1.4 for the prompt alone. Then at lambda 0 "Gravity" gets delta 1 = 0 + 1.7 − 1.4 = 0.3: credit from the value model changing its mind, not from anything the word did. At lambda 1 that error would cancel out. That is the bias-variance trade in one number.
+Where do GAE's weights come from? Line one is the definition: average all the k-step estimates, the one-step one with weight 1 minus lambda, the two-step one with weight 1 minus lambda times lambda, and so on. Those weights add up to one.
+Line two collects terms. Each k-step estimate is a sum of residuals, so the residual one step ahead, delta t plus 1, appears in every estimate from k equals 2 upwards; its weights add up to lambda plus lambda squared and so on, times gamma. Line three uses the geometric series: 1 plus lambda plus lambda squared is 1 over 1 minus lambda, which cancels the 1 minus lambda in front. What is left: each residual l steps ahead has weight gamma lambda to the l. That is GAE.
+One caution. GAE puts the blame where the value model's estimates drop. If the value model is wrong, the blame is wrong too; lambda near 1 protects against that by leaning on real rewards.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · the value model's head</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · where we are</p>
 
-## How is the value model trained?
+## Which problems has Part 4 fixed?
 
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat R_t\big)^2$$</div>
-
-<dl class="where">
-<dt>$V_\psi$</dt><dd>the value model; $\psi$ its weights</dd>
-<dt>$\hat R_t$</dt><dd>the target return: $R_t$, or the GAE target $\hat A_t + V(s_t)$</dd>
-</dl>
-
-- The same backbone with a **value head**: one number per answer position.
-
-<p class="plain">1.7 misses "together" by 0.3, but over both answers the loss is 0.9 × 0.09 + 0.1 × 2.7² = 0.81 per token, and no other number does better (ours).</p>
-
-</div>
-<div class="fig"><img src="img/week-04-rlhf-heads-value.svg" alt="Illustration: the same inputs and backbone design, with a value head over the answer positions q4, o1, o2 and o3, giving one value each, v1 to v4"></div>
+<div class="rows">
+<div class="fig"><img src="img/week-04-rlhf2-problems-12.svg" alt="Illustration: the four problems again. Noise, fixed by a baseline, and blame, fixed by the advantage, are marked done, Part 4. Waste and instability, Part 5, are not yet"></div>
+<p class="plain">Noise and blame are answered by the weight $\hat A_t$. Waste and instability are about using the batch: Part 5.</p>
 </div>
 
-<p class="footnote">Mean squared error is minimised by the mean, here the expected return 1.7. Value head: a last layer that turns each position's hidden state into one number</p>
+<p class="footnote">The value model also needs its own training, which runs alongside the policy's (Part 4, value model slide)</p>
 
 Note:
-Where does V come from? A value model: architecturally the same transformer backbone, with a value head that outputs one scalar at every answer position. Keep this picture: it is the third of the three heads, next to the policy's language-model head and the reward model's head.
-Train it by regression: the mean squared error between its prediction at each position and a target return. The target can be the sampled return R t; common PPO implementations use the advantage plus the old value, which is the GAE version of a return.
-A subtle point. Even the exact value, 1.7, has a loss on any single answer: on "together", whose return is 2, it misses by 0.3, a squared error of 0.09 per token. On "apart" it misses by 2.7. Averaged over the answers the policy actually writes, 90% "together" and 10% "apart", the loss is 0.81 per token, and no other prediction does better, because a squared error is minimised by the mean. The value model learns the expected return, which is exactly what V is.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 3, waste · sample reuse</p>
-
-## Why reuse a batch more than once?
-
-<div class="cols">
-<div class="text">
-
-- Problem 3: sampling is expensive, and on-policy REINFORCE uses each batch for one step.
-- So freeze a copy $\pi_{\theta_{\rm old}}$, sample once with it, and take several steps on that batch.
-- PPO's warning: several plain steps "often leads to destructively large policy updates".
-
-</div>
-<div class="text">
-
-<p class="plain">After the first step the batch is stale: it came from $\pi_{\theta_{\rm old}}$, but we now evaluate $\pi_\theta$.</p>
-
-</div>
-</div>
-
-<p class="footnote">Schulman et al. 2017, PPO, arXiv:1707.06347, §2.1. $\pi_{\theta_{\rm old}}$: the policy's weights frozen at sampling time</p>
-
-Note:
-We now have a good weight for each token, the advantage: problems 1 and 2 are answered. Next, problem 3 from Part 3, waste. For a large language model, generating answers is the expensive part, especially long ones. And the policy gradient is on-policy: it is only correct for the policy that produced the samples. After one gradient step the policy has changed and the batch is stale, so plain policy gradient uses each expensive batch once.
-The obvious idea: freeze a copy of the policy, the old policy, sample a batch with it, and then take several gradient steps on that batch. The PPO paper's warning about doing this naively: performing multiple steps on the plain loss "is not well-justified, and empirically it often leads to destructively large policy updates". The batch describes the old policy, and after a few steps we are optimising a different one on the strength of data that no longer describes it. Two questions follow. How do we correct for the mismatch? And how do we stop the policy moving too far?
+Where are we? Part 4 replaced REINFORCE's weight with an estimated advantage. That answers noise, because the value is a baseline, and blame, because the value model notices where an answer's prospects change. Two problems remain, and neither is about the weight: each expensive batch still buys one step, and nothing limits how far a step moves the policy. Part 5.
 
 ---
 
@@ -1372,15 +1315,15 @@ The obvious idea: freeze a copy of the policy, the old policy, sample a batch wi
 ## How can old samples stand in for new ones?
 
 <div class="rows">
-<div class="eq">$$\begin{aligned} \mathbb E_{x\sim P}\big[f(x)\big] &= \sum_x P(x)\thinspace f(x)\\ &= \sum_x Q(x)\thinspace\frac{P(x)}{Q(x)}\thinspace f(x)\\ &= \mathbb E_{x\sim Q}\Big[\frac{P(x)}{Q(x)}\thinspace f(x)\Big] \end{aligned}$$</div>
+<div class="eq">$$\begin{aligned} \mathbb E_{x\sim p_{\rm new}}\big[f(x)\big] &= \sum_x p_{\rm new}(x)\thinspace f(x)\\ &= \sum_x p_{\rm old}(x)\thinspace\frac{p_{\rm new}(x)}{p_{\rm old}(x)}\thinspace f(x)\\ &= \mathbb E_{x\sim p_{\rm old}}\Big[\frac{p_{\rm new}(x)}{p_{\rm old}(x)}\thinspace f(x)\Big] \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-is-weights.svg" alt="Illustration: two answers. Together, score 2: old policy 0.5, new 0.6, weight 0.6 over 0.5 = 1.2. Apart, score minus 1: old 0.5, new 0.4, weight 0.4 over 0.5 = 0.8"></div>
 <p class="plain">New average: 0.6 × 2 + 0.4 × (−1) = 0.8. From old samples: 0.5 × 1.2 × 2 + 0.5 × 0.8 × (−1) = 0.8.</p>
 </div>
 
-<p class="footnote"><b>Importance sampling</b>: $P$ the distribution we want, $Q$ the one we sampled from, $P/Q$ the weight. Line 2 multiplies and divides by $Q(x)$</p>
+<p class="footnote"><b>Importance sampling</b>: $p_{\rm new}$ the distribution we want, $p_{\rm old}$ the one we sampled from, their ratio the weight. Line 2 multiplies and divides by $p_{\rm old}(x)$</p>
 
 Note:
-Problem 3 says each batch is used once, because it came from the old policy and we now want averages under the new one. Importance sampling is the statistics identity that fixes this. Write the average under the new distribution P as a sum. Multiply and divide each term by Q, the distribution we actually sampled from. Read the result as an average under Q, with each sample weighted by P over Q.
+Problem 3 says each batch is used once, because it came from the old policy and we now want averages under the new one. Importance sampling is the statistics identity that fixes this. Write the average under the new distribution, p new, as a sum. Multiply and divide each term by p old, the distribution we actually sampled from. Read the result as an average under p old, with each sample weighted by p new over p old.
 Our two answers: the batch was sampled at 50/50, and after a step the policy is at 60/40. A "together" sample now counts 1.2 times, because the new policy likes it more; an "apart" sample counts 0.8. The reweighted average from the old samples, 0.8, is exactly the new policy's average.
 
 ---
@@ -1396,14 +1339,14 @@ Our two answers: the batch was sampled at 50/50, and after a step the policy is 
 
 <dl class="where">
 <dt>$\rho_t(\theta)$</dt><dd>the <b>importance ratio</b> of token $t$: new probability over old</dd>
-<dt>$L(\theta)$</dt><dd>the <b>surrogate objective</b>: importance sampling with $P = \pi_\theta$, $Q = \pi_{\theta_{\rm old}}$, $f = \hat A_t$</dd>
+<dt>$L(\theta)$</dt><dd>the <b>surrogate objective</b>: importance sampling with $p_{\rm new} = \pi_\theta$, $p_{\rm old} = \pi_{\theta_{\rm old}}$, $f = \hat A_t$</dd>
 </dl>
 
 </div>
 <div class="text">
 
 - Sample once with $\pi_{\theta_{\rm old}}$; fix $\hat A_t$ and $\pi_{\theta_{\rm old}}(o_t \mid s_t)$ as numbers.
-- Then take several gradient steps on the same batch; TRPO's line search tests its candidate steps on it too.
+- Then take several gradient steps on the same batch, with no new text.
 
 <p class="plain">A token whose log-probability rose from −1.1 to −0.9 has $\rho = e^{0.2} = 1.22$.</p>
 
@@ -1413,28 +1356,9 @@ Our two answers: the batch was sampled at 50/50, and after a step the policy is 
 <p class="footnote">PPO writes $L^{CPI}$ and $r_t(\theta)$ for $\rho_t(\theta)$ (Eq. 6). The ratio is per token: a whole answer's ratio is their product, and $1.1^{100} \approx 13{,}781$</p>
 
 Note:
-Apply importance sampling token by token. P is the policy we are training, Q the old policy that wrote the batch, and the function is the advantage. The weight is the importance ratio, rho t: the token's probability now over its probability when it was sampled. The result is the surrogate objective.
+Apply importance sampling token by token. p new is the policy we are training, p old the old policy that wrote the batch, and the function is the advantage. The weight is the importance ratio, rho t: the token's probability now over its probability when it was sampled. The result is the surrogate objective.
 What it buys: sample once with the frozen old policy, compute the advantages and the old probabilities once, and keep them as fixed numbers. Then take several gradient steps on that same batch; the ratio re-weights every token for how much more or less likely it has become. TRPO needs this too: its line search tries several candidate steps, and it could never afford fresh rollouts for each.
 Why per token and not per answer? An answer's ratio is the product of its token ratios, and products explode: 1.1 per token over 100 tokens is about 13,781.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 3, waste · reusing a batch</p>
-
-## What does reusing a batch look like?
-
-<div class="rows">
-<div class="eq">$$\rho_t(\theta_k) = \frac{\pi_{\theta_k}(o_t \mid s_t)}{\pi_{\theta_0}(o_t \mid s_t)}, \qquad k = 1, 2, 3, \dots$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-reuse.svg" alt="Illustration: theta old = theta 0 writes one batch of 64 answers once, saved in four minibatches of 16 with each token's old probability and advantage. Each minibatch drives one gradient step: theta 0 to theta 1, theta 1 to theta 2, theta 2 to theta 3, theta 3 to theta 4. Each step reads the saved tokens with the current weights, takes the ratio against the saved old probability, clips and steps. Then theta old becomes theta 4"></div>
-<p class="plain">Write 64 answers once with $\theta_0$; every later step reads the same saved text, and the ratio corrects for how far it has moved.</p>
-</div>
-
-<p class="footnote">REINFORCE would need 64 new answers before each of those steps. PPO paper: 10 epochs on each batch for robots, 3 for Atari; InstructGPT: one epoch of 8 minibatches</p>
-
-Note:
-What does "reusing a batch" mean in practice? Freeze the weights at theta 0, the old policy, and write 64 answers. Score them, compute every token's advantage, and save each token's probability under theta 0. That is the expensive part, and it happens once.
-Then train. Take the first 16 answers and take a gradient step: theta 0 becomes theta 1. Now the model is a different policy, and plain REINFORCE would have to throw the batch away. PPO does not. For the next 16 answers, it runs the saved tokens through the current weights, theta 1, to get their new probabilities, and divides by the saved old ones: that is the ratio. It corrects for the fact that the text was written by theta 0. Step again: theta 2, theta 3, theta 4. It can even loop over the batch again, another epoch. And if a token's ratio moves more than 20 percent in the helpful direction, the clip stops pushing it, so the model does not over-optimise on stale data. Only then copy the weights into the old policy and write a fresh batch.
-How many passes? The PPO paper used 10 epochs per batch on its robot tasks and 3 on Atari; InstructGPT used a single epoch split into 8 minibatches.
 
 ---
 
@@ -1466,6 +1390,25 @@ It only differs once we have moved. And there is a catch: the ratio corrects whi
 
 ---
 
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 3, waste · reusing a batch</p>
+
+## What does reusing a batch look like?
+
+<div class="rows">
+<div class="eq">$$\rho_t(\theta_k) = \frac{\pi_{\theta_k}(o_t \mid s_t)}{\pi_{\theta_0}(o_t \mid s_t)}, \qquad k = 1, 2, 3, \dots$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-reuse.svg" alt="Illustration: theta old = theta 0 writes one batch of 64 answers once, saved in four minibatches of 16 with each token's old probability and advantage. Each minibatch drives one gradient step: theta 0 to theta 1, theta 1 to theta 2, theta 2 to theta 3, theta 3 to theta 4. Each step reads the saved tokens with the current weights, takes the ratio against the saved old probability, and steps. Then theta old becomes theta 4"></div>
+<p class="plain">Write 64 answers once with $\theta_0$; every later step reads the same saved text, and the ratio corrects for how far it has moved.</p>
+</div>
+
+<p class="footnote">REINFORCE would need 64 new answers before each of those steps. PPO paper: 10 epochs on each batch for robots, 3 for Atari; InstructGPT: one epoch of 8 minibatches</p>
+
+Note:
+What does "reusing a batch" mean in practice? Freeze the weights at theta 0, the old policy, and write 64 answers. Score them, compute every token's advantage, and save each token's probability under theta 0. That is the expensive part, and it happens once.
+Then train. Take the first 16 answers and take a gradient step: theta 0 becomes theta 1. Now the model is a different policy, and plain REINFORCE would have to throw the batch away. PPO does not. For the next 16 answers, it runs the saved tokens through the current weights, theta 1, to get their new probabilities, and divides by the saved old ones: that is the ratio. It corrects for the fact that the text was written by theta 0. Step again: theta 2, theta 3, theta 4. It can even loop over the batch again, another epoch. How far can the policy drift before the stale batch misleads it? That is the question two slides on. Only after the last minibatch do we copy the weights into the old policy and write a fresh batch.
+How many passes? The PPO paper used 10 epochs per batch on its robot tasks and 3 on Atari; InstructGPT used a single epoch split into 8 minibatches.
+
+---
+
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 4, instability · reuse makes it worse</p>
 
 ## Why is the surrogate dangerous on its own?
@@ -1488,7 +1431,7 @@ It only differs once we have moved. And there is a catch: the ratio corrects whi
 </div>
 </div>
 
-<p class="footnote">Schulman et al. 2017 §3. $L^{CPI}$: the surrogate objective $L$ of the last slide</p>
+<p class="footnote">Schulman et al. 2017 §3; §2.1 adds that several plain steps on one batch "often leads to destructively large policy updates". $L^{CPI}$: the surrogate $L$</p>
 
 Note:
 This is problem 4 from Part 3, instability, and reuse makes it worse. The surrogate is linear in the ratio. For a token with a positive advantage, the objective keeps increasing as its probability rises, all the way until the token is certain. If the old policy gave it probability 0.2, the ratio can reach 5, and the optimiser is rewarded for going the whole way, on the strength of a single noisy advantage estimate from one batch. The paper says it directly: without a constraint, maximising L CPI would lead to an excessively large policy update. So we need a way to measure how far the policy has moved, and a limit on it. The measure is the KL divergence.
@@ -1556,10 +1499,10 @@ Why a constraint and not a penalty? The paper: "it is hard to robustly choose th
 <div class="rows">
 <div class="eq">$$\mathrm{clip}(\rho, 1-\epsilon, 1+\epsilon) = \min\big(\max(\rho,\ 1-\epsilon),\ 1+\epsilon\big)$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-clipfn.svg" alt="Illustration: clip of rho between 0.8 and 1.2 against rho. Inside 0.8 to 1.2 it follows rho; below it is flat at 0.8, above flat at 1.2. Examples: 0.7 becomes 0.8, 1.05 stays 1.05, 1.3 becomes 1.2"></div>
-<p class="plain">A ratio inside $1 \pm \epsilon$ passes unchanged; outside, it is held at the edge. With $\epsilon$ = 0.2, 1.3 becomes 1.2.</p>
+<p class="plain">Inside $1 \pm \epsilon$ a ratio passes unchanged; outside, it is held at the edge. TRPO's 50/50 ▸ 60/40 move sits exactly on the edges: 1.2 and 0.8.</p>
 </div>
 
-<p class="footnote">$\rho$: the importance ratio (Part 5); $\epsilon$: the clip range, 0.2 in PPO's robot runs</p>
+<p class="footnote">$\rho$: the importance ratio; $\epsilon$: the clip range, 0.2 in PPO's robot runs. The clip removes the reward for moving further; it does not forbid the move</p>
 
 Note:
 PPO's replacement for the trust region is one simple function. Clip holds a number inside a band: here the importance ratio, inside 1 minus epsilon to 1 plus epsilon. With epsilon 0.2 the band is 0.8 to 1.2. Inside the band the ratio passes unchanged: 1.05 stays 1.05. Outside it is held at the edge: 1.3 becomes 1.2, 0.7 becomes 0.8. Flat means no gradient: once a token's ratio is held at the edge, moving it further changes nothing. Next: how PPO puts that into its objective.
@@ -1583,9 +1526,9 @@ Now the objective, in two lines. The second line is one token's term: the smalle
 The paper's figure shows what the min does. Left, a good token, positive advantage: the term rises as the ratio rises, until 1 plus epsilon, then goes flat. Past 1.2 there is nothing more to gain, so the optimiser stops pushing that token. Right, a bad token, negative advantage: the term rises as the ratio falls, until 1 minus epsilon, then flat. Every token starts at the red dot, ratio 1, because before the update the two policies are the same.
 Why the min, and not just the clip? It makes the clip one-sided. If a good token's ratio has fallen below 1 minus epsilon, the plain term is the smaller one, so the gradient still pushes it back up. Only moves in the helpful direction get capped; mistakes are always corrected. PPO trades TRPO's second-order solver for this one line, and plain Adam.
 
---
+---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · four worked cases (ours) · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · problem 4, instability · four worked cases (ours)</p>
 
 ## Where does the clip stop the gradient?
 
@@ -1635,6 +1578,22 @@ Note:
 The full objective PPO optimises has three parts. The clipped policy term from the last slides. Minus c 1 times the value model's squared error, because when the policy and the value model share a network both losses must be in one objective, and the objective is maximised, so the error is subtracted. And plus c 2 times the entropy of the policy's action distribution, a bonus "to ensure sufficient exploration": it rewards keeping the distribution spread out. A 50/50 choice has entropy ln 2, 0.693 nats; a certain choice has zero.
 With separate policy and value networks, as in InstructGPT, c 1 is irrelevant: each network gets its own loss. Atari used c 1 = 1 and c 2 = 0.01. InstructGPT and Stiennon et al. describe no separate entropy term. That is not because exploration doesn't matter: in Part 6 we will see the KL penalty to the reference contains an entropy bonus of its own, and Stiennon et al. say so.
 That completes PPO as a general algorithm. Next, back to the language model.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 5, from an advantage to PPO · where we are</p>
+
+## Which problems are left?
+
+<div class="rows">
+<div class="fig"><img src="img/week-04-rlhf2-problems-1234.svg" alt="Illustration: the four problems, all marked done: noise by a baseline and blame by the advantage in Part 4, waste by reuse with the importance ratio and instability by a trust region and PPO's clip in Part 5"></div>
+<p class="plain">All four of REINFORCE's problems are answered. What remains is putting PPO on a language model: Part 6.</p>
+</div>
+
+<p class="footnote">Over-optimising the reward model is a different problem, not REINFORCE's: Part 6 adds a KL penalty for it</p>
+
+Note:
+All four problems are answered. Noise and blame by the advantage. Waste by reusing each batch through the importance ratio. Instability by limiting how far each step can move the policy: TRPO's trust region, and PPO's clip. What is left is to run this on a language model, with four models, and one new danger that has nothing to do with REINFORCE: the policy gaming the reward model. Part 6.
 
 ---
 
@@ -1753,6 +1712,26 @@ So the penalty's job is to keep the policy near the outputs the reward model was
 
 ---
 
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · two KLs</p>
+
+## Is this the same KL as TRPO's?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \text{trust region (Part 5):}&\quad \mathrm{KL}\big(\pi_{\theta_{\rm old}} \Vert \pi_\theta\big) \le \delta_{\rm KL}\\ \text{drift (here):}&\quad -\beta\thinspace\mathrm{KL}\big(\pi_\theta \Vert \pi_{\rm ref}\big) \text{ in the reward} \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-two-kls.svg" alt="Illustration: a path of policy dots from pi ref, the SFT model, to pi theta now. Dashed circles around each dot limit one step: the trust region, each step against the step before. A long double arrow joins pi ref to pi theta now: the drift KL, the policy against the reference over all of training"></div>
+<p class="plain">The trust region limits one step, and PPO replaces it with the clip. The drift KL limits the whole journey, as a penalty $\beta$ we choose.</p>
+</div>
+
+<p class="footnote">PPO §4: an adaptive KL penalty for the trust region scored 0.74 against the clip's 0.82 (Table 1). Stiennon et al.'s Fig. 5 sweeps $\beta$; their main runs used 0.05</p>
+
+Note:
+Two KL divergences appear in this story, and they are easy to mix up. Here they are side by side.
+The trust-region KL, from Part 5, is between the policy and its own previous version. It limits the size of one update. TRPO enforces it as a constraint with size delta; PPO replaces it with the clip. It is written old policy first.
+The drift KL, here, is between the policy and the frozen SFT model, the reference. It limits how far the policy wanders over all of training, however many small steps it takes. It is written policy first. Its strength is beta, and in PPO for language models it is a penalty in the reward. A policy can take only tiny, clipped steps and still drift far over thousands of updates; the clip cannot stop that, the drift penalty can.
+Why is a penalty acceptable here when TRPO rejected one? Because the jobs differ. TRPO needed a step size that is safe everywhere, and one beta could not give it. Here beta expresses a choice we want to make, how much reward to buy with how much drift, and it is chosen deliberately: Stiennon et al.'s figure is exactly a sweep over beta, and they used 0.05 for their main runs.
+
+---
+
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · the direction · Ouyang et al. 2022, Eq. 2</p>
 
 ## Why does the penalty put the policy first?
@@ -1787,9 +1766,9 @@ Note:
 Now the direction, which was the question we could not answer before. Start from what RLHF actually optimises. Stiennon et al., and InstructGPT's Eq. 2 without its pretraining term, write the reward as the reward model's score minus beta times the log ratio of the policy's probability of the answer to the reference's. The policy maximises the average of that over its own answers, and the average, under the policy, of the log of policy over reference is by definition the KL with the policy first. Writing the penalty that way is a choice, not a theorem, but a natural one: the rollouts are the policy's own answers, we already have each token's probability under the policy, and one forward pass of the reference gives its probability too. The other direction would be an average over answers the reference writes, which we do not have.
 What does this KL do? It splits into minus the entropy of the policy plus the cross-entropy from the policy to the reference. Stiennon et al. read the minus-entropy part as "an entropy bonus, encouraging the policy to explore and deterring it from collapsing to a single mode". Be careful with that reading: the two parts are not independent, and the KL as a whole is smallest when the policy equals the reference, not when its entropy is largest. The cross-entropy part is the pull toward text the reference finds likely, their second purpose. The worked line shows how hard that pull is on text the reference finds nearly impossible: a token at 0.30 under the policy and 0.001 under the reference has a log ratio of ln 300, 5.7, so with beta it costs 5.7 beta of reward in one token.
 
---
+---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · the direction, in a toy (ours) · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · the direction, in a toy (ours)</p>
 
 ## What does the direction change, in a toy?
 
@@ -1817,31 +1796,11 @@ For RLHF, the outputs in the gap are the worry: text the reference would almost 
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · two KLs</p>
-
-## Is this the same KL as TRPO's?
-
-<div class="rows">
-<div class="eq">$$\begin{aligned} \text{trust region (Part 5):}&\quad \mathrm{KL}\big(\pi_{\theta_{\rm old}} \Vert \pi_\theta\big) \le \delta_{\rm KL}\\ \text{drift (here):}&\quad -\beta\thinspace\mathrm{KL}\big(\pi_\theta \Vert \pi_{\rm ref}\big) \text{ in the reward} \end{aligned}$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-two-kls.svg" alt="Illustration: a path of policy dots from pi ref, the SFT model, to pi theta now. Dashed circles around each dot limit one step: the trust region, each step against the step before. A long double arrow joins pi ref to pi theta now: the drift KL, the policy against the reference over all of training"></div>
-<p class="plain">The trust region limits one step, and PPO replaces it with the clip. The drift KL limits the whole journey, as a penalty $\beta$ we choose.</p>
-</div>
-
-<p class="footnote">PPO §4: an adaptive KL penalty for the trust region scored 0.74 against the clip's 0.82 (Table 1). Stiennon et al.'s Fig. 5 sweeps $\beta$; their main runs used 0.05</p>
-
-Note:
-Two KL divergences appear in this story, and they are easy to mix up. Here they are side by side.
-The trust-region KL, from Part 5, is between the policy and its own previous version. It limits the size of one update. TRPO enforces it as a constraint with size delta; PPO replaces it with the clip. It is written old policy first.
-The drift KL, here, is between the policy and the frozen SFT model, the reference. It limits how far the policy wanders over all of training, however many small steps it takes. It is written policy first. Its strength is beta, and in PPO for language models it is a penalty in the reward. A policy can take only tiny, clipped steps and still drift far over thousands of updates; the clip cannot stop that, the drift penalty can.
-Why is a penalty acceptable here when TRPO rejected one? Because the jobs differ. TRPO needed a step size that is safe everywhere, and one beta could not give it. Here beta expresses a choice we want to make, how much reward to buy with how much drift, and it is chosen deliberately: Stiennon et al.'s figure is exactly a sweep over beta, and they used 0.05 for their main runs.
-
----
-
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · per-token reward, $k_1$ KL</p>
 
 ## How does one score become a reward for every token?
 
-<div class="eq">$$r_t = \begin{cases} -\beta\thinspace \mathrm{KL}_t, & t \lt T\\ r_\phi(q, o) - \beta\thinspace \mathrm{KL}_t, & t = T\end{cases}\qquad \mathrm{KL}_t = \log\frac{\pi_\theta(o_t \mid q, o_{\lt t})}{\pi_{\rm ref}(o_t \mid q, o_{\lt t})}$$</div>
+<div class="eq">$$\begin{aligned} \log\frac{\pi_\theta(o \mid q)}{\pi_{\rm ref}(o \mid q)} &= \sum_{t=1}^{T}\underbrace{\log\frac{\pi_\theta(o_t \mid q, o_{\lt t})}{\pi_{\rm ref}(o_t \mid q, o_{\lt t})}}_{\mathrm{KL}_t}\\ r_t &= -\beta\thinspace\mathrm{KL}_t \quad (t \lt T), \qquad r_T = r_\phi(q, o) - \beta\thinspace\mathrm{KL}_T \end{aligned}$$</div>
 
 <div class="cols">
 <div class="text">
@@ -1860,9 +1819,9 @@ Why is a penalty acceptable here when TRPO rejected one? Because the jobs differ
 
 - The answer's one score is added at the last token.
 - Every token pays a KL penalty; a larger $\beta$ keeps the policy nearer the reference.
-- Summed over an answer's tokens, $\mathrm{KL}_t$ is the answer's log ratio; averaged over the policy's answers, the KL.
+- Line 1 is the chain rule: the answer's log ratio splits into one term per token.
+- In the PPO step, $\mathrm{KL}_t$ uses the old policy's saved log-probabilities: fixed numbers once the batch is written.
 
-<p class="plain">At 0.6 under the policy and 0.5 under the reference, the reward at $\beta$ = 0.1 is $-0.1 \ln 1.2 = -0.018$; at 0.4 instead, $+0.022$, a small bonus (ours).</p>
 
 </div>
 </div>
@@ -1874,31 +1833,7 @@ Now the per-token reward can land: we know what the policy maximises, why the re
 In PPO the reward combines two parts: the reward model's final score r phi of q and o, and per-token KL penalties. The reward model gives one score for the whole answer, but in LLM PPO each generated token is an action, so we need token-level quantities: log probabilities, KL penalties, advantages. The score is only available for the complete answer, so we add it at the final token. For every earlier token the step reward is just minus beta times the per-token KL estimate; for the last token it's the reward model's score minus beta times its KL estimate.
 The KL estimate is the k1 estimator: for each token, compare its probability under the current policy with its probability under the reference, given the same context, and take the log ratio. Beta sets the strength. A larger beta keeps the policy closer to the reference; a smaller beta lets it move more aggressively toward answers with a high score. The KL penalty is an anchor to the reference policy: it stops the policy drifting too far during RL, and stops it finding answers the reward model overrates.
 Either way the reward model speaks only at the last token. If the KL goes into the loss instead of the reward, as GRPO does, the step reward is exactly zero before the end and the score at the end. What gives PPO a signal at every token is the value model, as on the slipped maths answer in Part 4.
-One thing the worked line shows: a single k1 term can be negative, a small bonus for a token the policy now likes less than the reference. On average over the policy's own tokens the sum is still the KL. GRPO, in Part 7, uses a different estimator that is never negative.
-
---
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · the gravity example, with the KL (ours) · optional</p>
-
-## What do the KL terms do to "Gravity pulls objects together"?
-
-<table class="rules">
-  <tr><td>$t$</td><td>token $o_t$</td><td class="num">$\mathrm{KL}_t$</td><td class="num">step reward $r_t$</td><td class="num">reward-to-go $R_t$</td><td class="num">$\hat A_t$, $\lambda$ = 0.95</td><td class="num">$\hat A_t$, $\lambda$ = 1</td></tr>
-  <tr><td>1</td><td>Gravity</td><td class="num">0.03</td><td class="num">−0.03</td><td class="num">−0.03 + 1.93 = 1.90</td><td class="num">0.164</td><td class="num">0.20</td></tr>
-  <tr><td>2</td><td>pulls</td><td class="num">0.02</td><td class="num">−0.02</td><td class="num">−0.02 + 1.95 = 1.93</td><td class="num">0.204</td><td class="num">0.23</td></tr>
-  <tr><td>3</td><td>objects</td><td class="num">0.04</td><td class="num">−0.04</td><td class="num">−0.04 + 1.99 = 1.95</td><td class="num">0.236</td><td class="num">0.25</td></tr>
-  <tr><td>4</td><td>together</td><td class="num">0.01</td><td class="num">2 − 0.01 = 1.99</td><td class="num">1.99</td><td class="num">0.290</td><td class="num">0.29</td></tr>
-</table>
-
-<p class="plain">Score $r_\phi(q, o) = 2$; $\beta = 1$, $\gamma = 1$; values kept at $V = 1.7$, so $\hat A_t = R_t - 1.7$ at $\lambda$ = 1.</p>
-
-<p class="plain">"Gravity" now gets less than "objects" at $\lambda$ = 1: its reward-to-go carries all four KL penalties, "objects" only the last two (ours).</p>
-
-<p class="footnote">Ours: KL values, $\beta$ and the score are illustrative, and the values are not refitted to the new rewards. Now rewards-to-go differ by token (Part 4's first fix)</p>
-
-Note:
-Optional, ours: the good answer again, now with the KL penalty in the reward. The per-token KL estimates are 0.03, 0.02, 0.04 and 0.01, beta is 1 to keep the arithmetic visible, and the score is 2. Step rewards: minus the KL on the first three tokens, and 2 minus 0.01 on the last. Returns backwards: 1.99, 1.95, 1.93, 1.90.
-Two things to see. First, rewards-to-go now differ by token, which is when Part 4's first fix starts to matter: a token is charged only for the KL penalties from its own position on. Second, with values left at 1.7, the advantages at lambda 1 are 0.20, 0.23, 0.25 and 0.29: the earlier the token, the more of the KL bill it carries. With lambda 0.95 the TD residuals are minus 0.03, minus 0.02, minus 0.04 and 0.29, and backwards they give 0.290, 0.236, 0.204 and 0.164. A real value model would be refitted to these rewards; we keep 1.7 for simplicity.
+A worked number (ours): a token at 0.6 under the policy and 0.5 under the reference, with beta 0.1, gets a reward of minus 0.1 times ln 1.2, minus 0.018; at 0.4 instead, plus 0.022. That shows that a single k1 term can be negative, a small bonus for a token the policy now likes less than the reference. On average over the policy's own tokens the sum is still the KL. GRPO, in Part 7, uses a different estimator that is never negative.
 
 ---
 
@@ -2080,14 +2015,14 @@ Step 10 runs no new model, it is arithmetic on the ratios from step 9: each toke
 
 <div class="rows">
 <div class="eq">$$L_V = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat R_t\big)^2$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-step11.svg" alt="Left: the value model being trained, value head outputs 1.7 at each position, compared with the targets. Right: the table gains rows value V psi of s t, 1.7 each; value target R hat t, 1.864, 1.904, 1.936, 1.990; squared error 0.027, 0.042, 0.055, 0.084"></div>
-<p class="plain">At the first step the value model still says 1.7 everywhere; the loss is the mean, 0.052.</p>
+<div class="fig"><img src="img/week-04-rlhf2-step11.svg" alt="Left: the value model being trained, value head outputs 1.75 at each position after one gradient step, compared with the targets. Right: the table gains rows value V psi of s t, 1.75 each; value target R hat t, 1.864, 1.904, 1.936, 1.990; squared error 0.013, 0.024, 0.034, 0.058"></div>
+<p class="plain">After one step the value model says 1.75 everywhere (ours); the loss is the mean squared gap to the targets, 0.032.</p>
 </div>
 
-<p class="footnote">$L_V$: the value model's squared error (Part 4); $\hat R_t$ from step 8, fixed</p>
+<p class="footnote">$L_V$: the value model's squared error (Part 4); $\hat R_t$ from step 8, fixed. Same minibatch as steps 9 and 10, after one gradient step</p>
 
 Note:
-Step 11. The value model reads the answers again and is compared with the targets from step 8. At the first step it still says 1.7 everywhere; the squared errors are 0.027, 0.042, 0.055 and 0.084, mean 0.052. Training pulls each prediction toward its target, so next time the value model expects a little more from these states.
+Step 11. The value model reads the answers again and is compared with the targets from step 8. We are on the same minibatch as the last two slides, after one gradient step, so the value model has already moved a little: from 1.7 to 1.75 everywhere, in our numbers. The squared errors are 0.013, 0.024, 0.034 and 0.058, mean 0.032. Training pulls each prediction toward its target, so next time the value model expects a little more from these states.
 
 ---
 
@@ -2096,15 +2031,41 @@ Step 11. The value model reads the answers again and is compared with the target
 ## What does one PPO step repeat?
 
 <div class="rows">
-<div class="eq">$$L = -J_{\rm PPO} + c_1 L_V$$</div>
+<div class="eq">$$\begin{aligned} \text{policy:}&\quad L_\pi(\theta) = -J_{\rm PPO}(\theta)\\ \text{value model:}&\quad L_V(\psi) = \tfrac1T\textstyle\sum_t\big(V_\psi(s_t) - \hat R_t\big)^2 \end{aligned}$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-loop.svg" alt="Illustration: a loop. Rollout, steps 1 to 8, sample with pi theta old, score, advantages and targets; arrow to update, steps 9 to 11, loss on a minibatch, one gradient step, which loops on itself for the next minibatch of the same batch; arrow to copy the weights, theta old gets theta; arrow back to the rollout for new prompts"></div>
 <p class="plain">Steps 9 to 11 repeat over minibatches of the same batch; then copy the weights and sample again.</p>
 </div>
 
-<p class="footnote">$c_1$: the value loss's weight (Part 5). InstructGPT, App. C: batches of 512 in 8 minibatches, one epoch. Reward model and reference stay frozen</p>
+<p class="footnote">Separate networks, so two losses and no weight $c_1$; no entropy term, as in InstructGPT. App. C: batches of 512 in 8 minibatches, one epoch</p>
 
 Note:
-Step 12, the whole loop. One loss for the update: minus the PPO objective, because optimisers minimise, plus c1 times the value loss. Steps 9 to 11 run on a minibatch, take one gradient step, and repeat on the next minibatch of the same batch; that reuse is exactly what the ratio and the clip make safe. InstructGPT used one pass over the batch, in 8 minibatches. Then copy the trained weights into the frozen copy, theta old, and start the next PPO step with new prompts. Throughout, the policy and the value model train; the reward model and the reference never change.
+Step 12, the whole loop. Two losses for the update. The policy minimises minus the PPO objective, because optimisers minimise. The value model, a separate network here, minimises its squared error. With separate networks there is no need for the weight c1 that PPO uses when one network does both, and InstructGPT uses no entropy bonus. Steps 9 to 11 run on a minibatch, take one gradient step, and repeat on the next minibatch of the same batch; that reuse is exactly what the ratio and the clip make safe. InstructGPT used one pass over the batch, in 8 minibatches. Then copy the trained weights into the frozen copy, theta old, and start the next PPO step with new prompts. Throughout, the policy and the value model train; the reward model and the reference never change.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · why drop the value model</p>
+
+## What does the value model cost, and what could replace it?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="eq">$$\begin{aligned} \text{PPO:}&\quad b = V_\psi(s_t)\quad\text{learned, one per token}\\ \text{GRPO:}&\quad b = \mathrm{mean}(R_1, \dots, R_K)\quad\text{measured, one per prompt} \end{aligned}$$</div>
+
+- The value model is a second network to run, train and keep in memory, and it learns from one score per answer.
+- While it is wrong, its errors leak into every advantage (Part 4).
+
+<p class="plain">All the advantage needs is a baseline. GRPO measures one: write several answers to the prompt and average their scores.</p>
+
+</div>
+<div class="fig"><img src="img/week-04-rlhf-heads-value.svg" alt="Illustration: the value model, the same inputs and backbone design with a value head over the answer positions, giving one value each, v1 to v4"></div>
+</div>
+
+<p class="footnote">$b$: the baseline (Part 4); $R_i$: the score of answer $i$ in a group of $K$. InstructGPT's value model was a separate 6B network, initialised from the reward model</p>
+
+Note:
+Why would anyone drop the value model? Count what it costs. It is a second network, run on every rollout and trained in every update, kept in memory next to the policy; in InstructGPT a separate 6 billion parameter model. And it learns from very little: one score per answer, spread back over every token. While it is wrong, its errors leak into every advantage, because the TD residual and GAE lean on it.
+What did we need it for? Its job in the advantage is the baseline: what the policy usually scores from here. GRPO's idea is to measure that number instead of learning it. Write several answers to the same prompt, score them, and use their average as the baseline. One number per prompt instead of one per token: cheaper, but coarser. The next slides build it.
 
 ---
 
@@ -2216,24 +2177,6 @@ Optional, from Week 4. The paper doesn't discuss the case where every answer in 
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · the objective · Shao et al. 2024, Eq. 3</p>
-
-## What does GRPO maximise?
-
-<div class="rows">
-<div class="eq">$$\begin{aligned} J_{\rm GRPO}(\theta) &= \mathbb E\Big[\frac1K\sum_{i=1}^{K}\frac{1}{T_i}\sum_{t=1}^{T_i}\big(c_{i,t} - \beta\thinspace\mathrm{KL}_{i,t}\big)\Big]\\ c_{i,t} &= \min\big(\rho_{i,t}\hat A_{i,t},\ \mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\thinspace\hat A_{i,t}\big) \end{aligned}$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-grpo-avg.svg" alt="Illustration: four answers as rows of token cells; each row is averaged over its tokens, then the four row averages are averaged over the group to give J GRPO"></div>
-<p class="plain">The second line is PPO's clipped term, token by token; the first averages it over each answer, then over the group.</p>
-</div>
-
-<p class="footnote">$c_{i,t}$: token $t$'s clipped term; $\rho_{i,t}$: its ratio; $T_i$: answer $i$'s length; $\epsilon$, $\beta$: clip range and KL weight. The paper: $\beta$ = 0.04, $K$ = 64</p>
-
-Note:
-GRPO's objective, in two lines. Read the second line first: for each token of each answer, the clipped term, exactly PPO's, the ratio times the advantage, clipped to between 1 minus epsilon and 1 plus epsilon. Then the first line: subtract a KL penalty for that token, average over the answer's tokens, then average over the group's K answers. The picture is those two averages: across each row, then down the column.
-The one new piece is the KL term sitting inside the objective, next slide.
-
----
-
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · the KL estimate · Shao et al. 2024, Eq. 4</p>
 
 ## Why does GRPO estimate the KL differently?
@@ -2261,6 +2204,24 @@ The one new piece is the KL term sitting inside the objective, next slide.
 Note:
 In PPO the KL sat inside the reward, where only its value mattered, so the simple k1 estimate, minus log u, was fine even though one token's k1 can be negative. GRPO moves the KL into the loss, and now its gradient matters. It uses k3: u minus log u minus 1, where u is the reference's probability of the token over the policy's. The curve shows why: k3 touches zero where the two models agree, at u equal to 1, and is positive everywhere else. k1 dips below zero whenever the policy likes a token less than the reference, so a single token can earn a bonus. Both average to the true KL on the policy's own tokens; k3 has lower variance, 0.038 against 0.307 in our toy.
 In a loss, k1's expected gradient is zero, while k3's pulls the policy toward the reference: that is Tang and Munos's point.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · the objective · Shao et al. 2024, Eq. 3</p>
+
+## What does GRPO maximise?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} J_{\rm GRPO}(\theta) &= \mathbb E\Big[\frac1K\sum_{i=1}^{K}\frac{1}{T_i}\sum_{t=1}^{T_i}\big(c_{i,t} - \beta\thinspace\mathrm{KL}_{i,t}\big)\Big]\\ c_{i,t} &= \min\big(\rho_{i,t}\hat A_{i,t},\ \mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\thinspace\hat A_{i,t}\big) \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-avg.svg" alt="Illustration: four answers as rows of token cells; each row is averaged over its tokens, then the four row averages are averaged over the group to give J GRPO"></div>
+<p class="plain">PPO's clipped term with three swaps: the group advantage, the KL inside the objective, and an average over the group.</p>
+</div>
+
+<p class="footnote">$c_{i,t}$: token $t$'s clipped term; $\rho_{i,t}$: its ratio; $T_i$: answer $i$'s length; $\epsilon$, $\beta$: clip range and KL weight. Paper: $\beta$ = 0.04, $K$ = 64, one update per batch, so $\rho$ = 1 and the clip never binds</p>
+
+Note:
+GRPO's objective, in two lines. Read the second line first: for each token of each answer, the clipped term, exactly PPO's, the ratio times the advantage, clipped to between 1 minus epsilon and 1 plus epsilon. Then the first line: subtract a KL penalty for that token, average over the answer's tokens, then average over the group's K answers. The picture is those two averages: across each row, then down the column.
+The one new piece is the KL term sitting inside the objective, next slide.
 
 ---
 
@@ -2347,7 +2308,34 @@ Optional. The "typical" 0.95 comes from robotics, where a reward arrives at ever
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · rules of thumb</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · the evidence</p>
+
+## What does the evidence say about PPO against GRPO?
+
+<div class="cols">
+<div class="text">
+
+- Token credit: PPO's per-token credit needs $\lambda$ near 1 to reach early tokens, and then it is close to GRPO's whole-answer credit (Part 4).
+- Head to head on maths, R1's supplement: GRPO 0.555, PPO 0.536 at best; one run each.
+- Same-score groups: a value model does not rescue them either; DAPO simply drops them.
+- "Cheaper" is not measured: DeepSeekMath gives no memory or time numbers, and samples 64 answers per question.
+
+</div>
+<div class="text">
+
+<p class="plain">Best supported: "verifiable rewards suit GRPO", since R1 and DeepSeekMath both use it there; the rest is plausible but untested (ours).</p>
+
+</div>
+</div>
+
+<p class="footnote">Our reading. DeepSeek-AI 2025, arXiv:2501.12948, supplement; Shao et al. 2024 §1, §6; Yu et al. 2025, DAPO, arXiv:2503.14476. Week 4, GRPO critiques</p>
+
+Note:
+Optional: the rules of thumb against the evidence in Week 4. Token-level credit: with one reward at the end, PPO's GAE at lambda 0.95 barely reaches the early tokens, and at lambda 1 its advantage is the final return minus the value, close to GRPO's score-the-whole-answer view; R1's supplement found PPO needed lambda 1 to come near GRPO on MATH. That is one run per setting, by GRPO's authors. Low within-group variance: true that the group baseline is weak there, and a group with identical rewards teaches nothing; DAPO's fix is to drop those groups and sample new ones, not to add a value model. Cost: DeepSeekMath says GRPO uses fewer resources but gives no number, and it samples 64 answers per question. Stability and maturity: fair as a description of practice, not something any of our readings tests.
+
+--
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · rules of thumb · optional</p>
 
 ## When would you choose PPO, and when GRPO?
 
@@ -2379,33 +2367,6 @@ Optional. The "typical" 0.95 comes from robotics, where a reward arrives at ever
 Note:
 When should we choose PPO? When token-level credit assignment matters. The reward model usually gives one score for the whole answer, not one per token; PPO uses the value model and GAE to propagate that sequence-level reward back and estimate token-level advantages. That is especially useful for long outputs, or where different parts of the answer contribute differently to its quality. PPO also helps when the reward variance within a group of sampled answers is low: then group normalisation gives a weak baseline, and a learned value model can be more robust. Another reason is stability: PPO is the more mature and widely tested recipe for general RLHF. Typical use: general RLHF for assistant alignment, making the model more helpful, honest and harmless.
 And GRPO? When outcome-level supervision is enough: we only need to know whether the final answer is good or bad, not detailed token-level advantages from a value model. When rewards within a group naturally spread out: in maths or code, some completions pass the verifier or unit tests and others fail, which gives a clear relative signal. And simplicity: no value model, no GAE, so the pipeline is simpler and cheaper. That makes GRPO especially suited to verifiable reasoning: maths and code.
-
---
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · Week 4 critiques · optional</p>
-
-## What do the papers and later work say about this advice?
-
-<div class="cols">
-<div class="text">
-
-- Token credit: PPO's per-token credit needs $\lambda$ near 1 to reach early tokens, and then it is close to GRPO's whole-answer credit (Part 4).
-- Head to head on maths, R1's supplement: GRPO 0.555, PPO 0.536 at best; one run each.
-- Low variance: a value model is no fix for all-same groups; DAPO drops them instead.
-- "Cheaper" is not measured: DeepSeekMath gives no memory or time numbers, and samples 64 answers per question.
-
-</div>
-<div class="text">
-
-<p class="plain">Best supported: "verifiable rewards suit GRPO", since R1 and DeepSeekMath both use it there; the rest is plausible but untested (ours).</p>
-
-</div>
-</div>
-
-<p class="footnote">Our reading. DeepSeek-AI 2025, arXiv:2501.12948, supplement; Shao et al. 2024 §1, §6; Yu et al. 2025, DAPO, arXiv:2503.14476. Week 4, GRPO critiques</p>
-
-Note:
-Optional: the rules of thumb against the evidence in Week 4. Token-level credit: with one reward at the end, PPO's GAE at lambda 0.95 barely reaches the early tokens, and at lambda 1 its advantage is the final return minus the value, close to GRPO's score-the-whole-answer view; R1's supplement found PPO needed lambda 1 to come near GRPO on MATH. That is one run per setting, by GRPO's authors. Low within-group variance: true that the group baseline is weak there, and a group with identical rewards teaches nothing; DAPO's fix is to drop those groups and sample new ones, not to add a value model. Cost: DeepSeekMath says GRPO uses fewer resources but gives no number, and it samples 64 answers per question. Stability and maturity: fair as a description of practice, not something any of our readings tests.
 
 ---
 
