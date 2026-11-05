@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-11-05T11:11:05.084990</dc:date>
+    <dc:date>2026-11-05T11:27:32.961264</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -41,7 +41,7 @@ Q 83.952 45.059891 83.952 49.110218
 L 83.952 87.588327 
 Q 83.952 91.638655 88.176 91.638655 
 z
-" clip-path="url(#pbc87020d46)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 225.456 91.638655 
@@ -54,7 +54,7 @@ Q 221.232 45.059891 221.232 49.110218
 L 221.232 87.588327 
 Q 221.232 91.638655 225.456 91.638655 
 z
-" clip-path="url(#pbc87020d46)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 362.736 91.638655 
@@ -67,7 +67,7 @@ Q 358.512 45.059891 358.512 49.110218
 L 358.512 87.588327 
 Q 358.512 91.638655 362.736 91.638655 
 z
-" clip-path="url(#pbc87020d46)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 500.016 91.638655 
@@ -80,7 +80,7 @@ Q 495.792 45.059891 495.792 49.110218
 L 495.792 87.588327 
 Q 495.792 91.638655 500.016 91.638655 
 z
-" clip-path="url(#pbc87020d46)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 88.176 187.833927 
@@ -93,7 +93,7 @@ Q 83.952 141.255164 83.952 145.305491
 L 83.952 183.7836 
 Q 83.952 187.833927 88.176 187.833927 
 z
-" clip-path="url(#pbc87020d46)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 225.456 187.833927 
@@ -106,7 +106,7 @@ Q 221.232 141.255164 221.232 145.305491
 L 221.232 183.7836 
 Q 221.232 187.833927 225.456 187.833927 
 z
-" clip-path="url(#pbc87020d46)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
     <path d="M 362.736 187.833927 
@@ -119,7 +119,7 @@ Q 358.512 141.255164 358.512 145.305491
 L 358.512 183.7836 
 Q 358.512 187.833927 362.736 187.833927 
 z
-" clip-path="url(#pbc87020d46)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#p98a4aca22b)" style="fill: #f4f4f4; stroke: #000000; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <!-- PPO -->
@@ -1233,7 +1233,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pbc87020d46">
+  <clipPath id="p98a4aca22b">
    <rect x="0" y="0" width="792" height="222.768"/>
   </clipPath>
  </defs>

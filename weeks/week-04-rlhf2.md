@@ -66,7 +66,7 @@ The same material is in the Week 4 deck as three readings: InstructGPT, PPO and 
 <div class="text">
 
 <table class="rules nohead" style="font-size:19px">
-  <tr><td>$V_\psi$, $v_t$</td><td>the value model, and its prediction $V_\psi(s_t)$</td></tr>
+  <tr><td>$V$, $V_\psi$, $v_t$</td><td>state value $\mathbb E[R_t \mid s_t]$; the value model, and its prediction $V_\psi(s_t)$</td></tr>
   <tr><td>$Q$, $A$, $\hat A_t$</td><td>action value $\mathbb E[R_t \mid s_t, o_t]$, advantage, estimated advantage</td></tr>
   <tr><td>$\delta_t$</td><td>the TD residual, a one-step advantage estimate</td></tr>
   <tr><td>$\lambda$</td><td>the GAE parameter</td></tr>
@@ -648,84 +648,86 @@ One fact we will use three times: the gradient of the log probability has mean z
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · one good word</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · the size of the score</p>
 
 ## Why is REINFORCE so noisy?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- Both answers open with the same good word, "Subtract"; one slips at token 8.
-- REINFORCE weights every token by $R(\tau)$, so "Subtract" gets +100 or −100.
-
-</div>
-<div class="text">
-
-- Which answer the batch drew decides the sign; "Subtract" did nothing different.
-
-<p class="plain">On average the pushes come out right; one batch at a time they can point anywhere.</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-04-rlhf2-subtract.svg" alt="Illustration: prompt Solve 2x + 4 = 10. Answer 1: Subtract 4 from both sides, 2x = 6 so x = 3, R = +100, push on Subtract +100 times its gradient. Answer 2: Subtract 4 from both sides, 2x = 14 so x = 7, R = minus 100, push on Subtract minus 100 times its gradient; 14 for 6 is the slip"></div>
-</div>
-
-<p class="footnote">Example ours. Noise, or variance: how much the estimated gradient $\hat g$ swings from one batch to the next</p>
-
-Note:
-REINFORCE is unbiased: averaged over many samples it gives the true gradient. Its problem is how far one sample can be from that average. Here is a maths prompt: "Solve 2x plus 4 equals 10." The policy samples two answers. Both open the same way: "Subtract 4 from both sides." The first goes on correctly, 2x equals 6, so x equals 3, and scores plus 100. The second slips at token 8: it writes 14 instead of 6, ends at x equals 7, and scores minus 100.
-Look at the first word, "Subtract". It is a perfectly good first step, and it is the same in both answers. But REINFORCE weights every token of an answer by that answer's total reward. If the batch drew the first answer, "Subtract" is pushed up with weight plus 100. If it drew the second, it is pushed down with weight minus 100, a huge push against a valid step, for a mistake seven tokens later.
-That is what noise means here: variance, how much the gradient estimate swings from one batch to the next. On average the pushes come out right, but one batch at a time they can point anywhere, and every token of a long answer adds its own swing.
-
----
-
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · an offset</p>
-
-## What if every score is positive?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- Bradley-Terry fixes only score gaps (Part 2), so scores can sit anywhere.
-- Say a reward model scores every answer between 90 and 100.
-- A terrible answer gets 90, a great one 100: REINFORCE pushes both up.
-- The great one is pushed only 11% harder; only the gap of 10 says which was better.
+- REINFORCE weights every push by the raw score, however large it is.
+- Bradley-Terry fixes only score gaps (Part 2), so scores can sit anywhere: say 90 to 100.
+- A terrible answer (90) and a great one (100) are both pushed up; the great one only 11% harder.
 
-<p class="plain">The shared 90 is pure noise; it takes many samples for the gap to win out.</p>
+<p class="plain">The gap of 10 is the signal; the 90 both scores share rides on every push as noise.</p>
 
 </div>
 <div class="fig"><img src="img/week-04-rlhf2-offset.svg" alt="Illustration: weight on the answer's tokens: great answer, R = 100, weight +100; terrible answer, R = 90, weight +90"></div>
 </div>
 
-<p class="footnote">Example ours. Adding a constant to every score leaves the Bradley-Terry loss unchanged, so a trained reward model's scores have no fixed zero</p>
+<p class="footnote">Example ours. Problem 1 is about how big the score is; problem 2, after it, is about where the score lands</p>
 
 Note:
-A second source of the same noise, from the reward model itself. Remember its loss from Part 2: the sigmoid of the score gap, chosen minus rejected. Only gaps matter. Add 90 to every score and the loss is unchanged, so a trained reward model's scores can sit anywhere.
-Say ours scores everything between 90 and 100. A terrible answer gets 90 and a great one gets 100. REINFORCE weights every token of each by its score, so both answers are pushed up, the terrible one included. The great one is pushed only about 11 percent harder: 100 over 90. The only information about which was better is the gap, 10; the shared 90 says nothing, yet it is most of the push.
-On average this still comes out right, because the mean-zero fact cancels the shared part. But one sample at a time, the direction is mostly that shared offset, and it takes many samples before the gap wins out. Part 4's baseline removes the offset directly.
+The first problem is about the size of the score. REINFORCE multiplies every push by the raw score, whatever it is. And a reward model's scores have no fixed zero: Bradley-Terry only fixes gaps, so adding 90 to every score leaves its loss unchanged. Say ours scores everything between 90 and 100.
+A terrible answer gets 90 and a great one gets 100. Both scores are big and positive, so REINFORCE pushes both answers up, the terrible one included; the great one only about 11 percent harder. The only information about which is better is the gap, 10. The 90 they share says nothing, yet it is most of every push. The next three slides show what that does to a gradient estimate.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · forty batches</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · the true gradient</p>
 
-## How often does a batch point the wrong way?
+## Which way should the policy move?
 
 <div class="rows">
-<div class="eq">$$\hat g = \frac1N\sum_{i=1}^{N} R(\tau_i)\thinspace\frac{\partial}{\partial z}\log\pi_\theta(\tau_i)$$</div>
-<div class="fig"><img src="img/week-04-rlhf2-noise-batches.svg" alt="Illustration: 40 dots, one per batch of 16 answers, on a number line of gradient estimates from minus 40 to 40. The true gradient 2.5 is a dotted line. The dots spread from about minus 27 to plus 32; 17 hollow dots sit left of zero, pointing the wrong way"></div>
-<p class="plain">The true gradient is 2.5, yet 17 of these 40 batches point the wrong way; in theory 40% do.</p>
+<div class="eq">$$\begin{aligned} J(z) &= p\cdot 100 + (1-p)\cdot 90, \qquad p = \sigma(z)\\ \frac{dJ}{dz} &= p(1-p)\times(100 - 90) = 0.5 \times 0.5 \times 10 = 2.5 \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-knob.svg" alt="Illustration: expected score J against the knob z, the great answer's logit; an S-curve from 90 to 100. At z = 0 both answers are at 0.5, J = 95, and the slope is 2.5: turn z up, gently"></div>
+<p class="plain">One knob $z$ sets how often the great answer is written. The right move is to turn it up, gently: slope 2.5.</p>
 </div>
 
-<p class="footnote">Ours: 16 answers per batch, great (100) or terrible (90) at 0.5 each; $z$ the great answer's logit, so each sample pushes +50 or −45</p>
+<p class="footnote">$z$: the great answer's logit; $\sigma$: the sigmoid, so $p = 0.5$ at $z = 0$; $J$: the expected score. Example ours</p>
 
 Note:
-What does noise look like? Take the reward model that scores everything between 90 and 100: a great answer gets 100, a terrible one 90, and the policy writes each half the time. Put the choice on one logit, z, for the great answer. One great sample pushes z by 100 times 0.5, plus 50; one terrible sample by 90 times minus 0.5, minus 45. The true gradient is the average, plus 2.5: small, positive.
-REINFORCE estimates it from a batch: here 16 answers, and the estimate is the average push. Each dot is one batch. They spread from about minus 27 to plus 32, and the hollow ones, left of zero, would move the policy toward the terrible answer. 17 of these 40 do; the exact chance is 40 percent. The signal, 2.5, is buried under swings of plus or minus 25, all because both scores share the 90. That spread is what we mean by noise.
+To see the noise, make the example as small as possible. The policy writes one of the two answers, each half the time, and one knob, z, the great answer's logit, controls the split: turning z up makes the great answer more likely. The expected score is p times 100 plus one minus p times 90: 95 right now.
+Which way should the knob turn? The derivative is p times one minus p times the gap: 0.5 times 0.5 times 10, which is 2.5. Up, gently. That is the true gradient, the thing REINFORCE is trying to estimate. It is small because the answers differ by only 10 points.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 2, blame</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · one sample</p>
+
+## What does one sample say?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \text{great sample:}&\quad 100 \times \tfrac{d}{dz}\log p = 100 \times (+0.5) = +50\\ \text{terrible sample:}&\quad 90 \times \tfrac{d}{dz}\log(1-p) = 90 \times (-0.5) = -45 \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-pushes.svg" alt="Illustration: a black arrow from 0 to plus 50, great sample, 100 times plus 0.5; a grey arrow from 0 to minus 45, terrible sample, 90 times minus 0.5; a dotted line at 2.5, their average, the true gradient"></div>
+<p class="plain">A terrible sample still scores 90, so it pushes hard toward itself. The two pushes nearly cancel; only their average, 2.5, is signal.</p>
+</div>
+
+<p class="footnote">At $p = 0.5$: $\frac{d}{dz}\log p = 1 - p = 0.5$ and $\frac{d}{dz}\log(1-p) = -p = -0.5$. Each push is REINFORCE's score times log-probability gradient</p>
+
+Note:
+REINFORCE does not know the 2.5. It estimates it from samples, and each sample pushes the knob by its score times the direction that makes that answer more likely. A great sample: 100 times plus 0.5, a push of plus 50, turn the knob up hard. A terrible sample: 90 times minus 0.5, minus 45, turn it down hard, toward the terrible answer. Because the terrible answer still scored a big positive 90, REINFORCE reads it as "do more of that".
+The two pushes are huge and nearly opposite. Averaged, half the time each, they give plus 2.5: the true gradient. But any one sample is off by about 47.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 1, noise · a batch</p>
+
+## What does a batch of 16 say?
+
+<div class="rows">
+<div class="eq">$$\hat g = \frac{50\thinspace k - 45\thinspace(16 - k)}{16}, \qquad k = \text{great answers in the batch}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-noise-batches.svg" alt="Illustration: 40 dots, one per batch of 16 answers, on a line of batch estimates from minus 40 to 40. 8 great and 8 terrible gives plus 2.5, the true gradient; 9 great and 7 terrible gives plus 8.4; 7 great and 9 terrible gives minus 3.4, the wrong way. 17 hollow dots lie left of zero"></div>
+<p class="plain">With 7 or fewer great answers, the batch turns the knob the wrong way: a 40% chance, and 17 of these 40 batches.</p>
+</div>
+
+<p class="footnote">Ours: $k$ is a coin-flip count, Binomial(16, 0.5); $P(k \le 7) = 0.40$. 40 simulated batches, seed fixed</p>
+
+Note:
+A batch averages 16 pushes, and how many great answers it contains is a coin flip. With exactly 8 and 8, the average is plus 2.5, exactly right. With 9 great, plus 8.4: right direction, too hard. With 7 great and 9 terrible: 7 times 50 minus 9 times 45, over 16, minus 3.4. That batch turns the knob toward the terrible answer.
+Any batch with 7 or fewer great answers points the wrong way, and that happens 40 percent of the time. Each dot here is one simulated batch; the 17 hollow ones are wrong. The sign of the update is close to a coin flip, all because of the size of the scores: the shared 90 swamps the gap of 10.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 2, blame · where the score lands</p>
 
 ## Who gets the blame when only the last word is wrong?
 
@@ -733,7 +735,7 @@ REINFORCE estimates it from a batch: here 16 answers, and the estimate is the av
 <div class="text">
 
 - "Gravity pulls objects apart" scores −1; only "apart" is wrong.
-- REINFORCE weights every token by −1, so the three good words are pushed down too.
+- REINFORCE puts the score −1 on every token, so the three good words are pushed down too.
 - Long answers make it worse: 490 good tokens before a 10-token hallucination are all pushed down.
 - This is the **credit-assignment** problem: which action caused the reward?
 
@@ -743,12 +745,42 @@ REINFORCE estimates it from a batch: here 16 answers, and the estimate is the av
 <div class="fig"><img src="img/week-04-rlhf2-blame.svg" alt="Illustration: bar chart over the four tokens Gravity, pulls, objects, apart; REINFORCE puts weight minus 1 on each"></div>
 </div>
 
-<p class="footnote">Example ours. Two more problems follow before any fix: waste and instability</p>
+<p class="footnote">Example ours. Problem 1 was the size of the score; this is where it lands, whatever its size</p>
 
 Note:
 The second problem. Take the bad answer, "Gravity pulls objects apart", score minus 1. Only the last word is wrong. But REINFORCE multiplies the whole answer's log-likelihood by the score, so every token gets the same weight, minus 1. "Gravity", "pulls" and "objects" are pushed down exactly as hard as "apart".
 Over many answers this washes out: "Gravity" also appears in the good answers, where it is pushed up, so on average it ends up right. But it washes out slowly and noisily. That is the credit-assignment problem: when the reward arrives at the end, which of the actions earned it? The longer the answer, the worse it gets. A long, good answer that hallucinates one fact at the end is punished everywhere: write 490 good tokens and hallucinate in the last 10, and all 500 are pushed down alike. The good words recover only on average, over many answers, slowly and noisily.
 What weight would "Gravity" deserve? About zero. It appears in both answers, so choosing it told us nothing about the outcome. Part 4 builds a weight that knows that. First, two more problems, which are not about the weight at all.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 3, from a reward to a policy gradient · problem 2, blame · a good first word</p>
+
+## Why does a good first word pay for a later slip?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- Both answers open with the same good word, "Subtract"; one slips at token 8.
+- REINFORCE puts the whole answer's score on every token: "Subtract" gets +100 or −100.
+
+</div>
+<div class="text">
+
+<p class="plain">These scores are already centred, +100 and −100: the problem is not their size, but where they land.</p>
+
+</div>
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-subtract.svg" alt="Illustration: prompt Solve 2x + 4 = 10. Answer 1: Subtract 4 from both sides, 2x = 6 so x = 3, R = +100, push on Subtract +100 times its gradient. Answer 2: Subtract 4 from both sides, 2x = 14 so x = 7, R = minus 100, push on Subtract minus 100 times its gradient; 14 for 6 is the slip"></div>
+</div>
+
+<p class="footnote">Example ours. A baseline cannot fix this: both answers start in the same state, so they get the same baseline (Part 4)</p>
+
+Note:
+A second example of the blame problem, with a twist. A maths prompt: "Solve 2x plus 4 equals 10." Two sampled answers open the same way, "Subtract 4 from both sides". The first goes on correctly and scores plus 100. The second slips at token 8, writes 14 instead of 6, and scores minus 100.
+Look at "Subtract": a good first step, the same in both answers. REINFORCE puts each answer's whole score on every one of its tokens, so "Subtract" is pushed up by 100 in one answer and down by 100 in the other, for a mistake seven tokens later.
+Notice what is different from problem 1. These scores are perfectly centred: plus 100 and minus 100, average zero, no shared offset. Fixing the size of the score would not help. The problem is where the score lands: on every token alike, instead of on "14". That is why a baseline will not fix it, and the value model will.
 
 ---
 
@@ -819,7 +851,7 @@ Now the great answer has probability 1.1 percent. Look where that lands on the c
 ## What does REINFORCE get wrong?
 
 <div class="rows">
-<div class="fig"><img src="img/week-04-rlhf2-problems.svg" alt="Illustration: four problems, each with an arrow to its fix. 1, noise: a batch's push swings with its scores, fixed by a baseline, the value, Part 4. 2, blame: every token gets the whole score, fixed by the advantage, value model and GAE, Part 4. 3, waste: each batch buys one step, fixed by reuse with the importance ratio, Part 5. 4, instability: nothing limits how far a step goes, fixed by a trust region, then PPO's clip, Part 5. Reusing a batch makes instability worse"></div>
+<div class="fig"><img src="img/week-04-rlhf2-problems.svg" alt="Illustration: four problems, each with an arrow to its fix. 1, noise: the size of the score swamps the gap, fixed by a baseline, the value, Part 4. 2, blame: the score lands on every token alike, fixed by the advantage, value model and GAE, Part 4. 3, waste: each batch buys one step, fixed by reuse with the importance ratio, Part 5. 4, instability: nothing limits how far a step goes, fixed by a trust region, then PPO's clip, Part 5. Reusing a batch makes instability worse"></div>
 <p class="plain">The rest of the RL is these four fixes, in this order.</p>
 </div>
 
@@ -827,8 +859,8 @@ Now the great answer has probability 1.1 percent. Look where that lands on the c
 
 Note:
 Four problems, then, and the rest of the RL is their fixes, in this order.
-One, noise: a batch's push swings with its scores, as the forty batches showed. The fix is a baseline, and the best baseline is the value. Part 4.
-Two, blame: every token gets the whole answer's score, so "Gravity" pays for "apart". The fix is the advantage, estimated with a value model and GAE. Also Part 4.
+One, noise, the size of the score: a shared offset like the 90 swamps the gap, so a batch can point the wrong way, as the forty batches showed. The fix is a baseline, and the best baseline is the value. Part 4.
+Two, blame, where the score lands: every token gets the whole answer's score, so "Gravity" pays for "apart" and "Subtract" for "14", however well the score is centred. The fix is the advantage, estimated with a value model and GAE. Also Part 4.
 Three, waste: each expensive batch buys one step. The fix is to reuse it, reweighting old samples with the importance ratio. Part 5.
 Four, instability: nothing limits how far one step moves the policy. The fix is a limit measured on the policy: TRPO's trust region, then PPO's clip. Part 5.
 Notice that three and four pull against each other: reusing a batch means several steps on the same data, which moves the policy further. PPO's clip is what makes reuse safe. Not on this list: the policy drifting from the reference model and gaming the reward model. That is a problem with optimising a learned reward, not with REINFORCE, and Part 6 deals with it.
@@ -868,7 +900,7 @@ Part 6 will add a small KL penalty to every token's step reward, so in real PPO 
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 1, noise · reward-to-go</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · problem 2, blame · reward-to-go</p>
 
 ## Why count only the rewards after step $t$?
 
@@ -943,9 +975,11 @@ Which baseline? The natural one is what we expected to get from this state: the 
 <div class="cols wide-fig">
 <div class="text">
 
+<div class="eq">$$\begin{aligned} V^\pi(s_t) &= \mathbb E\big[R_t \mid s_t\big]\\ Q^\pi(s_t, o_t) &= \mathbb E\big[R_t \mid s_t, o_t\big] \end{aligned}$$</div>
+
 <dl class="where">
-<dt>$V^\pi(s)$</dt><dd>the <b>state-value function</b>: the expected return from $s$, following the policy $\pi$</dd>
-<dt>$Q^\pi(s, o)$</dt><dd>the <b>action-value function</b>: the expected return if we take $o$ first, then follow $\pi$; $Q^\pi(s_t, o_t) = \mathbb E[R_t \mid s_t, o_t]$</dd>
+<dt>$V^\pi$</dt><dd>the <b>state value</b>: the expected return from $s_t$, following $\pi$</dd>
+<dt>$Q^\pi$</dt><dd>the <b>action value</b>: the same, with the token $o_t$ fixed first</dd>
 </dl>
 
 - At $s_4$ = "Gravity pulls objects", the last word is "together" (0.9) or "apart" (0.1), so their $Q$s are their scores: 2 and −1.
@@ -960,7 +994,7 @@ Which baseline? The natural one is what we expected to get from this state: the 
 <p class="footnote">Example ours: $s_4$ is the prompt plus "Gravity pulls objects", assumed certain; the answer ends at word 4. The figure's $A$ comes two slides on</p>
 
 Note:
-Two functions. V of s, the state-value function: the expected return from state s if we follow the policy from there. Q of s and a, the action-value function: the expected return if we take action a first, and then follow the policy. Keep it apart from R t. R t is what one sampled answer actually got from step t on, so it is random. Q is the average of R t over every way the rest of the answer could go, so it is fixed.
+Two functions. V of s, the state-value function: the expected return from state s if we follow the policy from there, the average of R t given only the state. Q of s and a, the action-value function: the expected return if we take action a first, and then follow the policy. Keep it apart from R t. R t is what one sampled answer actually got from step t on, so it is random. Q is the average of R t over every way the rest of the answer could go, so it is fixed.
 Our example. Assume the policy always writes "Gravity pulls objects"; at that state, s4, it picks "together" with probability 0.9 and "apart" with 0.1. That word is the last action, so Q of each is just its score: Q of together is 2, Q of apart is minus 1. V of s4 averages over what the policy would do: 0.9 times 2 plus 0.1 times minus 1, which is 1.7.
 No answer actually scores 1.7. V is an expectation: what we expect before the last word is chosen. Because the first three words are certain, V is also 1.7 at every earlier state: nothing has been decided yet. The same goes for Q of "Gravity": it is 1.7, while R 1 for that token is 2 or minus 1 depending on which last word was sampled. On the last word nothing random is left, so R t and Q are the same number. Remember that; it is why "Gravity" deserves a weight of zero.
 
