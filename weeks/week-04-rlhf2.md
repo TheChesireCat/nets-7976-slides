@@ -2178,35 +2178,54 @@ The value model V psi: GRPO removes it entirely. And because there is no value m
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · group as baseline · Shao et al. 2024 §4.1.2</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · group as baseline, 1 of 3 · Shao et al. 2024 §4.1.2</p>
 
-## How does a group of answers become the baseline?
+## What does GRPO sample for one prompt?
 
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\hat A_{i,t} = \tilde R_i = \frac{R_i - \mathrm{mean}(R_1, \dots, R_K)}{\mathrm{std}(R_1, \dots, R_K)}$$</div>
-
-<dl class="where">
-<dt>$o_1, \dots, o_K$</dt><dd>a <b>group</b> of $K$ answers to one prompt, sampled from $\pi_{\theta_{\rm old}}$</dd>
-<dt>$R_i$</dt><dd>answer $i$'s total reward, $r_\phi(q, o_i)$</dd>
-<dt>$\tilde R_i$</dt><dd>its normalised reward, given to every token $t$ of $o_i$</dd>
-</dl>
-
-- An answer above the group's average gets a positive advantage.
-
-<p class="plain">Four answers, one right (1) and three wrong (0): mean 0.25, std 0.433, so +1.73 for the right one and −0.58 for each wrong one.</p>
-
-</div>
-<div class="fig"><img src="img/week-04-grpo-adv.svg" alt="Illustration: two groups of four answers with 0/1 rewards. Hard question, one right: the right answer gets +1.73, each wrong one -0.58. Easy question, three right: each right answer +0.58, the wrong one -1.73"></div>
+<div class="rows">
+<div class="eq">$$\{o_1, \dots, o_K\} \sim \pi_{\theta_{\rm old}}(\cdot \mid q), \qquad R_i = r_\phi(q, o_i)$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-g1.svg" alt="Illustration: prompt Solve 2x + 4 = 10. Four answers: 2x = 6, so x = 3, scored R1 = 1; 2x = 14, so x = 7, R2 = 0; 2x = 6, so x = 2, R3 = 0; 2x = 5, so x = 2.5, R4 = 0"></div>
+<p class="plain">A <b>group</b> of $K$ answers to the same prompt, each scored once: here one right, three wrong.</p>
 </div>
 
-<p class="footnote">Shao et al. 2024 §4.1.2, outcome supervision; the paper samples 64 and writes $G$ for our $K$. std: standard deviation, population form in our numbers. Figure from Week 4 (ours)</p>
+<p class="footnote">$K$: the group size (the paper samples 64 and calls it $G$). $R_i$: answer $i$'s score, from a reward model or a checker of the final answer</p>
 
 Note:
-How does GRPO compute the advantage? For each question q, sample a group of answers from the old policy, o1 up to oK. The reward model scores each, giving K rewards R1 up to RK. Instead of a value model as the baseline, GRPO uses the rewards within the same group: for each answer, subtract the group's mean reward and divide by the group's standard deviation. That normalised reward is the advantage for the answer, and the same advantage is assigned to every token in it.
-If an answer scores above the group average its advantage is positive, and GRPO encourages answers like it; below average, negative, and GRPO discourages it. That's what "group as baseline" means: an answer is judged relative to other answers to the same prompt, not relative to a learned value estimate.
-Worked numbers from Week 4: one right answer in four gets plus 1.73, each wrong one minus 0.58; on an easy question with three right, each right answer gets only plus 0.58 and the wrong one minus 1.73.
+GRPO's first move: instead of one answer per prompt, sample a group. Here the prompt is our maths question, and the frozen policy writes four answers. A checker scores each: 1 if the final answer is x equals 3, otherwise 0. One answer is right; three are wrong, including our slipped answer with 14. The paper uses groups of 64; four keeps the arithmetic visible.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · group as baseline, 2 of 3</p>
+
+## What does the group expect?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \mathrm{mean}(R) &= \tfrac14(1 + 0 + 0 + 0) = 0.25\\ \mathrm{std}(R) &= \sqrt{\tfrac14\big(0.75^2 + 3 \times 0.25^2\big)} = 0.433 \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-g2.svg" alt="Illustration: the same four answers; on a line from 0 to 1, three grey dots at 0 and one black dot at 1; the mean 0.25 is a dotted line and the standard deviation 0.433 an arrow"></div>
+<p class="plain">The mean plays the value model's role: what an answer to this prompt usually scores.</p>
+</div>
+
+<p class="footnote">std: standard deviation, population form. On an easy prompt with three right, the mean would be 0.75</p>
+
+Note:
+What does this prompt usually get? The group answers that directly. The mean of the four scores is 0.25: one in four answers is right. That number does the job the value model did in PPO, the expected score from this prompt, but it is measured, not learned. The standard deviation, 0.433, is how spread out the scores are; GRPO uses it to put every prompt on the same scale.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · group as baseline, 3 of 3</p>
+
+## What advantage does each token get?
+
+<div class="rows">
+<div class="eq">$$\hat A_{i,t} = \frac{R_i - \mathrm{mean}(R)}{\mathrm{std}(R)}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-g3.svg" alt="Illustration: every token of the right answer carries plus 1.73; every token of each wrong answer carries minus 0.58"></div>
+<p class="plain">The right answer: (1 − 0.25)/0.433 = +1.73 on every token; each wrong one: −0.58 on every token.</p>
+</div>
+
+<p class="footnote">$\hat A_{i,t}$: the advantage of token $t$ in answer $i$; GRPO gives every token of an answer the same value</p>
+
+Note:
+Now the advantage. Subtract the group's mean and divide by its spread. The right answer gets 1 minus 0.25, over 0.433: plus 1.73. Each wrong answer gets minus 0.58. And every token of an answer gets its answer's advantage: the same number from the first token to the last. Compare PPO, where the value model gave each token its own advantage. GRPO has no way to tell which token of a wrong answer went wrong; Part 8 comes back to that.
 
 --
 
@@ -2237,124 +2256,111 @@ Optional, from Week 4. The paper doesn't discuss the case where every answer in 
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · Shao et al. 2024, Eq. 3, Eq. 4</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · the objective · Shao et al. 2024, Eq. 3</p>
 
-## What is GRPO's objective, and its KL estimate?
+## What does GRPO maximise?
 
-<div class="eq">$$J_{\rm GRPO}(\theta) = \mathbb E\Big[\frac1K\sum_{i=1}^{K}\frac{1}{T_i}\sum_{t=1}^{T_i}\Big\{\min\big(\rho_{i,t}(\theta)\hat A_{i,t},\ \mathrm{clip}(\rho_{i,t}(\theta), 1-\epsilon, 1+\epsilon)\hat A_{i,t}\big) - \beta\thinspace \mathrm{KL}_{i,t}\Big\}\Big]$$</div>
-
-<div class="cols">
-<div class="text">
-
-<dl class="where">
-<dt>$\rho_{i,t}(\theta)$</dt><dd>the importance ratio for token $t$ of answer $i$</dd>
-<dt>$\hat A_{i,t}$</dt><dd>the group advantage $\tilde R_i$</dd>
-<dt>$\mathrm{KL}_{i,t}$</dt><dd>the per-token KL, by the <b>$k_3$ estimator</b>: $u_{i,t} - \log u_{i,t} - 1$</dd>
-<dt>$u_{i,t}$</dt><dd>$\pi_{\rm ref}(o_{i,t} \mid q, o_{i,\lt t})/\pi_\theta(o_{i,t} \mid q, o_{i,\lt t})$</dd>
-<dt>$K$, $T_i$</dt><dd>the group size, and answer $i$'s length</dd>
-<dt>$\epsilon$, $\beta$</dt><dd>the clip range, and the KL weight</dd>
-</dl>
-
-</div>
-<div class="text">
-
-- PPO's clipped objective, averaged over the group and each answer's tokens.
-- The KL moves out of the reward and into the objective, as a separate penalty.
-- $k_3$ is never negative and usually has lower variance than PPO's $k_1$.
-
-<p class="plain">At $u$ = 1, $k_3 = 1 - 0 - 1 = 0$: no penalty where the two models agree.</p>
-
-</div>
+<div class="rows">
+<div class="eq">$$\begin{aligned} J_{\rm GRPO}(\theta) &= \mathbb E\Big[\frac1K\sum_{i=1}^{K}\frac{1}{T_i}\sum_{t=1}^{T_i}\big(c_{i,t} - \beta\thinspace\mathrm{KL}_{i,t}\big)\Big]\\ c_{i,t} &= \min\big(\rho_{i,t}\hat A_{i,t},\ \mathrm{clip}(\rho_{i,t}, 1-\epsilon, 1+\epsilon)\thinspace\hat A_{i,t}\big) \end{aligned}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-avg.svg" alt="Illustration: four answers as rows of token cells; each row is averaged over its tokens, then the four row averages are averaged over the group to give J GRPO"></div>
+<p class="plain">The second line is PPO's clipped term, token by token; the first averages it over each answer, then over the group.</p>
 </div>
 
-<p class="footnote">Shao et al. 2024 §4.1.1, Eq. 3, Eq. 4; $\beta$ = 0.04 and $K$ = 64 from its RL training setup. $k_3$: Schulman 2020's name. The expectation is over $q \sim \mathcal D$ and the group $\{o_i\} \sim \pi_{\theta_{\rm old}}$</p>
+<p class="footnote">$c_{i,t}$: token $t$'s clipped term; $\rho_{i,t}$: its ratio; $T_i$: answer $i$'s length; $\epsilon$, $\beta$: clip range and KL weight. The paper: $\beta$ = 0.04, $K$ = 64</p>
 
 Note:
-GRPO's objective is very like PPO's, adapted to groups. Instead of one answer per prompt, sample a group of K answers from the old policy. For each answer and each token, compute the importance ratio R i t: the token's probability under the current policy over its probability under the old policy, given the prompt and the earlier tokens. The advantage A hat i t is the group-relative reward from the last slide. The clipping is the same as PPO's: it stops the current policy moving too far from the old one in one update.
-One difference from the PPO we built: where the KL goes. In PPO the KL penalty was inside the reward signal. In GRPO it is subtracted directly in the objective as a separate regularisation term, and it uses the k3 estimator: u minus log u minus 1, where u is the reference's probability of the token over the current policy's. Compared with the k1 estimate PPO uses, k3 is always non-negative and usually has lower variance.
-So in short: GRPO keeps PPO's clipped objective, removes the value model, replaces the value baseline with a group-relative one, and adds the KL term directly to the objective.
+GRPO's objective, in two lines. Read the second line first: for each token of each answer, the clipped term, exactly PPO's, the ratio times the advantage, clipped to between 1 minus epsilon and 1 plus epsilon. Then the first line: subtract a KL penalty for that token, average over the answer's tokens, then average over the group's K answers. The picture is those two averages: across each row, then down the column.
+The one new piece is the KL term sitting inside the objective, next slide.
 
---
+---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · Week 4, GRPO section · optional</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · the KL estimate · Shao et al. 2024, Eq. 4</p>
 
-## Why $k_3$ and not $k_1$?
+## Why does GRPO estimate the KL differently?
 
-<div class="cols wide-text">
+<div class="cols wide-fig">
 <div class="text">
 
-- Both use one sampled token and average to the true KL, on the policy's own tokens.
-- $k_1 = -\log u$ can be negative; inside a reward that is fine, since a reward is not differentiated.
-- In a loss the gradient matters: $k_1$'s expected gradient is 0, while $k_3$'s pulls toward the reference.
-- Toy policy (0.8, 0.2), reference (0.5, 0.5): true KL 0.193; $k_3$ variance 0.038 against $k_1$'s 0.307 (ours).
+<div class="eq">$$\mathrm{KL}_{i,t} = u_{i,t} - \log u_{i,t} - 1$$</div>
+
+<dl class="where">
+<dt>$u_{i,t}$</dt><dd>$\pi_{\rm ref}(o_{i,t} \mid \cdot)\thinspace/\thinspace\pi_\theta(o_{i,t} \mid \cdot)$: the reference's probability over the policy's</dd>
+</dl>
+
+- The KL is now in the loss, so its gradient matters.
+- This **$k_3$** estimate is never negative and is 0 where the models agree.
+
+<p class="plain">At $u$ = 2.5: PPO's $k_1 = -\log u$ gives −0.92, a bonus; $k_3$ gives +0.58.</p>
 
 </div>
 <div class="fig"><img src="img/week-04-grpo-kl-est.svg" alt="Illustration: per-token KL estimates against u on a log axis. k3 = u - log u - 1 is a curve touching zero at u = 1 and positive elsewhere; k1 = -log u is a falling line that goes negative above u = 1. Dots at u = 0.625 (k1 +0.470, k3 +0.095) and u = 2.5 (k1 -0.916, k3 +0.584)"></div>
 </div>
 
-<p class="footnote">Ours, after Week 4. Tang &amp; Munos 2025, arXiv:2506.09477: $k_3$ in a loss gives the KL's gradient with the two distributions swapped</p>
+<p class="footnote">$k_1$, $k_3$: Schulman 2020's names. Toy (ours): policy (0.8, 0.2), reference (0.5, 0.5), true KL 0.193; variance 0.038 for $k_3$, 0.307 for $k_1$</p>
 
 Note:
-Optional, from Week 4. Write u for the reference's probability of the sampled token over the policy's. k1 is minus log u: right on average, but a single token can give a negative value. k3 is u minus log u minus 1: still right on average, because u minus 1 averages to zero on the policy's own tokens, and never negative. On a toy two-token policy, (0.8, 0.2) against a reference (0.5, 0.5), the true KL is 0.193; both estimators average to it, with variances 0.038 for k3 and 0.307 for k1.
-The deeper reason is the gradient. As a loss term, k1's expected gradient is zero: it pulls the policy nowhere. k3's pulls toward the reference, though Tang and Munos point out it is the gradient of the divergence with its arguments swapped, not quite the KL that Eq. 3 writes. At small beta the difference barely matters.
+In PPO the KL sat inside the reward, where only its value mattered, so the simple k1 estimate, minus log u, was fine even though one token's k1 can be negative. GRPO moves the KL into the loss, and now its gradient matters. It uses k3: u minus log u minus 1, where u is the reference's probability of the token over the policy's. The curve shows why: k3 touches zero where the two models agree, at u equal to 1, and is positive everywhere else. k1 dips below zero whenever the policy likes a token less than the reference, so a single token can earn a bonus. Both average to the true KL on the policy's own tokens; k3 has lower variance, 0.038 against 0.307 in our toy.
+In a loss, k1's expected gradient is zero, while k3's pulls the policy toward the reference: that is Tang and Munos's point.
 
 ---
 
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 7, GRPO · one GRPO step</p>
 
-## One GRPO step: what happens?
+## What does one GRPO step repeat?
 
-<table class="rules">
-  <tr><td>step</td><td>what</td><td>formula</td></tr>
-  <tr><td>1</td><td>freeze the policy; sample a group per prompt</td><td>$\pi_{\theta_{\rm old}} \leftarrow \pi_\theta$; $\{o_1, \dots, o_K\} \sim \pi_{\theta_{\rm old}}(\cdot \mid q)$</td></tr>
-  <tr><td>2</td><td>score every answer, with a reward model or a checker</td><td>$R_i = r_\phi(q, o_i)$</td></tr>
-  <tr><td>3</td><td>for every answer and token, in parallel: ratio, advantage, KL</td><td>$\rho_{i,t}(\theta)$; $\hat A_{i,t} = (R_i - \mathrm{mean}(R))/\mathrm{std}(R)$; $u_{i,t} - \log u_{i,t} - 1$</td></tr>
-  <tr><td>4</td><td>minimise the negative objective</td><td>$L_{\rm GRPO} = -J_{\rm GRPO}$</td></tr>
-</table>
-
-<div class="cols">
-<div class="text">
-
-- Only the policy is updated; the reference and the reward source stay frozen.
-- No value model and no value loss, so no backward GAE pass.
-
-</div>
-<div class="text">
-
-<p class="plain">GRPO saves the value model's forward passes, at rollout and in every update, but samples $K$ answers per prompt.</p>
-
-</div>
+<div class="rows">
+<div class="eq">$$L_{\rm GRPO} = -J_{\rm GRPO}$$</div>
+<div class="fig"><img src="img/week-04-rlhf2-grpo-loop.svg" alt="Illustration: a loop. Rollout: K answers per prompt with pi theta old, score, group advantages; arrow to update: ratio, clip and k3 KL, one gradient step, which loops on itself for the next minibatch; arrow to copy the weights, theta old gets theta; arrow back to the rollout for new prompts"></div>
+<p class="plain">PPO's loop, without the value model: no values, no GAE, no value loss.</p>
 </div>
 
-<p class="footnote">Reward source: a reward model or a rule, such as a checker of the final answer or unit tests for code</p>
+<p class="footnote">Only the policy is trained; the reference and the reward source stay frozen. Reward source: a reward model, or a rule such as a unit test</p>
 
 Note:
-One step of GRPO, as for PPO. First copy the current policy and freeze it as the old policy; for each prompt, sample a group of answers from it, o1 to oK. Next use a reward model, or more generally a reward function, to score each answer: a group of scores R1 to RK, R i being the score for prompt q and answer o i. Then for each answer and each token compute, in parallel: the importance ratio, comparing the token's probability under the current and the old policy; the advantage, the group-normalised reward assigned to every token of the answer; and the per-token KL term between the current policy and the reference, which is multiplied by beta and subtracted from the objective. Since J GRPO is to be maximised, in code we minimise its negative.
-During GRPO training only the policy is updated. The reference model stays frozen, and so does the reward source, whether a reward model or a reward function.
+The whole GRPO step is PPO's loop with pieces removed. Rollout: the frozen policy writes K answers per prompt, the reward source scores them, and the group gives each answer its advantage. Update: the ratio, the clip and the k3 KL, one gradient step per minibatch. Then copy the weights and sample again. There is no value model to run at rollout, no GAE pass, and no value loss. Only the policy trains.
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO</p>
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · where the credit lands</p>
 
-## How do PPO and GRPO differ?
+## Which tokens does each method blame?
 
-<table class="rules">
-  <tr><td></td><td>PPO</td><td>GRPO</td></tr>
-  <tr><td>baseline</td><td>a learned value model (the critic)</td><td>the group of sampled answers</td></tr>
-  <tr><td>advantage</td><td>per token, by GAE</td><td>per answer, the same on every token</td></tr>
-  <tr><td>models</td><td>4, two trained</td><td>3, one trained</td></tr>
-  <tr><td>KL</td><td>$k_1$, inside the reward</td><td>$k_3$, in the objective</td></tr>
-  <tr><td>cost (rule of thumb)</td><td>heavier: policy and value model to train</td><td>simpler and cheaper, but $K$ answers per prompt</td></tr>
-  <tr><td>the question it asks</td><td>"Was this token better than my value estimate?"</td><td>"Was this answer better than other answers to the same prompt?"</td></tr>
-</table>
+<div class="rows">
+<div class="fig"><img src="img/week-04-rlhf2-ppo-grpo-adv.svg" alt="Illustration: the slipped answer Subtract 4 from both sides, 2x = 14 so x = 7. Top, PPO with GAE at lambda 0.95: minus 125 rising in size to minus 179 on 14, then about minus 4 to minus 5 after it. Bottom, GRPO with one wrong answer in four: minus 0.58 on every token"></div>
+<div class="points">
+<div class="text">
 
-<p class="plain">PPO is the more general: it works with rewards at every step; GRPO needs several answers to one prompt.</p>
+- PPO asks: was this token better than my value estimate? Its weight changes along the answer.
 
-<p class="footnote">Week 4's comparison table adds: with one update per batch, as in DeepSeekMath's runs, GRPO's clip never binds</p>
+</div>
+<div class="text">
+
+- GRPO asks: was this answer better than the others? Every token gets the same weight.
+
+</div>
+</div>
+</div>
+
+<p class="footnote">Ours: PPO numbers from Part 4's slipped answer (score ±100); GRPO from the four-answer group (scores 1 or 0), so the scales differ</p>
 
 Note:
-At a high level the biggest difference between PPO and GRPO is the choice of baseline. PPO uses a learned value model, the critic, as its baseline; GRPO uses the group of sampled answers. That leads to different characteristics. PPO learns a value model and estimates the advantage token by token. It's more general, but the training pipeline is heavier, because we train and update both the policy and the value model. GRPO needs no value model: it samples several completions per prompt, scores them and normalises the rewards within the group, so it is usually simpler and cheaper to train.
-Intuitively, PPO asks: was this token better than my value estimate? GRPO asks: was this answer better than other answers to the same prompt?
+Put the two side by side on the slipped answer. PPO, with GAE at 0.95: the advantage grows toward the slip at "14" and nearly vanishes after it, because the value model saw the equation break. With lambda near 0 it would sit almost entirely on "14". GRPO gives every token the same minus 0.58: "Subtract" is blamed exactly as much as "14". That is the trade. PPO can point at the token, if its value model is good; GRPO cannot, but needs no value model at all.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 8, PPO or GRPO · what each runs</p>
+
+## What does each method cost?
+
+<div class="rows">
+<div class="fig"><img src="img/week-04-rlhf2-models.svg" alt="Illustration: PPO runs four models, policy and value model trained, reference and reward model frozen, one answer per prompt. GRPO runs three, the policy trained, reference and reward model or checker frozen, K answers per prompt"></div>
+<p class="plain">GRPO drops a trained model, but writes $K$ answers per prompt; PPO's KL sits in the reward, GRPO's in the loss.</p>
+</div>
+
+<p class="footnote">Week 4's comparison adds: with one update per batch, as in DeepSeekMath's runs, GRPO's clip never binds. No paper gives memory or time numbers</p>
+
+Note:
+What does each cost? PPO runs four models per step and trains two of them, the policy and the value model, and the value model is usually as large as the policy. GRPO runs three and trains one. But GRPO's baseline is paid for in samples: it needs several answers to every prompt, 64 in DeepSeekMath. And the KL moves: inside PPO's reward, inside GRPO's loss. Neither paper measures memory or time, so "cheaper" is a rule of thumb.
 
 --
 
