@@ -1066,11 +1066,11 @@ The sizes make sense. "Together" was already the expected choice, 90% likely, so
 <div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - \hat R_t\big)^2$$</div>
+<div class="eq">$$L_V(\psi) = \frac1T\sum_{t=1}^{T}\big(V_\psi(s_t) - R_t\big)^2$$</div>
 
 <dl class="where">
 <dt>$V_\psi$</dt><dd>the value model; $\psi$ its weights</dd>
-<dt>$\hat R_t$</dt><dd>the target: the return $R_t$ (in PPO, the GAE target of step 8)</dd>
+<dt>$R_t$</dt><dd>the target: the sampled return from step $t$ (a less noisy target comes after GAE)</dd>
 </dl>
 
 - The same backbone with a **value head**: one number per answer position.
@@ -1085,7 +1085,7 @@ The sizes make sense. "Together" was already the expected choice, 90% likely, so
 
 Note:
 Where does V come from? A value model: architecturally the same transformer backbone, with a value head that outputs one scalar at every answer position. Keep this picture: it is the third of the three heads, next to the policy's language-model head and the reward model's head.
-Train it by regression: the mean squared error between its prediction at each position and a target return. The target can be the sampled return R t; common PPO implementations use the advantage plus the old value, which is the GAE version of a return.
+Train it by regression: the mean squared error between its prediction at each position and the return the answer actually got, R t. That is the simplest target. After GAE we will swap in a less noisy one, built from the advantage estimate; the loss stays the same.
 A subtle point. Even the exact value, 1.7, has a loss on any single answer: on "together", whose return is 2, it misses by 0.3, a squared error of 0.09 per token. On "apart" it misses by 2.7. Averaged over the answers the policy actually writes, 90% "together" and 10% "apart", the loss is 0.81 per token, and no other prediction does better, because a squared error is minimised by the mean. The value model learns the expected return, which is exactly what V is.
 
 ---
@@ -1094,37 +1094,37 @@ A subtle point. Even the exact value, 1.7, has a loss on any single answer: on "
 
 ## How are $Q$ and $V$ related?
 
-<div class="eq">$$V^\pi(s) = \sum_o\pi(o \mid s)\thinspace Q^\pi(s, o),\qquad Q^\pi(s_t, o_t) = r_t + \gamma V^\pi(s_{t+1})$$</div>
+<div class="eq">$$\begin{aligned} V^\pi(s_t) &= \sum_o\pi(o \mid s_t)\thinspace Q^\pi(s_t, o)\\ Q^\pi(s_t, o_t) &= r_t + \gamma V^\pi(s_{t+1})\\ \Rightarrow\quad V^\pi(s_t) &= \sum_o\pi(o \mid s_t)\big[r_t + \gamma V^\pi(s_{t+1})\big] \end{aligned}$$</div>
 
 <div class="cols">
 <div class="text">
 
 <dl class="where">
-<dt>$s_{t+1}$</dt><dd>the next state: $s_t$ with token $o_t$ appended</dd>
+<dt>$s_{t+1}$</dt><dd>the next state: $s_t$ with the token appended</dd>
 <dt>$r_t$, $\gamma$</dt><dd>the step reward, and the discount factor</dd>
 <dt>$\pi(o \mid s)$</dt><dd>the policy's probability of $o$ in $s$</dd>
 </dl>
 
-- $V$ is $Q$ averaged over the policy's actions.
-- $Q$ is one real step, plus the value of where it lands.
+- Line 1: $V$ is $Q$ averaged over the policy's tokens. Line 2: $Q$ is one real step, plus the value of where it lands.
 
 </div>
 <div class="text">
 
-- Appending a token is certain, so the second identity needs no average over next states.
+- Line 3 puts line 2 into line 1: the <b>Bellman equation</b>. Each state's value is fixed by the values one step later.
 - After the last token $V$ = 0, so the last token's $Q$ is its reward.
 
-<p class="plain">Check with the first identity: $V(s_4)$ = 0.9 × 2 + 0.1 × (−1) = 1.7.</p>
+<p class="plain">Check at $s_4$: $V$ = 0.9 × (2 + 0) + 0.1 × (−1 + 0) = 1.7.</p>
 
 </div>
 </div>
 
-<p class="footnote">In general $Q^\pi(s, o) = \mathbb E\big[r + \gamma V^\pi(s')\big]$ over the next state $s'$. The second identity lets a value model stand in for $Q$: one sampled step, then $V$</p>
+<p class="footnote">Line 3: $r_t$ and $s_{t+1}$ belong to token $o$. Appending a token is certain; in general one averages over the next state too (Sutton and Barto 2018, Eq. 3.14). Line 2 lets a value model stand in for $Q$</p>
 
 Note:
 Two identities connect Q and V, and the second one is what the rest of the part is built on.
-First: V is Q averaged over the policy's actions. In a state, the policy picks each action with some probability; V is the probability-weighted average of the Q values. Our check: 0.9 times 2 plus 0.1 times minus 1 is 1.7.
+First: V is Q averaged over the policy's actions. In a state, the policy picks each action with some probability; V is the probability-weighted average of the Q values.
 Second: Q is one real step plus the value of where it lands. If I take action o t in state s t, I get the step reward r t, and then I am in state s t plus 1, from which I expect V of s t plus 1. In general the next state is random, so you average over it; for a language model the next state is just the text with the token appended, which is certain, so no average is needed. And after the last token there is no future, so V is zero and the last token's Q is its reward.
+Put the second into the first and V appears on both sides: the value of a state is the policy's average, over tokens, of one reward plus the value one step later. That is the Bellman equation, the recursion every value method in RL is built on, and the name you will see in the GAE paper and in Sutton and Barto. Our check at s4: 0.9 times 2 plus 0, plus 0.1 times minus 1 plus 0, is 1.7; the zeros are the values after the last token.
 Why does this matter? Because it means we never need a separate network for Q. One sampled step and a value model give us an estimate of Q. That is where the next three slides go.
 
 ---
@@ -1140,7 +1140,7 @@ Why does this matter? Because it means we never need a separate network for Q. O
 
 <dl class="where">
 <dt>$\delta_t$</dt><dd>the <b>TD residual</b> (temporal difference): a one-step advantage estimate</dd>
-<dt>$V$</dt><dd>a learned <b>value model</b>'s prediction (its training: end of this part)</dd>
+<dt>$V$</dt><dd>a learned <b>value model</b>'s prediction (its training: two slides back)</dd>
 <dt>bias, noise</dt><dd>an error that does not average away; the spread from sample to sample (variance)</dd>
 </dl>
 
@@ -1150,19 +1150,20 @@ Why does this matter? Because it means we never need a separate network for Q. O
 <div class="text">
 
 - Replace $Q$ by one sampled step plus $V$, the second identity.
-- If $V$ is exact, $\delta_t$ averages to the advantage; if not, it is biased.
-- Its noise is low: it depends on one sampled step.
+- If $V$ is exact, $\delta_t$ averages to the advantage; if not, it is biased. Its noise is low: one sampled step.
+- Averaged over the token too, an exact $V$ gives 0: $\delta_t$ is the Bellman equation's error on one sample.
 
 <p class="plain">On "...apart" with exact values 1.7, the $\delta$'s are 0, 0, 0 and −1 + 0 − 1.7 = −2.7: all the blame on "apart".</p>
 
 </div>
 </div>
 
-<p class="footnote">Ours: the first three words are certain, so $V$ = 1.7 before each. A value model off by 0.1 there would hand those words ±0.1 of credit: that is the bias</p>
+<p class="footnote">Ours: $V$ = 1.7 before each certain word; a value model off by 0.1 there would hand them ±0.1 of credit, the bias. At $s_4$: 0.9 × 0.3 + 0.1 × (−2.7) = 0. Sutton and Barto call $\delta_t$ the TD error</p>
 
 Note:
 In practice we know neither Q nor V. What we have is a value model, a network trained to predict V, and the step we sampled. The second identity says Q of s t, o t is r t plus gamma V of s t plus 1. So replace Q by that, using the value model's prediction. The advantage estimate becomes delta t: the reward at step t, plus gamma times the value of the next state, minus the value of the current state. That is the temporal-difference residual. Read it as what happened minus what we expected.
 If the value model is exact, delta t averages to the true advantage. If it is off, delta t is biased by its errors. In exchange it is low-noise: it depends on only one sampled step.
+There is a second way to read delta t. Average it over the token as well, and with an exact value model it is zero: that is just the Bellman equation from the last slide, rearranged. So delta t is how far one sampled step is from obeying the Bellman equation. At s4: "together" has delta 2 minus 1.7, plus 0.3; "apart" minus 2.7; 0.9 times 0.3 plus 0.1 times minus 2.7 is zero.
 On the bad answer, with the exact values, 1.7 before each of the first three words: the first three deltas are 0 plus 1.7 minus 1.7, zero. The last is minus 1, plus 0 because the answer has ended, minus 1.7: minus 2.7. All the blame lands on "apart", none on the good words. Compare REINFORCE's minus 1 on everything. But this precision depends on V being right: if the value model guessed 1.6 instead of 1.7 before "objects", that word would get a credit of 0.1 it did nothing to earn.
 
 ---
@@ -1309,6 +1310,37 @@ Note:
 Where do GAE's weights come from? Line one is the definition: average all the k-step estimates, the one-step one with weight 1 minus lambda, the two-step one with weight 1 minus lambda times lambda, and so on. Those weights add up to one.
 Line two collects terms. Each k-step estimate is a sum of residuals, so the residual one step ahead, delta t plus 1, appears in every estimate from k equals 2 upwards; its weights add up to lambda plus lambda squared and so on, times gamma. Line three uses the geometric series: 1 plus lambda plus lambda squared is 1 over 1 minus lambda, which cancels the 1 minus lambda in front. What is left: each residual l steps ahead has weight gamma lambda to the l. That is GAE.
 One caution. GAE puts the blame where the value model's estimates drop. If the value model is wrong, the blame is wrong too; lambda near 1 protects against that by leaning on real rewards.
+
+---
+
+<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 4, from a reward to an advantage · the value target</p>
+
+## What does the value model learn toward?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="eq">$$\begin{aligned} Q &= A + V \qquad (\text{as } A = Q - V)\\ \hat R_t &= \hat A_t + V(s_t)\\ \lambda = 1:\quad \hat R_t &= R_t - V(s_t) + V(s_t) = R_t\\ \lambda = 0:\quad \hat R_t &= \delta_t + V(s_t) = r_t + \gamma V(s_{t+1}) \end{aligned}$$</div>
+
+<dl class="where">
+<dt>$\hat R_t$</dt><dd>the <b>value target</b>: an estimate of $Q(s_t, o_t)$, the return after the token taken</dd>
+</dl>
+
+- Averaged over the policy's tokens, $Q$ is $V$ (line 1 of the $Q$ and $V$ slide), so $V$ still learns $V$.
+- $\lambda$ = 0 is the Bellman equation as a target; it contains $V$, so targets are computed once and held fixed.
+
+<p class="plain">At $\lambda$ = 0.95 the targets are −0.61 to −1.00, all below 1.7: $V$ moves down on all four tokens.</p>
+
+</div>
+<div class="fig"><img src="img/week-04-rlhf2-targets.svg" alt="Illustration: the value target on each token of Gravity pulls objects apart, against a dashed line at V = 1.7. At lambda 1, the real return: minus 1 on every token. At lambda 0.95: minus 0.61, minus 0.74, minus 0.87, minus 1.00. At lambda 0, one step then V: 1.70, 1.70, 1.70, then minus 1.00 on apart"></div>
+</div>
+
+<p class="footnote">The PPO paper writes only $V^{\rm targ}_t$ (Eq. 9); OpenAI Baselines and TRL compute it as $\hat A_t + V(s_t)$. Values ours, $\gamma$ = 1</p>
+
+Note:
+GAE gave us a better advantage. It also gives the value model a better target than the raw return. The advantage is Q minus V, so Q is the advantage plus V. Replace the advantage by its estimate, and A hat plus V is an estimate of Q of s t, o t: the return you expect after taking the token you took. That is R hat, the value target, and it goes into the same squared-error loss as before, in place of R t.
+The two ends of lambda show what it is. At lambda 1, A hat is the return minus V, so the V's cancel and the target is the real return: unbiased, but as noisy as a single answer, which swings between 2 and minus 1. At lambda 0, A hat is the TD residual, and the target is one real step plus the value of where it lands: the right-hand side of the Bellman equation. It is low-noise, but it leans on V itself. Look at the bottom row: on the first three words the target is 1.7, exactly what V already predicts, so those words teach V nothing in this update; only the last word's reward does, and it travels back one token per update. Lambda 0.95 sits in between: minus 0.61 to minus 1.
+Why is it fine to train V of s t toward an estimate of Q of s t, o t? Because o t was drawn from the policy, and averaged over the policy's tokens Q is V: line 1 of the Bellman slide. And since the target contains V's own predictions, it is computed once, from the value model as it was at rollout, and held fixed while V trains; otherwise V would be chasing a target that moves with it. In PPO this is step 8 of the step we build in Part 6.
 
 ---
 
@@ -1954,13 +1986,13 @@ Step 7, GAE, one pass backwards from the last token. The last token's advantage 
 <div class="rows">
 <div class="eq">$$\hat R_t = \hat A_t + v_t$$</div>
 <div class="fig"><img src="img/week-04-rlhf2-step08.svg" alt="Left: the value model, as before. Right: the table gains the row value target R hat t: 1.864, 1.904, 1.936, 1.990"></div>
-<p class="plain">An advantage is a return minus a value, so adding the value back gives an estimated return: the target.</p>
+<p class="plain">Part 4's value target, now with this step's numbers: the advantage plus the value it was measured against.</p>
 </div>
 
 <p class="footnote">$\hat R_t$: the value model's target return. The rollout ends here: every number in the table is now fixed</p>
 
 Note:
-Step 8, the last of the rollout. The value model needs targets. An advantage is a return minus a value, so the advantage plus the value is an estimated return: 1.864, 1.904, 1.936 and 1.990. The rollout is finished. Every number in this table is now fixed for the rest of the PPO step: advantages and targets are constants during the update.
+Step 8, the last of the rollout. The value model needs targets, and this is Part 4's target: the advantage plus the value, an estimated return. 0.164 plus 1.7 is 1.864, then 1.904, 1.936 and 1.990. The rollout is finished. Every number in this table is now fixed for the rest of the PPO step: advantages and targets are constants during the update.
 
 ---
 
