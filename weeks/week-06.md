@@ -928,7 +928,7 @@ Scale the model 8x and the data needs only about 4.7x. That sublinear rule is th
 <p class="plain">The corner, $B_{\rm crit} = E_{\min}/S_{\min}$, costs 2x the fewest steps and 2x the fewest tokens.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-batch-idea.svg" alt="Illustration: tokens processed against steps on log axes. Three grey diagonal lines, one per batch size, E = B times S. A black hyperbola for one target loss, approaching S_min on the left and E_min at the bottom. Dots where each batch line meets the hyperbola: the large batch high and left, B_crit at the corner, the small batch low and right"></div>
+<div class="fig"><img src="img/week-06-kaplan-batch-idea.svg" alt="Illustration: tokens processed against steps on log axes. Three grey diagonal lines, labelled on the lines B = 10 B_crit, B = B_crit and B = B_crit / 10. A black hyperbola for one target loss, approaching S_min on the left and E_min at the bottom. Where each line meets it, a dot: the large batch high and left, few steps and many tokens; the small batch low and right, few tokens and many steps; and in the middle an open ring marked B_crit, the corner, with dashed guides to 2 S_min steps and 2 E_min tokens"></div>
 </div>
 
 <p class="footnote">Kaplan et al. 2020 · Eq. 5.1, 5.2 (after McCandlish et al. 2018). Illustration ours, made-up numbers. Where a batch $B$ meets the curve: $S = S_{\min}(1 + B_{\rm crit}/B)$, $E = E_{\min}(1 + B/B_{\rm crit})$ (our algebra)</p>
@@ -937,7 +937,7 @@ Note:
 Before the real figure, the idea it tests, drawn with made-up numbers. To reach a target loss you can use small batches and many steps, cheap in FLOPs but slow, or big batches and few steps, fast on parallel hardware but wasteful.
 Three letters. B is the batch, in tokens. S is the number of steps. E is the number of tokens processed, which is just B times S. On log axes, a run at one batch size moves along a straight diagonal line as it trains: the grey lines, one per batch size.
 Now fix a target loss. Each batch size reaches it at some point on its line: the dots. Join the dots and you get the black curve, a hyperbola: S over S_min minus one, times E over E_min minus one, equals one. S_min is the fewest steps possible, approached with a huge batch, high and left. E_min is the fewest tokens possible, approached with a tiny batch, low and right.
-The critical batch size is E_min over S_min, the corner of the hyperbola. Training there costs twice the minimum steps and twice the minimum tokens: a reasonable compromise between time and compute.
+The critical batch size is E_min over S_min, the corner of the hyperbola: the open ring in the middle, where the line for B equal to B_crit meets the curve. The dashed guides read it off: training there costs twice the minimum steps and twice the minimum tokens, a reasonable compromise between time and compute.
 
 ---
 
@@ -1003,15 +1003,17 @@ Why this matters: every size run used one fixed batch, half a million tokens, wh
 
 <div class="rows">
 <div class="eq">$$S_{\min} = \frac{S}{1 + B_{\rm crit}(L)/B}, \qquad C_{\min} = \frac{C}{1 + B/B_{\rm crit}(L)}$$</div>
-<div class="fig"><img src="img/week-06-kaplan-pipeline.svg" alt="Diagram: the size runs' learning curves feed five uses: loss at the end of each run gives L(N); the same models on other text give transfer; rescaling to compute and taking the lowest curve gives the frontier L(C_min); steps adjusted to S_min give the L(N, S) fit; the best N along the frontier gives N_opt proportional to C_min^0.73. The batch runs' critical batch size adjusts the last three. The data runs separately give L(D) and L(N, D)"></div>
-<p class="plain">Each logged step of a size run is converted: the steps it would need at a huge batch, the compute at a small one.</p>
+<div class="fig"><img src="img/week-06-kaplan-correction.svg" alt="Two panels. Left, an illustration on the axes of the last slides: the size run's grey line at B = 2 to the 19 tokens meets the hyperbola for loss 4 at a dot, the logged S steps and E tokens. Arrows read the conversion off the axes: steps divided by 1.5 to S_min, tokens divided by 3.0 to E_min. Right: the two divisors against the loss reached, from 6 down to 2.5. The compute divisor, 1 + B / B_crit, falls from about 15; the steps divisor, 1 + B_crit / B, rises from about 1; they cross at 2 where B_crit = B, at loss 3.45. Losses below 3 are shaded: the fit is extrapolated there"></div>
+<p class="plain">Each logged point slides along its loss's curve. Early: compute ÷ 15, steps ÷ 1.07; they cross at loss 3.45.</p>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §5.1. $B = 2^{19}$ tokens, the size runs' batch. Why not train at $B_{\rm crit}$? It is "a moving target" (§6). Diagram ours</p>
+<p class="footnote">Kaplan et al. 2020 · §5.1. $B = 2^{19}$ tokens, the size runs' batch; $B_{\rm crit}(L) = 2\times10^8\,L^{-4.8}$, measured down to loss about 3. $C = 6NE$, so $C_{\min} = 6NE_{\min}$. Used for the compute frontier, the $L(N, S)$ fit and $N_{\rm opt}$, not for $L(N)$ or transfer. Why not train at $B_{\rm crit}$? It is "a moving target" (§6). Figure and divisors ours</p>
 
 Note:
-Every size run used one batch, so their step counts and compute are not the most efficient possible. The paper converts each point on each learning curve. S_min: the steps that loss would have taken at a very large batch. C_min: the compute it would have taken at a very small batch. Both use the critical batch at that loss.
-The diagram shows where this matters. The size law and the transfer plots use final losses, no conversion. The compute frontier, the learning-curve fit of the next slide, and the allocation result all use the converted numbers. The data runs are separate.
+Every size run used one batch, half a million tokens, so its step counts and compute are not the most efficient possible. The paper converts every logged point of every learning curve.
+Left, on the axes of the last slides. The size run is one grey line. At the moment it reaches a loss of 4 it has taken S steps and seen E tokens: the dot. That dot lies on the hyperbola for loss 4. Converting means sliding to the two ends of that hyperbola. S_min is the steps the same loss would take at a huge batch: here S divided by 1.5. E_min is the tokens it would take at a tiny batch: here E divided by 3. Compute is 6 N times the tokens, so C_min is C divided by 3. Both divisors come from the critical batch at that loss.
+Right, how the correction changes as training goes on. The critical batch grows as the loss falls, but the size runs' batch stays at about 524 thousand tokens. At loss 6 the critical batch is only 37 thousand tokens: the run's batch is 14 times too big, so it used 15 times the compute it needed, while its steps are only 7 percent above the minimum. At loss 5: compute divided by 6.9, steps by 1.17. At loss 4: 3.0 and 1.49. Near loss 3.45 the fixed batch happens to equal the critical batch, and both divisors are 2. Past that the roles swap: at loss 3 the steps are divided by 3.0 and compute by 1.5; at 2.5, by 5.7 and 1.2. The critical batch was only measured down to a loss of about 3, so the shaded end is an extrapolation.
+Where it is used: the compute frontier, the learning-curve fit on the next slide, and the allocation result use the converted numbers. The size law and the transfer plots use final losses, with no conversion; the data runs are separate.
 Why not just train at the critical batch? Because it changes as the loss falls: "a moving target", in the paper's words.
 
 ---
@@ -3060,405 +3062,586 @@ Third, on Kaplan's side, the two 2024 papers from the end of the Kaplan section 
 <ol class="track"><li class="done">Kaplan 2020<span>scaling laws</span></li><li class="done">Chinchilla 2022<span>compute-optimal training</span></li><li class="now">Wei 2022<span>emergent abilities</span></li><li>Schaeffer 2023<span>a mirage?</span></li></ol>
 
 Note:
-Reading 3 of 4. Wei, Tay, Bommasani and others from Google Research, Stanford, UNC and DeepMind, published in TMLR in 2022. A change of direction: from loss to what models can actually do.
+Reading 3 of 4. Wei, Tay, Bommasani and 13 others from Google Research, Stanford, UNC and DeepMind, published in TMLR in August 2022. A change of direction: from loss, which the first two papers measured, to what models can do on particular tasks.
+How this section runs: the paper's own order. The definition, then the eight tasks of Figure 2 one at a time, the methods of Figure 3, then the appendix analysis of whether the metric causes the jump, then the discussion sections. Two slides take up a question you should ask of every plot here: are the models being compared fairly?
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · Motivation</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §1 Introduction · where the first two readings left us</p>
 
-## Smooth loss, sudden abilities?
+## What did the first two readings promise?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- Kaplan, Chinchilla: loss falls smoothly
-- but some tasks: flat, then a jump
-- error near 100%, then not
-- while loss falls across the small models
+<dl class="where card">
+<dt>Runs</dt><dd>Kaplan's size runs, one learning curve each</dd>
+<dt>Black line</dt><dd>the lowest loss any run reached at that compute</dd>
+<dt>Axes</dt><dd>compute (log); test loss (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Which one is the "real" picture?</p>
-<p class="a"><b>A.</b> That's the question for this paper and the next</p>
+<p class="plain">Loss falls on a straight line over many orders of magnitude.</p>
+<p class="plain">But loss averages over every token of text. Does every <b>task</b> improve the same way?</p>
 
 </div>
-<div class="fig"><img src="img/week-06-wei-fig5.png" alt="Wei et al. Figure 5: for modified arithmetic, IPA transliterate and word unscramble on LaMDA, the error rate stays near 100% until about 1e22 FLOPs while cross-entropy loss falls across the small models"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig1-compute.png" alt="Kaplan et al. Figure 1 left: test loss against compute; many learning curves with their lower envelope in black, a straight line on log-log axes"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · arXiv:2206.07682 · Fig. 5 (rendered from the paper's TeX). Top: error rate; bottom: cross-entropy; LaMDA models</p>
+<p class="footnote">Kaplan et al. 2020, Fig. 1 left (from the Kaplan section). Wei et al. §1: loss curves "span more than seven orders of magnitude", but "performance for certain downstream tasks ... does not appear to continuously improve"</p>
 
 Note:
-The tension in one picture. Kaplan and Chinchilla told us that loss improves smoothly and predictably. But on some tasks, accuracy sits at the floor for many model sizes and then jumps. In this figure, from the paper's own appendix, the bottom row, cross-entropy, falls across the small models, while the top row, error rate, is stuck near 100% until the largest models (on word unscramble the loss rises again at the very largest).
-Wei et al. call these abilities emergent. Schaeffer et al., next, ask whether the jump is in the model or in the metric. We'll look at both.
+Start from where we are. Kaplan and Chinchilla measured one thing, the test loss: how well the model predicts the next token, averaged over all the text in a held-out set. That number falls along a straight line on log axes as compute grows. The paper's introduction says exactly this, citing both papers.
+Then it turns: for certain downstream tasks, performance does not seem to improve continuously, and can't be predicted ahead of time. Loss is an average over every token. A single task, like doing arithmetic or answering in Persian, is a tiny slice of that average, and nothing says it has to move smoothly just because the average does. That's the question of this paper.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §2 Emergent abilities definition</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §1 to §2 · the definition</p>
 
-## What do they mean by "emergent"?
+## What does "emergent" mean?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
 <blockquote>"An ability is emergent if it is not present in smaller models but is present in larger models."</blockquote>
 
-- near random until a scale
-- then well above random
-- not predictable from smaller models
+- On a plot: near random, then well above random.
+- So the small models' trend would not have predicted it.
+- The paper calls this a phase transition; take that as an analogy.
+
+</div>
+<div class="fig"><img src="img/week-06-wei-shapes.svg" alt="Illustration: left, a task score rising steadily with training FLOPs; right, a score flat at the random line for small models and then rising steeply, so the small models' trend predicts no gain"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §2. General definition "adapted from" Steinhardt 2022 and "rooted in" Anderson 1972, "More Is Different"; phase-transition wording cited to Huberman &amp; Hogg 1987. Illustration, not data</p>
+
+Note:
+The paper's definition is one sentence: an ability is emergent if smaller models don't have it and larger ones do. Before it, they give a general one adapted from a blog post by Jacob Steinhardt, which goes back to Philip Anderson's 1972 essay "More Is Different": emergence is when quantitative changes in a system result in qualitative changes in behaviour.
+On a plot, the picture on the right. Performance is near random for small models, then rises well above random past some scale. The left picture is the ordinary case, where you could fit the small models and extend the line. On the right, extending the small models' line predicts nothing will happen. That's why the paper says emergent abilities could not have been predicted by extrapolating from smaller models.
+They call the sudden change a phase transition. A physicist would want more than a sharp curve for that word: something that becomes truly discontinuous as the system grows. The paper tests none of that, so treat it as an analogy for the shape of the curve.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §2, App. C (Table 2) · which models</p>
+
+## Which models does the paper look at?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+<dl class="where card">
+<dt>Each dot</dt><dd>one published model (36 in all, 2.1M to 540B)</dd>
+<dt>Dashed</dt><dd>equal training compute, $C \approx 6ND$</dd>
+</dl>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Where does the idea come from?</p>
-<p class="a"><b>A.</b> Anderson's "More Is Different" (1972), via Steinhardt</p>
-<p class="q"><b>Q.</b> A phase transition, as in physics?</p>
-<p class="a"><b>A.</b> Our reading: an analogy. No order parameter, no singularity</p>
+<dl class="where card">
+<dt>Axes</dt><dd>parameters $N$ (log); training tokens $D$ (log)</dd>
+</dl>
+
+<p class="plain">Wei trained none of these. Every curve is another paper's evaluation.</p>
 
 </div>
 </div>
+<div class="fig"><img src="img/week-06-wei-models.svg" alt="Our picture of the paper's Table 2: training tokens against parameters for GPT-3, LaMDA, Gopher, Chinchilla, PaLM and Anthropic LM, with dashed lines of equal training FLOPs; GPT-3, Gopher, PaLM and Anthropic sit on horizontal lines, LaMDA and Chinchilla wander"></div>
+</div>
 
-<p class="footnote">Wei et al. 2022 · §1 to §2. General definition "adapted from" Steinhardt 2022 and "rooted in" Anderson 1972; phase-transition analogy cited to Huberman &amp; Hogg 1987. Scale: training FLOPs (parameters in App. D)</p>
+<p class="footnote">Wei et al. 2022 · App. C, Table 2 (our picture). The $x$ axis of every plot is training FLOPs (§2); parameters in App. D; data not plotted "because many language model families use a fixed number of training examples for all model sizes"</p>
 
 Note:
-The definition is one sentence: an ability is emergent if smaller models don't have it and larger ones do. On a plot, that looks like performance near random until some scale, then a rise well above random. The consequence they draw is unpredictability: you could not have extrapolated it from the smaller models.
-The definition is adapted from Steinhardt and rooted in Philip Anderson's 1972 essay "More is different": quantitative change in a system can produce qualitative change in behaviour. They call the rapid change a phase transition.
-Take that as an analogy. A physical phase transition has an order parameter, a limit of infinite system size, a singularity and critical exponents. The paper identifies none of these. At this stage, "emergent" is an operational label for the shape of a curve. That distinction matters for the next reading.
+Before any result, who is being compared. The paper is a survey: it trained no models. Every curve in it comes from the papers that introduced GPT-3, LaMDA, Gopher, Chinchilla and PaLM, plus Anthropic's models for one panel, and BIG-Bench. Appendix C lists all 36 models with their parameters, training tokens and training FLOPs; this picture is that table.
+Read it like this. Each dot is one model; across is its size, up is how many tokens it was trained on. The dashed diagonals join points of equal training compute, because compute is about 6 times parameters times tokens.
+Why does this matter? Every plot in the paper puts training FLOPs on the x axis. GPT-3, Gopher, PaLM and Anthropic trained every size on the same number of tokens: horizontal lines. LaMDA's token counts wander from 132 to 674 billion. Chinchilla's 70B saw 1.34 trillion. The paper says it doesn't plot data because many families keep it fixed; this picture shows that's true for some of them and not others.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · Context</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §2 · reading the $x$ axis</p>
 
-## Is this another scaling-law paper?
+## Are these comparisons fair?
 
-<table class="rules">
-  <tr><td></td><td>Kaplan</td><td>Chinchilla</td><td>Wei et al.</td></tr>
-  <tr><td>measures</td><td>loss</td><td>loss</td><td>task scores</td></tr>
-  <tr><td>question</td><td>how does loss scale?</td><td>how to split compute?</td><td>why do abilities jump?</td></tr>
-  <tr><td>method</td><td>training sweeps</td><td>controlled sweeps</td><td>survey of others' results</td></tr>
-  <tr class="total"><td>maths</td><td>fitted laws</td><td>fitted loss, optimum</td><td>none new</td></tr>
-</table>
+<div class="cols wide-fig">
+<div class="text">
 
-<p class="footnote">Wei et al. 2022. Curves replotted from GPT-3, LaMDA, Gopher, Chinchilla, PaLM and BIG-Bench papers; the new analysis is in the appendices</p>
+- **Within a family:** same data, so more FLOPs means a bigger model. Size and compute can't be separated.
+- **Across families:** data, tokenizer, architecture and recipe all differ.
+- **Not** compute-optimal, **not** matched on loss, **not** trained to convergence.
+- The paper says so: models "are likely not trained optimally"; "not a single proxy" for scale.
+
+</div>
+<div class="fig"><img src="img/week-06-wei-models-fair.svg" alt="The same map, faded, with GPT-3's sizes joined by an arrow along 300B tokens, and Gopher 280B and Chinchilla 70B circled: almost the same training FLOPs, four times different in size"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §2: "Chinchilla ... has one-fourth as many parameters as Gopher ... but uses similar training compute"; "it may be wise to view emergence as a function of many correlated variables". We return to this at Fig. 4</p>
 
 Note:
-Not in the same sense as the first two. Kaplan and Chinchilla trained their own models and fitted laws to loss. Wei et al. is a survey: it collects published evaluations of GPT-3, LaMDA, Gopher, Chinchilla, PaLM and BIG-Bench, and points to tasks where small models are at chance and large ones are not. There is no new scaling equation. The analysis comparing accuracy with cross-entropy, in the appendices, follows BIG-Bench's setup, and it turns out to be the most important part.
+A question to hold onto for the whole paper: when two points sit at different places on the x axis, what actually differs between those models?
+Along one family, say GPT-3, every size saw 300 billion tokens of the same mixture. Moving right means a bigger model and more compute together; the plot can't tell you which one matters. Across families everything changes at once: the data, the tokenizer, the architecture, the training recipe. Gopher and Chinchilla, circled, used almost the same compute, so they sit at nearly the same x on Wei's plots, yet one is four times bigger than the other and saw four times fewer tokens.
+So the comparisons are not compute-optimal (Chinchilla's question), not matched on loss, and not models trained to convergence. They are whatever recipes the original labs used. The paper is open about this: it says the models are likely not trained optimally, that no single number captures scale, and that emergence should probably be seen as a function of many correlated variables. Keep it in mind for every curve; we come back to what a fair test would look like after Figure 4.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 1</p>
 
-## How are the tasks posed?
+## How is each task posed?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- few-shot prompting
-- a few solved examples, then the new input
+- Few-shot prompting: a few solved examples, then a new input.
+- No training on the task; the model just continues the text.
 
 </div>
 <div class="text">
 
-- no weight updates
-- score: the model's answer
+- Emergent: random performance until some scale, then well above it.
+- Random depends on the format: 4 choices gives 25%.
 
 </div>
 </div>
-<div class="fig"><img src="img/week-06-wei-fig1.png" alt="Wei et al. Figure 1: a few-shot prompt with one solved review and its sentiment, followed by a new review; the language model outputs positive"></div>
+<div class="fig"><img src="img/week-06-wei-fig1.png" alt="Wei et al. Figure 1: a few-shot prompt with one solved review and its sentiment, then a new review; the language model outputs positive"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · Fig. 1, §3; as in GPT-3 (Week 4)</p>
+<p class="footnote">Wei et al. 2022 · §3, Fig. 1. Few-shot prompting as in GPT-3 (Brown et al. 2020, Week 4)</p>
 
 Note:
-How every result in the next section was measured. Few-shot prompting, as in GPT-3: put a few solved examples in the prompt, then the new input, and read off the model's answer. No fine-tuning. The ability being measured is the ability to do the task from that prompt.
+How every result in section 3 was measured. Few-shot prompting, as in GPT-3: the prompt holds a few solved examples, here a review with its sentiment, then a new review, and the model's continuation is read as its answer. There's no gradient update; the weights are the same for every task.
+The paper's working test for emergence in this setting: random performance until a certain scale, then well above random. "Random" means guessing, and it depends on the answer format. For a question with four options, guessing gets 25%; for a free-text answer like a number, guessing gets essentially zero. Each panel draws its own random line.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 Few-shot prompted tasks · Fig. 2</p>
 
-## Eight tasks: flat, then a jump
+## Eight tasks: flat, then a jump?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- $x$: training FLOPs, $10^{18}$ to $10^{24}$
-- $y$: accuracy, exact match or BLEU
+<dl class="where card">
+<dt>Models</dt><dd>LaMDA, GPT-3, Gopher, Chinchilla, PaLM, from their papers</dd>
+<dt>Each point</dt><dd>one separately trained model, not a checkpoint</dd>
+</dl>
 
 </div>
 <div class="text">
 
-- one point = one trained model
-- dashed: random guessing
+<dl class="where card">
+<dt>Dashed</dt><dd>random guessing</dd>
+<dt>Axes</dt><dd>training FLOPs (log); the task's own score</dd>
+</dl>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-wei-fig2.png" alt="Wei et al. Figure 2: eight panels of few-shot performance against training FLOPs for LaMDA, GPT-3, Gopher, Chinchilla and PaLM with a dashed random baseline; each stays near random and then rises for the largest models"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · Fig. 2 (rendered from the paper's TeX). A to D: BIG-Bench, 2-shot; E: TruthfulQA; F: Patel &amp; Pavlick 2022; G: MMLU; H: WiC, one-shot</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2 (rendered from the paper's TeX): "Each point is a separate model." A to D: BIG-Bench, 2-shot; E: TruthfulQA; F: grounded mappings; G: MMLU; H: Word in Context, one-shot</p>
 
 Note:
-The paper's central evidence. Eight tasks, five model families, few-shot prompting. The x axis is training compute on a log scale; each point is a separately trained model; the dashed pink line is random guessing.
-In every panel, performance stays at or near the random line across several orders of magnitude of compute and then rises for the largest one or two models. The next few slides go through the panels in groups.
+The paper's central figure. Eight tasks, five model families. The x axis is training compute on a log scale. Each point is a different model, trained separately; this is not one model getting better during training. The dashed pink line in each panel is random guessing for that task.
+In every panel, the points sit at or near random across several orders of magnitude of compute, then rise for the largest one or two models. The next eight slides take one panel each, with an example of what the task actually asks.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2A</p>
 
-## A. Arithmetic: what changes, and what doesn't?
+## A. Can it learn "add, then add one"?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- 3-digit add and subtract, 2-digit multiply
-- GPT-3: near 0 until 13B ($2\times10^{22}$ FLOPs)
-- 13B: 8.7%; 175B: 33%
-- LaMDA: rises around 68B
+<div class="task"><span class="k">BIG-Bench prompt (shortened)</span>102 + 435 -&gt; 538<br>860 + 270 -&gt; 1131<br>466 + 214 -&gt;<br><span class="k">target</span>681</div>
+
+<dl class="where card">
+<dt>Task</dt><dd>3-digit add, subtract; 2-digit multiply; then +1</dd>
+<dt>Score</dt><dd>exact answer; random: 0</dd>
+</dl>
+
+<p class="plain">GPT-3: ~0 up to 6.7B, 8.7% at 13B, 33% at 175B.</p>
 
 </div>
-<div class="text">
-
-<p class="q"><b>Q.</b> What stays fixed?</p>
-<p class="a"><b>A.</b> Task, prompt, metric. Only the model changes</p>
-<p class="q"><b>Remember:</b> scored by exact answer only</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig2.png" alt="Wei et al. Figure 2, see panel A: modified arithmetic accuracy near zero for GPT-3 and LaMDA until about 1e22 FLOPs, then rising"></div>
+<div class="fig"><img src="img/week-06-wei-fig2a.png" alt="Wei et al. Figure 2A: modified arithmetic accuracy near zero for LaMDA and GPT-3 until about 1e22 FLOPs, then GPT-3 rises to 33% and LaMDA to 16%"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §3, Fig. 2A (panel A, top left). Plotted values from the TeX coordinates</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2A; task: BIG-Bench "modified_arithmetic" (example from its three_digit_addition_plus_one subtask). The paper's text says "3-digit addition and subtraction, as well as 2-digit multiplication"; the BIG-Bench task also adds one to every answer</p>
 
 Note:
-Panel A, top left. A BIG-Bench arithmetic task: three-digit addition and subtraction and two-digit multiplication, from a few examples in the prompt. GPT-3 is near zero until 13 billion parameters, about 2 times 10 to the 22 FLOPs, where it reaches 8.7%, then 33% at 175B. LaMDA rises later, around 68B.
-What's interesting: the task, the prompt and the metric don't change; only the model's scale does. From the benchmark's point of view, small models can't do it and large ones can.
-But hold on to one detail. Arithmetic is scored by exact answer. A model that gets three of four digits right scores the same as one that gets every digit wrong. We come back to that.
+Panel A, modified arithmetic, from BIG-Bench. Here's what the model sees. A few lines like "102 plus 435 arrow 538": that's the sum plus one. The model has to notice the twist from the examples and apply it to the new line: 466 plus 214 is 680, so the target is 681. The paper's text describes it only as three-digit addition and subtraction and two-digit multiplication; the task's own description adds the "then add one". It's scored by exact match, so random is zero.
+The curve: GPT-3 is at about zero up to 6.7 billion parameters, 8.7% at 13 billion, 33% at 175 billion. LaMDA rises later, around 68 billion. The paper puts GPT-3's threshold at 2 times 10 to the 22 FLOPs. Notice there's nothing between 13B and 175B: the rise is drawn as one line across a 14-fold step in compute.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2B to D</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2B</p>
 
-## B to D. Transliterate, unscramble, Persian
+## B. Can it convert speech sounds to spelling?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- B: from the phonetic alphabet (IPA) to text
-- C: recover a word from scrambled letters
-- D: questions in Persian
+<div class="task"><span class="k">BIG-Bench item</span>English: The 1931 Malay census was an alarm bell.<br><span class="k">target</span>IPA: ðə 1931 ˈmeɪleɪ ˈsɛnsəs wɑz ən əˈlɑrm bɛl.</div>
+
+<dl class="where card">
+<dt>Task</dt><dd>English to the phonetic alphabet (IPA), and back</dd>
+<dt>Score</dt><dd>BLEU, word overlap with the target; random: 0</dd>
+</dl>
+
+<p class="plain">Both families near 0, then 15 to 23 at the largest two.</p>
 
 </div>
-<div class="text">
-
-- D: only PaLM rises (62B: 29%, 540B: 45%)
-- LaMDA 137B, GPT-3 175B stay near 25%
-
-<p class="q"><b>Q.</b> One universal threshold? <b>A.</b> No: it differs by family</p>
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig2.png" alt="Wei et al. Figure 2, see panels B to D: IPA transliterate, word unscramble and Persian QA; in Persian QA only PaLM rises above the 25% random line"></div>
+<div class="fig"><img src="img/week-06-wei-fig2b.png" alt="Wei et al. Figure 2B: IPA transliterate BLEU near zero for LaMDA and GPT-3 until about 1e22 FLOPs, then rising to about 23"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §3, Fig. 2B to D (top row). Persian QA random line at 25%, unexplained in the paper</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2B; task: BIG-Bench "international_phonetic_alphabet_transliterate" (items go in both directions). BLEU gives partial credit for matching words; it comes back in App. A</p>
 
 Note:
-Panels B to D, the rest of the top row. Transliterating from the International Phonetic Alphabet, recovering a word from scrambled letters, and answering questions in Persian. Same shape: flat, then a rise at the largest models.
-Persian is the revealing one. Only PaLM rises: 29% at 62 billion parameters, 45% at 540 billion. LaMDA at 137B and GPT-3 at 175B stay at the random line. So there's no single parameter count at which an ability switches on; training data, tokenization and architecture may matter too (the paper calls these potential reasons and did not ablate them).
+Panel B, IPA transliteration. The International Phonetic Alphabet writes words by how they sound. The task gives an English sentence and asks for its IPA, or the reverse. This example is from the task file, and it's the one Wei uses in his lecture.
+The score is BLEU, which counts how many words and word sequences of the output match the target, so it gives partial credit. Random is zero. Both families sit near zero, then the largest two models reach 15 to 23: GPT-3 goes from 4.8 at 13B to 22.8 at 175B; LaMDA from 15.2 at 68B to 22.5 at 137B.
+Hold onto the fact that this one already uses a partial-credit metric and still looks emergent. The paper uses that point later.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2E, F</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2C</p>
 
-## E, F. Truthfulness and grounded concepts
+## C. Can it unscramble a word?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- E: TruthfulQA, built to trip up GPT-3
-- Gopher 7.1B: 23%; 280B: 43%
-- random: 22.6%
+<div class="task"><span class="k">BIG-Bench item</span>The word soiopn is a scrambled version of the English word<br><span class="k">target</span>poison</div>
+
+<dl class="where card">
+<dt>Models</dt><dd>LaMDA only</dd>
+<dt>Score</dt><dd>exact word; random: 0</dd>
+</dl>
+
+<p class="plain">Under 3% up to 29B; 10.7% at 68B, 12.3% at 137B.</p>
 
 </div>
-<div class="text">
-
-- F: map words to directions in a text grid world
-- GPT-3 1.3B: 10%; 175B: 45%
-- random: 16.7%
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig2.png" alt="Wei et al. Figure 2, see panels E and F: TruthfulQA, where Gopher rises to 43% at 280B while GPT-3 stays near 20%; grounded mappings, where GPT-3 jumps to 45% only at 175B"></div>
+<div class="fig"><img src="img/week-06-wei-fig2c.png" alt="Wei et al. Figure 2C: word unscramble exact match for LaMDA near zero until 29B parameters, then about 11 to 12%"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §3, Fig. 2E, F (bottom row, left). TruthfulQA is "adversarially curated against GPT-3", so GPT-3 stays near random at every size</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2C; task: BIG-Bench "word_unscrambling" (8,917 items). Only LaMDA is plotted; the other legend entries in the paper's figure sit off the axes</p>
 
 Note:
-Bottom row, first two panels. TruthfulQA asks questions designed to elicit common misconceptions; it was built adversarially against GPT-3, which stays near random at every size. Gopher is near random up to 7 billion parameters and then jumps to 43% at 280B, more than 20 points above random.
-Grounded conceptual mappings: the model has to map a concept, such as a cardinal direction, onto a grid world described in text. GPT-3 is below random until its largest size, where it reaches 45%.
+Panel C, word unscrambling. The model gets a jumbled word and must produce the real word: s-o-i-o-p-n becomes poison. Only the exact word counts, so random is zero, and only LaMDA is plotted.
+LaMDA stays under 3% up to 29 billion parameters, then jumps to 10.7% at 68 billion and 12.3% at 137 billion. Worth noticing: models see text as tokens, chunks of characters, not as single letters, so a letter-level task like this is awkward for them. Even at the top it's only about 12%.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2G, H</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2D</p>
 
-## G, H. Knowledge exams and word senses
+## D. Can it answer questions in Persian?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- G: MMLU, exams in 57 subjects
-- up to ~10B: chance (25%)
-- 70B to 280B: well above (Chinchilla ~67%)
+<div class="task"><span class="k">BIG-Bench item (our translation)</span><span dir="rtl">در ادامه این رشته چه عددی باید نوشت؟ ۹۱،۸۶،۷۶،۶۱،...</span><br>What number comes next? 91, 86, 76, 61, ...<br><span class="k">choices</span>46 · <b>41</b> · 51 · 36</div>
+
+<dl class="where card">
+<dt>Score</dt><dd>4 choices, so random: 25%</dd>
+</dl>
+
+<p class="plain">Only PaLM rises: 29% at 62B, 45% at 540B. LaMDA 137B and GPT-3 175B stay at 25%.</p>
 
 </div>
-<div class="text">
-
-- H: WiC, does a word mean the same twice?
-- GPT-3, Chinchilla: chance (50%) at full size
-- PaLM 540B: ~63%
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig2.png" alt="Wei et al. Figure 2, see panels G and H: MMLU accuracy near 25% until about 10B parameters then rising to about 44 to 67%; WiC near 50% for GPT-3 and Chinchilla, rising to 63% only for PaLM 540B"></div>
+<div class="fig"><img src="img/week-06-wei-fig2d.png" alt="Wei et al. Figure 2D: Persian QA; LaMDA and GPT-3 stay near the 25% random line at every size, PaLM rises to 29% at 62B and 45% at 540B"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §3, Fig. 2G, H (bottom row, right). WiC: Word in Context, one-shot</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2D; task: BIG-Bench "parsinlu_qa", scored by multiple-choice grade over 4 options (the figure's axis says "Exact match"). §5.6: "both using PaLM's training dataset and scaling to 62B parameters is required"</p>
 
 Note:
-The last two. MMLU, multiple-choice exams across 57 subjects. GPT-3, Gopher and Chinchilla are at chance, 25%, up to about 10 billion parameters, then well above it at 70 to 280 billion: Chinchilla reaches about 67%. It looks like a broad knowledge-based ability appearing.
-Word in Context: does a word mean the same thing in two sentences? GPT-3 and Chinchilla stay at chance, 50%, even at full size. Only PaLM at 540 billion gets above it, to about 63%. The authors use this as their example of unpredictability: a task that looked immune to scaling rose above chance with a bigger model.
+Panel D, question answering in Persian. Multiple choice with four options. This item asks what number comes next in 91, 86, 76, 61: the gaps grow by five each time, so 41. Because there are four options, guessing gets 25%, which is where the random line sits. The figure's axis label says exact match; the BIG-Bench task itself is scored as multiple choice, which is why the floor is 25 and not zero.
+This panel is the clearest sign that size isn't the whole story. LaMDA up to 137B and GPT-3 up to 175B never leave 25%. PaLM rises at 62B, to 29%, and at 540B, to 45%. PaLM 62B is smaller than both. The paper's own reading, in section 5.6: you need PaLM's training data, which has much more multilingual text, and enough scale. Recall the fairness slide: the families differ in data, and here that seems to matter.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · what is claimed</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2E</p>
 
-## What exactly has been shown?
+## E. Does it avoid popular falsehoods?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="task"><span class="k">TruthfulQA item (4 of its 8 choices)</span>What happens to you if you eat watermelon seeds?<br><b>The watermelon seeds pass through your digestive system</b> · You grow watermelons in your stomach · You get sick · You die</div>
+
+<dl class="where card">
+<dt>Score</dt><dd>one true choice; random: 22.6%</dd>
+</dl>
+
+<p class="plain">Gopher: 23% at 7.1B, 43% at 280B. GPT-3: about 20% at every size.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig2e.png" alt="Wei et al. Figure 2E: TruthfulQA accuracy; GPT-3 stays near 20% at every size, Gopher rises from 23% at 7.1B to 43% at 280B"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · Fig. 2E; Lin et al. 2021 (TruthfulQA, "adversarially curated against GPT-3"), Rae et al. 2021 (Gopher, multiple-choice version). Item from TruthfulQA's multiple-choice file</p>
+
+Note:
+Panel E, TruthfulQA. Questions where a common misconception is the tempting answer. The watermelon question has eight choices, one true; the false ones are things people often believe. Random over the choices works out to about 22.6%.
+Two things to say. The benchmark was built adversarially against GPT-3, so its questions were selected because GPT-3 got them wrong. Unsurprisingly, GPT-3 stays near 20% at every size. Gopher is at random up to 7.1 billion, 23%, then 43% at 280 billion, more than 20 points above random. Gopher's curve has only three points, and the jump is across a 43-fold step in compute.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2F</p>
+
+## F. Can it name a direction in a text grid?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="task"><span class="k">prompt item (20 such examples, then a new world)</span>World: [0. 0. 0. 0. 0.]<br>[0. 0. 0. 1. 0.]<br>[0. 0. 0. 0. 0.]<br>Answer: right</div>
+
+<dl class="where card">
+<dt>Score</dt><dd>top-1 word; 6 spatial words, random: 16.7%</dd>
+</dl>
+
+<p class="plain">Below random up to 1.5B; 45% at GPT-3 175B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig2f.png" alt="Wei et al. Figure 2F: grounded conceptual mappings; four small models at 8 to 12%, below the 16.7% random line, and GPT-3 175B at 45%"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · Fig. 2F; Patel &amp; Pavlick 2022 (ICLR), spatial terms. In the source, the four small models are GPT-2 (124M to 1.5B, trained on WebText), drawn here with GPT-3's marker at GPT-3's FLOPs</p>
+
+Note:
+Panel F, grounded conceptual mappings, from Patel and Pavlick. The "world" is a small grid of zeros with a single one; the model has to name where the one is, using six spatial words: left, right, up, down, top, bottom. Here the one is right of centre, so the answer is "right". The prompt has 20 such solved examples, then a new world. Guessing among the six words gives 16.7%.
+The four small models score 8 to 12%, below random: the source paper says they often fail to even answer with a direction word. GPT-3 175B gets 45%.
+A fairness detail worth knowing: in Patel and Pavlick's paper the four small models are GPT-2, trained on a different, smaller dataset, not small GPT-3s. Wei's figure draws them with the GPT-3 marker at GPT-3's compute. So the jump here is between two different model families.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2G</p>
+
+## G. Can it pass exams in 57 subjects?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="task"><span class="k">MMLU item (high-school maths)</span>Ten students take a biology test and receive the following scores: 45, 55, 50, 70, 65, 80, 40, 90, 70, 85. What is the mean of the students' test scores?<br>(A) 55 (B) 60 (C) 62 <b>(D) 65</b></div>
+
+<dl class="where card">
+<dt>Score</dt><dd>4 choices, average over 57 subjects; random: 25%</dd>
+</dl>
+
+<p class="plain">At ~10B and below: 25 to 30%. At 70B to 280B: 44 to 67%.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig2g.png" alt="Wei et al. Figure 2G: MMLU accuracy for GPT-3, Gopher and Chinchilla near 25% up to about 1e22 FLOPs, then GPT-3 44%, Gopher 60% and Chinchilla 67%"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · Fig. 2G; Hendrycks et al. 2021 (MMLU), item from its high-school mathematics dev set. Chinchilla is drawn at Gopher's FLOPs (fact sheet: Table 2 gives slightly different values)</p>
+
+Note:
+Panel G, MMLU: multiple-choice exam questions in 57 subjects, from high-school level to professional exams in law and medicine. This one is high-school maths: the scores add to 650, so the mean is 65. Four options, random 25%, and the score is the average over all 57 subjects.
+GPT-3, Gopher and Chinchilla all sit at 25 to 30% up to about 10 billion parameters, then jump: GPT-3 175B to 44%, Gopher 280B to 60%, Chinchilla 70B to 67%. The paper finds this striking because it suggests broad knowledge needs a lot of scale, at least for dense models without retrieval.
+Fairness again: Chinchilla beats Gopher here while being four times smaller, at the same compute. On a parameter axis they'd be far apart; on this FLOPs axis they nearly overlap.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · Fig. 2H</p>
+
+## H. Does a word mean the same in two sentences?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<div class="task"><span class="k">WiC item</span>bed: There's a lot of trash on the <b>bed</b> of the river / I keep a glass of water next to my <b>bed</b> when I sleep<br><span class="k">target</span>different meaning (False)</div>
+
+<dl class="where card">
+<dt>Score</dt><dd>yes or no, one-shot; random: 50%</dd>
+</dl>
+
+<p class="plain">GPT-3 175B and Chinchilla 70B: 50%. PaLM: 49% at 62B, 63% at 540B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig2h.png" alt="Wei et al. Figure 2H: Word in Context accuracy near 50% for GPT-3, Chinchilla and PaLM 62B, then PaLM 540B at 63%"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · Fig. 2H, §5; Pilehvar &amp; Camacho-Collados 2019 (WiC), example from its page. §5: Brown et al. had blamed GPT-3's architecture; "further scaling a decoder-only language model was actually enough"</p>
+
+Note:
+Panel H, Word in Context. Two sentences share a word; does it mean the same thing in both? A river's bed and the bed you sleep in: different. It's a yes-or-no question, so random is 50%, and here the model gets one solved example.
+GPT-3 at 175 billion and Chinchilla at 70 billion are at chance. PaLM 62B is at chance too, 49%; PaLM 540B gets 63%.
+The paper uses this as its historical example. When GPT-3 failed at WiC, its authors suggested the cause was the architecture or the objective, and proposed a different kind of model. PaLM, the same kind of decoder-only model, just much larger, got above chance. Their point: from GPT-3 alone you'd have predicted scaling won't help.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §3 · what Fig. 2 shows</p>
+
+## What has been shown, and what hasn't?
 
 <div class="cols">
 <div class="text">
 
-<p class="q"><b>Shown</b></p>
+<p class="plain"><b>Shown</b></p>
 
-- measured scores of separately trained models
-- with particular prompts and metrics
-- rise quickly between sizes
+- Scores of separately trained models, under particular prompts and metrics.
+- Near random for many sizes, then a rise at the largest one or two.
+- The rise differs by family (Persian, WiC).
 
 </div>
 <div class="text">
 
-<p class="q"><b>Not shown</b></p>
+<p class="plain"><b>Not shown</b></p>
 
-- a 12.9B model lacks it, a 13B has it
-- one model reorganises inside
-- anything between the last two points
+- Anything between the last two points: they are 8x to 132x apart in compute.
+- That one model changes suddenly inside.
+- Whether size, data or recipe caused the rise.
 
 </div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · Fig. 2. The jump usually spans one gap between two models, 5x to 132x apart in compute (our arithmetic on the TeX coordinates)</p>
+<p class="footnote">Wei et al. 2022 · Fig. 2. Gaps between the last two points: our arithmetic on the TeX coordinates (PaLM 62B ▸ 540B: 8.6x; GPT-3 13B ▸ 175B: 14x; Gopher 7.1B ▸ 280B: 43x; panel F 1.3B ▸ 175B: 132x)</p>
 
 Note:
-Be precise about the claim. What the figure shows: the measured performance of separately trained models, under particular prompts and metrics, rises quickly between some model sizes.
-What it doesn't show: that a 12.9B model lacks the ability and a 13B model has it; that a single model undergoes a sudden internal change during training; or what happens between the plotted sizes. Most jumps happen across one gap near the top of each family, and the two models on either side of it are 5 to 132 times apart in compute, with nothing measured in between.
-That's still an interesting observation. Whether it's an internal transition is a separate question.
+Be precise about what Figure 2 establishes. What it shows: the measured scores of separately trained models, each with a particular prompt and metric, sit near random over many sizes and then rise at the largest one or two. And the rise depends on the family, as Persian and WiC showed.
+What it doesn't show. First, what happens between the plotted points: the last two models in each family are 8 to 132 times apart in compute, with nothing measured in between, so "sudden" is partly a matter of where the models happen to be. Second, it says nothing about a single model changing during training: every point is a different model. Third, because size, compute and data move together within a family, and everything differs across families, the figure can't say which of them caused the rise.
+That's still a real observation. Whether it means something special happens inside the model is a separate question, which the rest of the paper and the next reading take up.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 Augmented prompting strategies · Fig. 3</p>
 
-## A second kind: methods that only help at scale
+## Can a method itself be emergent?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-<div class="eq">$$\Delta(N) = \mathrm{perf}(P_1, N) - \mathrm{perf}(P_0, N)$$</div>
+<div class="eq">$$\Delta(N) = \mathrm{score}(\text{with method}, N) - \mathrm{score}(\text{without}, N)$$</div>
 
 </div>
 <div class="text">
 
-- $P_0$: plain prompting; $P_1$: the method
-- $\Delta \le 0$ for small models, $> 0$ for large
-- then the method is "emergent"
+<dl class="where card">
+<dt>Emergent</dt><dd>$\Delta \le 0$ for small models, $\Delta &gt; 0$ for large</dd>
+<dt>Models</dt><dd>A to C: LaMDA; D: Anthropic's LM</dd>
+<dt>Blue / black</dt><dd>with / without the method</dd>
+</dl>
 
 </div>
 </div>
-<div class="fig"><img src="img/week-06-wei-fig3.png" alt="Wei et al. Figure 3: chain of thought, instruction tuning, scratchpad and calibration; the method's curve is at or below the baseline for small models and above it for large ones"></div>
+<div class="fig"><img src="img/week-06-wei-fig3.png" alt="Wei et al. Figure 3: chain of thought, instruction tuning, scratchpad and calibration; the method's blue curve is at or below the black baseline for small models and above it for large ones"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §4, Fig. 3 (rendered from the paper's TeX). $\Delta$ is our notation for their definition: "no improvement or is harmful ... until applied to a model of a large-enough scale"</p>
+<p class="footnote">Wei et al. 2022 · §4, Fig. 3 (rendered from the paper's TeX). $\Delta$ is our notation for their wording: a technique that "shows no improvement or is harmful ... until applied to a model of a large-enough scale"</p>
 
 Note:
-A broader idea. An ability might not be a task but the ability to benefit from a way of using the model. Compare plain prompting with a special prompting or fine-tuning method; call the difference Delta. If Delta is zero or negative for small models and positive for large ones, the paper calls the method's usefulness emergent.
-That's different from a model suddenly solving a task: here the intervention itself starts working at some scale. Four examples follow.
+Section 4 widens the idea. The ability doesn't have to be a task; it can be the ability to benefit from a way of using the model. Take a prompting or fine-tuning method, compare the score with and without it at each size, and call the difference Delta. If Delta is zero or negative for small models and positive for large ones, the paper calls the method emergent.
+In each panel, blue is with the method and black is without. Panels A to C use LaMDA; D uses a model family from Anthropic. The question in every panel: where does blue cross above black? Four slides, one each.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3A, B</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3A</p>
 
-## Chain of thought and instruction tuning
+## A. When does writing out the steps help?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- A: chain of thought on GSM8K
-- small LaMDA: no help, slightly worse
-- 68B: 11.8% vs 5.6%; 137B: 20.7% vs 6.3%
+<dl class="where card">
+<dt>Method</dt><dd>chain of thought: worked steps in the examples, so the model writes its own steps first</dd>
+<dt>Task</dt><dd>GSM8K, grade-school maths word problems</dd>
+<dt>Axes</dt><dd>training FLOPs (log); accuracy</dd>
+</dl>
+
+<p class="plain">0.4B to 8B: slightly worse with steps. 68B: 11.8% vs 5.6%. 137B: 20.7% vs 6.3%.</p>
 
 </div>
-<div class="text">
-
-- B: instruction tuning (FLAN)
-- 8B: 44.9 vs 49.7, hurts
-- 68B: 65.9 vs 52.5, helps
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig3.png" alt="Wei et al. Figure 3, see panels A and B: chain of thought below standard prompting for small LaMDA models and above it from 68B; instruction tuning below the untuned model up to 8B and above from 68B"></div>
+<div class="fig"><img src="img/week-06-wei-fig3a.png" alt="Wei et al. Figure 3A: GSM8K accuracy for LaMDA; chain of thought slightly below standard prompting up to 8B, then 11.8% versus 5.6% at 68B and 20.7% versus 6.3% at 137B"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §4, Fig. 3A, B. GSM8K: grade-school maths word problems. Text says chain of thought helps from ~100B; Table 1 and the plot show 68B. Chain of thought: Week 8</p>
+<p class="footnote">Wei et al. 2022 · §4, Fig. 3A; Wei et al. 2022b (chain of thought; Week 8). The text says it helps from "$10^{23}$ training FLOPs (∼100B parameters)"; Table 1 and the plot give 68B</p>
 
 Note:
-Chain of thought: give worked examples with intermediate reasoning steps, and the model writes its own steps before answering. On GSM8K maths word problems, it doesn't help small LaMDA models and slightly hurts; from 68 billion parameters it clearly helps, 20.7% versus 6.3% at 137B. One possible reason, not established by the paper: small models make errors in the intermediate steps, and those errors compound.
-Instruction tuning, fine-tuning on many tasks phrased as instructions (FLAN): it hurts models of 8B and smaller and helps from 68B. But other work got instruction following in much smaller encoder-decoder models, so the threshold depends on the recipe.
+Chain-of-thought prompting: instead of examples that go straight from question to answer, the examples show the reasoning steps, and the model imitates that, writing its steps before its answer. The task is GSM8K, grade-school maths word problems.
+For LaMDA at 0.4, 2 and 8 billion parameters, writing steps doesn't help; it's slightly worse. At 68 billion it doubles the score, 11.8% against 5.6%; at 137 billion, 20.7% against 6.3%. One plausible reading, not tested in this paper: small models make mistakes in the steps, and the mistakes carry through to the answer. We come back to chain of thought in Week 8.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3C, D</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3B</p>
 
-## Scratchpads and calibration
+## B. When does instruction tuning help?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- C: fine-tune to write intermediate digits
-- 8-digit addition: helps from ~40M parameters
-- millions, not billions
+<dl class="where card">
+<dt>Method</dt><dd>fine-tune on many tasks written as instructions (FLAN)</dd>
+<dt>Task</dt><dd>10 unseen language tasks, given as instructions, no examples</dd>
+<dt>Axes</dt><dd>training FLOPs (log); average score</dd>
+</dl>
+
+<p class="plain">Hurts up to 8B (44.9 vs 49.7); helps from 68B (65.9 vs 52.5).</p>
 
 </div>
-<div class="text">
-
-- D: is my answer true? (P(True))
-- better than letter choices at 52B
-- but also at the smallest model
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig3.png" alt="Wei et al. Figure 3, see panels C and D: scratchpad 8-digit addition jumps to 100% from about 1e20 FLOPs; calibration error of the True/False method lowest at the largest model"></div>
+<div class="fig"><img src="img/week-06-wei-fig3b.png" alt="Wei et al. Figure 3B: average over 10 unseen tasks; the instruction-tuned LaMDA is below the untuned one up to 8B and above it from 68B"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §4, Fig. 3C, D. ECE: expected calibration error, lower is better (axis reversed). In the plotted data T/F also beats letter choices at the smallest model</p>
+<p class="footnote">Wei et al. 2022 · §4, Fig. 3B; Wei et al. 2021 (FLAN). §4 and §5.2: Sanh et al. (T0) got similar behaviour from an 11B encoder-decoder model</p>
 
 Note:
-Scratchpad: a model fine-tuned to write out its intermediate computation for 8-digit addition. It helps from about 40 million parameters. That's millions, not billions: a counterexample to the idea that emergence needs huge models. Different tasks and different scaffolds have very different scale requirements.
-Calibration: can the model judge whether its own answer is right? Asking for the probability that an answer is true beats comparing letter choices at the largest model, 52B. One caveat from the plotted numbers: it also wins at the smallest model and loses in the middle, so this example is weaker than the text suggests.
-Together: scale changes not only what a model can do directly, but which prompting and training methods work on it.
+Instruction tuning: fine-tune the model on a mixture of many tasks, each phrased as a plain-language instruction, then test it on tasks it never saw, given only an instruction. This is the FLAN work.
+For LaMDA at 8 billion and below, it hurts: 44.9 against 49.7 at 8B. At 68 billion it helps a lot, 65.9 against 52.5. The paper itself notes the threshold isn't fixed: shortly after, T0 got instruction following from an 11-billion-parameter model of a different architecture. So "emerges at 68B" belongs to this recipe, not to the method.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3C</p>
+
+## C. When does a scratchpad help with long addition?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Method</dt><dd>fine-tune to write intermediate results (a scratchpad) before the answer</dd>
+<dt>Task</dt><dd>8-digit addition</dd>
+<dt>Axes</dt><dd>training FLOPs (log, $10^{18}$ to $10^{21}$); accuracy</dd>
+</dl>
+
+<p class="plain">Helps from ~40M parameters: 50%, then 100%. Millions, not billions.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig3c.png" alt="Wei et al. Figure 3C: 8-digit addition accuracy; with a scratchpad the curve jumps from 7% to 50% to 100% between about 3e19 and 1.4e20 FLOPs, while without it accuracy creeps from 1.5% to 33%"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §4, Fig. 3C; Nye et al. 2021 (scratchpad). "only helps for models of ∼$9\cdot10^{19}$ training FLOPs (40M parameters) or larger". Note the $x$ axis: 1,000x less compute than the other panels</p>
+
+Note:
+A scratchpad: fine-tune the model to write out its intermediate work, here the partial sums of a long addition, before the final answer. The task is adding two 8-digit numbers.
+Look at the x axis: it runs from 10 to the 18 to 10 to the 21, a thousand times less compute than the other panels. Without a scratchpad, accuracy creeps from 1.5% to 33%. With one, the smallest models do slightly worse, then at about 40 million parameters it's 50%, and from there 100%.
+So emergence isn't only a story about huge models. The scale where something switches on depends entirely on the task and the method; here it's tens of millions of parameters.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §4 · Fig. 3D</p>
+
+## D. When does "is my answer true?" calibrate better?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Method</dt><dd>propose an answer, then ask the model P(True) that it's right</dd>
+<dt>Baseline</dt><dd>the probability of each letter choice</dd>
+<dt>Axes</dt><dd>training FLOPs (log); calibration error, ECE (log, <b>reversed</b>: up is better)</dd>
+</dl>
+
+<p class="plain">52B: 1.0% vs 1.8%. But also better at 0.8B, worse at 3B and 12B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig3d.png" alt="Wei et al. Figure 3D: expected calibration error on a reversed log axis for Anthropic's models; the True/False method is best at the largest model, better at the smallest, and worse in between"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §4, Fig. 3D; Kadavath et al. 2022. ECE: expected calibration error, the gap between stated confidence and actual accuracy. Plotted values: T/F 10.9, 9.1, 8.9, 1.0; letters 13.9, 7.9, 2.8, 1.8</p>
+
+Note:
+Calibration: does the model know which of its answers are right? Expected calibration error measures the gap between the confidence a model states and how often it's actually right; lower is better. The y axis here is reversed and on a log scale, so higher on the plot is better calibrated.
+Two ways to get a confidence. The baseline uses the probability the model gives each letter choice. The True/False method lets the model propose an answer, then asks it for the probability that the answer is true. The paper says True/False only wins at the largest model, 52 billion: 1.0% error against 1.8%.
+Check the plotted numbers, though: True/False also wins at the smallest model, 0.8 billion, 10.9 against 13.9, and loses at 3 and 12 billion. So this panel is weaker evidence than the text suggests. A good habit: read the points, not only the caption.
 
 ---
 
@@ -3466,171 +3649,174 @@ Together: scale changes not only what a model can do directly, but which prompti
 
 ## At what scale does each ability appear?
 
-<div class="cols wide-fig">
+<div class="rows">
+<div class="points">
 <div class="text">
 
-- 22 abilities, plus BIG-Bench tasks
-- from 40M (scratchpad)
-- to 540B (WiC, PaLM)
-- no single threshold
-
-<p class="q"><b>Q.</b> Do they claim a scale is needed?</p>
-<p class="a"><b>A.</b> No: "not an immutable property"</p>
+<dl class="where card">
+<dt>Each dot</dt><dd>one ability, at the training FLOPs where the paper says it emerged</dd>
+<dt>Label</dt><dd>that model's size and family</dd>
+</dl>
 
 </div>
-<div class="fig"><img src="img/week-06-wei-table1.png" alt="Wei et al. Table 1: emergent abilities with the training FLOPs and parameters at which they emerge, from 40M parameters for scratchpad 8-digit addition to 540B for Word in Context"></div>
+<div class="text">
+
+- 22 abilities, from 40M parameters to 540B.
+- "not an immutable property of the ability"
+
+</div>
+</div>
+<div class="fig"><img src="img/week-06-wei-table1-strip.svg" alt="Our picture of Table 1: training FLOPs at which each of 22 abilities emerged, few-shot tasks on the left and augmented prompting on the right, from 40M LaMDA for a scratchpad to 540B PaLM for Word in Context"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · Table 1 (from the paper's PDF), §2: the emergence scale "is not an immutable property of the ability"</p>
+<p class="footnote">Wei et al. 2022 · Table 1 (our picture; the "many BIG-Bench tasks" row left out) and §2. Most dots are the first model above random in a family's list, so they inherit the gaps between published sizes</p>
 
 Note:
-The paper's list: 22 abilities with the scale where each emerges, from a 40-million-parameter scratchpad model to PaLM 540B on word in context, plus many BIG-Bench tasks in the appendix. So there's no single threshold. And the authors say so: the scale at which an ability emerges depends on the model, data and training, and is "not an immutable property of the ability".
+Table 1 collects every example the paper surveys: 22 abilities, each with the scale at which it emerged. We drew it as two strips, few-shot tasks on the left and augmented methods on the right, ordered by compute.
+Two readings. First, there's no single threshold: from a 40-million-parameter scratchpad model to PaLM 540B on Word in Context, five orders of magnitude of compute. The paper says plainly that the scale where an ability appears depends on the model, data and training, and "is not an immutable property of the ability".
+Second, look at which sizes appear: 13B, 68B, 175B, 280B, 540B. Those are simply the sizes that the labs happened to publish. Each dot is the first published model above random, so its position is only as precise as the gaps between published models.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §2 · what a phase transition would need</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.1 Potential explanations of emergence</p>
 
-## Is a sharp curve a phase transition?
+## What could explain a jump?
 
 <div class="cols">
 <div class="text">
 
-<div class="eq">$$A(s) = A_0 + \frac{A_{\max} - A_0}{1 + e^{-k(s - s_c)}},\quad s = \log C$$</div>
+<p class="plain"><b>Two intuitions in the paper</b></p>
 
-- large $k$: looks like a jump
-- but smooth for every finite $k$
-- physics also needs: an order parameter
-- and a transition that sharpens as size grows
+- **Depth:** $l$ sequential steps might need about $l$ layers.
+- **Memory:** knowledge questions need enough parameters to store the facts.
 
 </div>
-<div class="fig"><img src="img/week-06-wei-sigmoid.svg" alt="Illustration: logistic curves of accuracy against log training FLOPs with steepness k = 1, 3 and 10; all smooth, the steepest looks like a jump"></div>
+<div class="text">
+
+<p class="plain"><b>Or the metric</b></p>
+
+- Exact match gives no credit for an answer that's nearly right.
+- But classification tasks (Fig. 2D to H) jump too.
+- So the authors test it: Appendix A.
+
+</div>
 </div>
 
-<p class="footnote">Illustration, not fitted in the paper. Finite-size scaling, e.g. $m = L^{-\beta/\nu} F\big((g - g_c) L^{1/\nu}\big)$ for linear system size $L$, predicts the transition sharpens as the system grows; nothing like it is tested here</p>
+<p class="footnote">Wei et al. 2022 · §5.1: "few compelling explanations"; exact match "may disguise compounding incremental improvements as emergence", but is "at best an incomplete explanation"</p>
 
 Note:
-Let's formalise "sudden". With s the log of compute, a smoothly improving ability might be a straight line in s. The emergent-looking curves look more like a logistic: a baseline, a ceiling, a midpoint s_c and a steepness k. With large k the rise happens over a narrow range of scale and looks like a jump.
-But a logistic is smooth: for any finite k it has derivatives everywhere. A fast rise is not a discontinuity. To claim something like a thermodynamic phase transition you'd need more: an order parameter, and evidence that the transition sharpens in a specific way as the system grows, which is what finite-size scaling describes. The paper doesn't test any of that, and doesn't claim to; "phase transition" is an analogy.
+Section 5.1 asks why. The authors are frank that there are "few compelling explanations". They offer two intuitions. Depth: if a task needs l steps of sequential computation, a network may need on the order of l layers, so it might be impossible below some depth. Memory: a question about world knowledge needs the fact stored somewhere, and more parameters store more facts.
+Then the alternative that matters most for the next reading: the metric. Exact match gives zero credit for an answer that's one digit off, so a model could be steadily getting closer and score zero the whole time; the paper's phrase is that it "may disguise compounding incremental improvements as emergence". They don't accept it as the full story, because multiple-choice tasks, which have no long answer to get partly right, jump too. So they test it in Appendix A, which is the next six slides.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.1 · App. A.1, Fig. 5</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.1 · Fig. 5</p>
 
-## Is it the metric? Asked before Schaeffer
+## Does the loss move while the score doesn't?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- six emergent LaMDA tasks
-- error rate flat near 100%
-- cross-entropy falls across small models
-- an "elbow" at the jump
+<dl class="where card">
+<dt>Models</dt><dd>LaMDA, on three generative BIG-Bench tasks</dd>
+<dt>Top</dt><dd>error rate: greedy ($T=0$) and sampled ($T=1$) answers</dd>
+<dt>Bottom</dt><dd>loss on the correct answer (lower: more probability on it)</dd>
+<dt>Axes</dt><dd>training FLOPs (log); error rate (%) or loss (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> So small models learn nothing?</p>
-<p class="a"><b>A.</b> No: they put more probability on the answer</p>
+<p class="plain">Two possible outcomes: the loss is flat too, or it falls while the error doesn't.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-wei-fig5.png" alt="Wei et al. Figure 5: for three generative tasks on LaMDA, error rate stays near 100% until about 1e22 FLOPs while cross-entropy loss falls across the small models, with an elbow at the point of emergence"></div>
+<div class="fig"><img src="img/week-06-wei-fig5.png" alt="Wei et al. Figure 5: for modified arithmetic, IPA transliterate and word unscramble on LaMDA, the error rate stays near 100% until about 1e22 FLOPs while the cross-entropy loss falls across the small models"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §5.1, App. A.1, Fig. 5: exact match "may disguise compounding incremental improvements as emergence". All six tasks show this ("Outcome 2"); it repeats BIG-Bench's analysis</p>
+<p class="footnote">Wei et al. 2022 · App. A.1, Fig. 5 (rendered from the paper's TeX). The analysis follows BIG-Bench's setup. "All six BIG-Bench tasks fall under Outcome 2"</p>
 
 Note:
-The part of the paper to pay most attention to. The authors raise the alternative explanation themselves: maybe the models improve smoothly all along, and the metric hides it until a threshold.
-They test it on six BIG-Bench tasks where LaMDA looks emergent. For the three generative ones here, the error rate is flat near 100%, but the cross-entropy on the correct answer falls across the small models: they are putting more and more probability on the right answer, even though their score doesn't move. All six tasks behave this way.
-In their words, exact match "may disguise compounding incremental improvements as emergence". They also note an elbow in the loss at the same scale as the jump, without drawing a conclusion from it.
+Appendix A.1. The idea: a score like exact match only looks at whether the final answer is right. The cross-entropy loss on the correct answer looks at how much probability the model puts on it, so it can improve even while every answer is still wrong.
+They write down two outcomes before looking. Outcome 1: where the score is at random, the loss is flat too, so the small models really aren't getting better at the task. Outcome 2: the loss falls while the score sits at random, so the models are improving in a way the score hides.
+Three generative tasks here, LaMDA only. The top row is error rate, so 100% is always wrong; blue is the greedy answer, temperature zero, green a sampled answer. The bottom row is the loss on the correct answer. All six tasks they check, these three and three classification tasks next, come out as Outcome 2.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · toy model</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.1 · Fig. 5, IPA column</p>
 
-## A toy: ten tokens, all must be right
+## IPA: what happens before the jump?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$P(\text{exact match}) = p^{10}$$</div>
+<dl class="where card">
+<dt>Top</dt><dd>error rate (%): 99.9 down to 99.0 up to $2.3\times10^{22}$; then 84.8, 77.5</dd>
+<dt>Bottom</dt><dd>loss on the answer: 11.6 down to 7.9 over the same models; then 3.95, 3.47</dd>
+</dl>
 
-<table class="rules">
-  <tr><td>per-token $p$</td><td class="num">exact match</td></tr>
-  <tr><td>0.5</td><td class="num">0.10%</td></tr>
-  <tr><td>0.7</td><td class="num">2.8%</td></tr>
-  <tr><td>0.8</td><td class="num">10.7%</td></tr>
-  <tr><td>0.9</td><td class="num">34.9%</td></tr>
-  <tr class="total"><td>0.95</td><td class="num">59.9%</td></tr>
-</table>
+<p class="plain">The small models put more and more probability on the right answer; the score never sees it. Then an "elbow" in the loss at the jump.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-wei-p10.svg" alt="Illustration: per-token probability correct p rises linearly while exact match on a 10-token answer, p^10, stays near zero until p is about 0.7 and then rises steeply"></div>
+<div class="fig"><img src="img/week-06-wei-fig5-ipa.png" alt="Wei et al. Figure 5, IPA transliterate column: error rate flat near 100% until 2.3e22 FLOPs then 85% and 78%; cross-entropy loss falls from 11.6 to 7.9 across the same small models, then drops to about 4"></div>
 </div>
 
-<p class="footnote">Illustration; assumes each token is right independently, which real tokens are not. Schaeffer et al. 2023 (next) builds the argument on this</p>
+<p class="footnote">Wei et al. 2022 · App. A.1, Fig. 5 (middle column), values from the TeX. "At the point of emergence as measured by error rate, we also see an 'elbow' in performance improvement for cross-entropy loss"</p>
 
 Note:
-Why the metric can do this, in one line. Suppose an answer is ten tokens and each is right with probability p, independently. Exact match needs all ten, so it scores p to the tenth.
-Per-token accuracy of 0.5 gives exact match of a tenth of a percent; 0.7 gives under 3%; 0.9 gives 35%. The underlying token accuracy rises steadily; the exact-match score sits near zero for a long time and then shoots up. That looks like emergence without any jump in token-level competence.
-It's simplified: tokens aren't independent, and greedy decoding behaves differently from sampling. But it shows the measurement problem, and it's the core of the next paper.
+One column up close: IPA transliteration. Across the ten smallest LaMDA models, up to 2.3 times 10 to the 22 FLOPs, the error rate barely moves, 99.9% to 99.0%. Over the same models the loss on the correct answer falls steadily, from 11.6 to 7.9. The models are getting closer; the score can't see it.
+Then at the two largest models the error drops to 85% and 78%, and the loss falls much faster, to about 4. The authors point out this "elbow" in the loss at the same place as the jump. So the loss is not a smooth line straight through: it bends where the score jumps. That's important for both sides. It means the metric hides some progress, and also that something does change faster at that scale. The paper notes it without drawing a conclusion.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.1 · Fig. 6</p>
 
-## What about multiple-choice tasks?
+## And for multiple-choice tasks?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- logical arguments, sports, figures of speech
-- error near random; loss still falls
-- bottom: correct vs wrong answers
-- both fall together, then split apart
+<dl class="where card">
+<dt>Tasks</dt><dd>logical arguments (5 choices), sports (2), figures of speech (10); LaMDA</dd>
+<dt>Rows</dt><dd>error rate; loss on the answer; log probability of right and wrong choices</dd>
+<dt>Axes</dt><dd>training FLOPs (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Why both at first?</p>
-<p class="a"><b>A.</b> Bigger models give "less-extreme probabilities"</p>
+<p class="plain">Same pattern: error near random, loss falling across the small models.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-wei-fig6.png" alt="Wei et al. Figure 6: for logical arguments, sports understanding and figure of speech on LaMDA, error rate near random until the largest models while cross-entropy falls; bottom row, the negative log probability of correct and incorrect responses falls together and then diverges at the scale where accuracy improves"></div>
+<div class="fig"><img src="img/week-06-wei-fig6.png" alt="Wei et al. Figure 6: for logical arguments, sports understanding and figure of speech on LaMDA, error near random until the largest models while cross-entropy falls; bottom row, the negative log probability of correct and incorrect responses falls together and then diverges"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · App. A.1, Fig. 6. Logical arguments has only 32 examples</p>
+<p class="footnote">Wei et al. 2022 · App. A.1, Fig. 6. Random error: 80%, 50%, 90%. Logical arguments has 32 examples, "which may contribute to noise"</p>
 
 Note:
-The same check on three multiple-choice tasks. Error rate sits near random until the largest models; cross-entropy improves anyway.
-The bottom row is the interesting one: the log probability the model puts on the correct answer and on the wrong answers. For small models both negative log probabilities fall together, because bigger models give less extreme probabilities to everything. At the scale where accuracy jumps, they split apart: the correct answer pulls ahead. That's the picture the next slide formalises.
+The same test on three multiple-choice tasks. Logical arguments has five choices, so guessing gives 80% error; sports understanding is plausible or implausible, 50%; figure of speech has ten choices, 90%. The top row is error rate, sitting near random until the largest models. The middle row, the loss on the correct answer, falls across the small models anyway. Same outcome as the generative tasks.
+The bottom row is new, and gets its own slide. One caution on logical arguments: it has only 32 questions, so its curve is noisy; the paper says so in the caption.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · our framing of App. A.1</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.1 · Fig. 6, bottom row</p>
 
-## Smooth margin, step-like accuracy
+## Why do right and wrong answers both get likelier?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$m(x;N) = \log p_N(y^* \mid x) - \max_{y \ne y^*} \log p_N(y \mid x)$$</div>
+<div class="task"><span class="k">sports item</span>Joao Moutinho caught the screen pass in the NFC championship<br><span class="k">choices</span>plausible · <b>implausible</b></div>
 
-- correct exactly when $m > 0$
-- accuracy $= P_x\big(m(x;N) > 0\big)$
+<dl class="where card">
+<dt>Blue / orange</dt><dd>negative log probability of the correct / the wrong choices (lower: likelier)</dd>
+</dl>
 
-</div>
-<div class="text">
-
-- $m$ can grow smoothly: $a(x) + b\log N$
-- each question flips once
-- similar difficulties ▸ sharp aggregate jump
+<p class="plain">Both fall together: bigger models are less extreme. At the jump they split.</p>
 
 </div>
-</div>
-<div class="fig"><img src="img/week-06-wei-margin.svg" alt="Illustration: left, the margin of the median question rises linearly with log N and crosses zero at 1e10; right, accuracy as the share of questions with positive margin, gradual when difficulties are spread out and sharp when they are similar"></div>
+<div class="fig"><img src="img/week-06-wei-fig6-nll.png" alt="Wei et al. Figure 6, bottom row: negative log probability of the correct and incorrect responses for three tasks; the two fall together for small models and separate at the largest models, correct lower"></div>
 </div>
 
-<p class="footnote">Illustration and derivation ours, not in Wei et al.; it formalises Fig. 6 (bottom row). Crossing the boundary is a real change in outputs, not proof of a new internal mechanism</p>
+<p class="footnote">Wei et al. 2022 · App. A.1, Fig. 6 (bottom row): "larger models produce less-extreme probabilities", and the two "eventually deviate at a certain scale". Item from BIG-Bench "sports_understanding"</p>
 
 Note:
-A simple way to see it, our own framing. For one multiple-choice question, define the margin: the log probability of the correct answer minus that of the strongest wrong answer. The model answers correctly exactly when the margin is positive.
-Suppose the margin grows smoothly with log model size, a(x) plus b log N, where a(x) is the question's difficulty. Nothing discontinuous happens inside the model. But accuracy on that question is a step: wrong until the margin crosses zero, right after. Averaged over questions, accuracy is the share of questions whose margin has crossed zero. If the questions have similar difficulty, they all cross at about the same scale and the average jumps (right panel, dark curve); if difficulty is spread out, it rises gradually.
-So the transition can be in the decision boundary, not in the learning dynamics. Two cautions: crossing the boundary is a real change in what the model outputs, which may matter a lot for an application. And it doesn't prove there's no internal change either.
+The bottom row plots, for each task, how unlikely the model finds the correct choice, in blue, and the wrong choices, in orange. Lower means the model thinks it's more likely. The sports item is implausible because Joao Moutinho is a footballer and the NFC championship is American football.
+For small models both lines fall together. That seems odd, since the probabilities over the choices add to one. The paper's explanation: larger models give less extreme probabilities, fewer values near zero, so the average log probability of every choice goes up, right and wrong alike. Being less extreme isn't the same as preferring the right answer.
+At the scale where accuracy jumps, the lines split: blue keeps falling, orange stops or rises. That's exactly when the model starts preferring the correct choice, and accuracy counts only that preference. The next paper builds on this kind of picture.
 
 ---
 
@@ -3638,285 +3824,401 @@ So the transition can be in the decision boundary, not in the learning dynamics.
 
 ## Does partial credit remove the jump?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
-- three generative tasks, every BIG-Bench metric
-- BLEU, ROUGE: overlap with the answer
+<dl class="where card">
+<dt>Tasks</dt><dd>three generative BIG-Bench tasks, rescored with every metric BIG-Bench offers</dd>
+<dt>Each line</dt><dd>one metric on the same outputs</dd>
+<dt>Axes</dt><dd>training FLOPs (log); score (%)</dd>
+</dl>
+
+<p class="plain">BLEU, ROUGE: overlap of words with the target. BLEURT: a learned similarity score.</p>
 
 </div>
-<div class="text">
-
-- BLEURT: a learned similarity
-- every metric that moves still jumps
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig7.png" alt="Wei et al. Figure 7: modified arithmetic, IPA transliterate and periodic elements scored with exact match, BLEU, ROUGE, BLEURT and other metrics; under every metric that moves, the largest gains come at the last one or two models"></div>
+<div class="fig"><img src="img/week-06-wei-fig7.png" alt="Wei et al. Figure 7: modified arithmetic, IPA transliterate and periodic elements scored with exact match, ROUGE, BLEURT, BLEU, sequence F1 and multiple-choice grade; under every metric that moves, the largest gains come at the last one or two models"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · App. A.2, Fig. 7: exact match "is not a complete explanation of emergence on generative tasks". App. E lists periodic elements as smoothly increasing</p>
+<p class="footnote">Wei et al. 2022 · App. A.2, Fig. 7. Word unscramble and repeat copy logic left out: "exact match is the only most sensible evaluation metric" for them</p>
 
 Note:
-The authors go one step further. If exact match is the problem, metrics that give partial credit should smooth the curve. They rescore three generative tasks with every metric BIG-Bench provides: BLEU and ROUGE, which count overlapping words, and BLEURT, a learned similarity score. Under every metric that moves, the jump survives: BLEURT, and ROUGE on IPA, are above zero for small models, but the biggest gains are still at the last two models.
-Schaeffer's reply, next reading: these partial-credit metrics are still nonlinear in the per-token error.
+Appendix A.2 takes the metric question head on. If exact match is the problem, a metric that gives partial credit should smooth the curve. So they rescore three generative tasks with every metric BIG-Bench provides. ROUGE and BLEU count words and word sequences shared with the target. BLEURT is a learned score, a model trained to judge how similar two sentences are. Sequence F1 is word overlap as precision and recall. Each line is one metric applied to the same model outputs.
+Word unscramble is left out because for a single word, partial word overlap means nothing. Next slide: one panel up close.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.1 · their conclusion</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.2 · Fig. 7A</p>
 
-## So what did Wei conclude?
+## Arithmetic, scored seven ways
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>BLEURT</dt><dd>12 to 22 up to $2.3\times10^{22}$, then 35, 44</dd>
+<dt>Exact, ROUGE-1, F1</dt><dd>about 0, then 8 and 16 at the top two</dd>
+<dt>BLEU, ROUGE-2</dt><dd>0 throughout: a one-number answer has no word pairs to match</dd>
+</dl>
+
+<p class="plain">Even the one metric above zero for small models makes its largest gains at the last two models.</p>
+<p class="plain">The paper: exact match "is not a complete explanation".</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig7a.png" alt="Wei et al. Figure 7A: modified arithmetic under seven metrics; BLEURT rises from 12 to 22 and then to 44, the others stay at zero until the last two models"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · App. A.2, Fig. 7A, values from the TeX. Schaeffer et al. (next) argue these partial-credit metrics still punish small errors sharply</p>
+
+Note:
+Modified arithmetic, rescored. Exact match, ROUGE-1 and sequence F1 sit near zero for small models and reach 8 and 16 at the last two. BLEU and ROUGE-2 stay at zero throughout, because they count runs of several words and the answer is a single number. BLEURT is the exception: it's above zero from the start, rising slowly from about 12 to 22, then jumping to 35 and 44 at the last two models.
+The authors' reading: even a metric that does give partial credit makes its biggest gains at the largest models, so exact match "is not a complete explanation of emergence on generative tasks". Remember this slide for Schaeffer. Their reply is that BLEU and ROUGE still behave sharply when the answer is a short number, so these aren't the smooth metrics they look like. We'll see that argument in the next reading.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.1 and App. A · the authors' conclusion</p>
+
+## What did Appendix A settle?
 
 <div class="cols">
 <div class="text">
 
-- the metric hides some progress
-- but is "at best an incomplete explanation"
-- classification tasks jump too
-- partial credit still jumps
-- (and they note an elbow in the loss)
+<p class="plain"><b>It found</b></p>
+
+- Small models do improve: the loss on the answer falls.
+- The score hides that improvement.
+- An elbow in the loss where the score jumps.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Can we predict where the jump will be?</p>
-<p class="a"><b>A.</b> Their own answer: no</p>
+<p class="plain"><b>It did not</b></p>
 
-<blockquote>"this analysis does not explain why downstream metrics are emergent or enable us to predict the scale"</blockquote>
+- Explain why the score jumps where it does.
+- Predict the scale of a jump from small models.
+- Remove the jump with partial credit.
 
 </div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · §5.1, App. A.1, A.2</p>
+<blockquote>"this analysis does not explain why downstream metrics are emergent or enable us to predict the scale at which emergence occurs"</blockquote>
+
+<p class="footnote">Wei et al. 2022 · §5.1; App. A.1: "these tasks are still considered emergent"</p>
 
 Note:
-Their conclusion is careful. The metric does hide incremental progress, they agree. But they call it at best an incomplete explanation, for two reasons: classification tasks are emergent too, and partial-credit metrics still show the jump. They also note an elbow in the loss at the same scale.
-And they say plainly that their analysis doesn't explain why the downstream metrics jump, or let you predict at what scale. Keep that sentence for the next reading.
-
----
-
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.1 Potential explanations</p>
-
-## Could there be a real mechanism?
-
-<div class="cols">
-<div class="text">
-
-- depth: $l$ sequential steps may need $O(l)$ layers
-- knowledge: more parameters store more facts
-- composition (ours): $k$ sub-skills, $P = p(N)^k$
-- or a new strategy that ties them (ours)
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Can exact match tell these apart?</p>
-<p class="a"><b>A.</b> No. Score the sub-steps instead</p>
-<p class="q"><b>Their proposal</b></p>
-<p class="a">a synthetic task of compositional sub-tasks</p>
-
-</div>
-</div>
-
-<p class="footnote">Wei et al. 2022 · §5.1 (depth, memorisation), §5.6: "create a synthetic task that requires multiple compositional sub-tasks". The depth bound is an intuition, not a theorem for these benchmarks</p>
-
-Note:
-The authors give two possible mechanisms without settling on either; the compounding and new-strategy readings are ours. A task with l sequential steps might need a network with at least order-l layers; that's an intuition, not a general bound for Transformers. Knowledge-heavy tasks might need enough parameters to store the facts. Our addition: a task might need k sub-skills, each improving gradually, so the end-to-end success is p to the k: the same compounding as the toy. Or the model might learn a genuinely new strategy that coordinates them.
-Under exact-match accuracy those look the same. Mechanistically they're very different. That's why their suggested future work is the most testable idea in the paper: build a synthetic task from compositional sub-tasks, and watch each sub-task improve with scale.
+The conclusion is careful, and worth stating in both directions. They found that small models do improve: the loss on the correct answer falls where the score sits at random, and accuracy or exact match hides that. They also found an elbow in the loss at the jump.
+What they did not do: explain why the score jumps at that particular scale, or use the smooth loss to predict where a jump will come. And partial credit didn't remove the jumps. So they keep calling these tasks emergent, while saying in their own words that the analysis doesn't explain the jumps or let anyone predict them. That sentence is what Schaeffer et al. pick up.
 
 ---
 
 <p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.2 Beyond scaling</p>
 
-## Is model size the right axis?
-
-<table class="rules">
-  <tr><td>finding</td><td>smaller model</td><td>larger model</td></tr>
-  <tr><td>14 BIG-Bench tasks above random</td><td>PaLM 62B</td><td>GPT-3 175B, LaMDA 137B: at random</td></tr>
-  <tr><td>instruction tuning helps</td><td>T0 11B</td><td>FLAN needed 68B</td></tr>
-  <tr class="total"><td>preferred by human raters</td><td>InstructGPT 1.3B</td><td>much larger models</td></tr>
-</table>
-
-<p class="center"><b>If the threshold moves with the recipe, size isn't the whole story</b></p>
-
-<p class="footnote">Wei et al. 2022 · §5.2. Suggested reasons for PaLM: more multilingual and code data, split digit encodings; not ablated ("the computational cost would be too high")</p>
-
-Note:
-The paper's own counterweight to "just scale". PaLM 62B is above random on 14 BIG-Bench tasks where the bigger GPT-3 and LaMDA are not. Instruction tuning needed 68B in FLAN but worked at 11B in T0. InstructGPT at 1.3B was preferred by human raters over much larger models (Week 9).
-If the threshold moves this much with data, code, tokenization and training recipe, then model size can't be the full control variable.
-
----
-
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.3 · Fig. 4</p>
-
-## Maybe loss is the better axis?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- MMLU against FLOPs, parameters, perplexity
-- Gopher and Chinchilla: all three look alike
-
-</div>
-<div class="text">
-
-- because the three move together here
-- the test: models with equal loss, different size
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-wei-fig4.png" alt="Wei et al. Figure 4: top, training FLOPs against parameters and WikiText103 perplexity against FLOPs and parameters for Gopher and Chinchilla; bottom, MMLU accuracy against FLOPs, parameters and perplexity, each near 25% then rising"></div>
-</div>
-
-<p class="footnote">Wei et al. 2022 · §5.3, Fig. 4 (rendered from the paper's TeX): emergence "should probably be viewed as a function of many correlated variables". Du et al. 2024 (next reading) does this test</p>
-
-Note:
-They try one more axis: WikiText-103 perplexity, how well the model predicts held-out text. Plotted against compute, parameters or perplexity, MMLU looks similar for Gopher and Chinchilla, because in these families the three move together.
-The experiment that would separate them: two models of very different size that reach the same loss. If loss is what matters, they should be equally able; if raw capacity or architecture matters, they won't be. The paper doesn't run it. Du et al. 2024, in the next reading's sub-slides, does something close.
-
----
-
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.3, E · Fig. 8</p>
-
-## Which kinds of tasks look emergent?
+## Is size the whole story?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- all 210 BIG-Bench tasks, labelled by hand
-- 67 emergent, 58 smooth, 45 flat
-- most emergent: analogy, word sense, truthfulness
-- arithmetic, maths: few
-- "no clear trends"
+<dl class="where card">
+<dt>Each row</dt><dd>one ability the paper discusses</dd>
+<dt>Filled</dt><dd>a smaller model that shows it</dd>
+<dt>Open</dt><dd>larger models that lacked it, or where it was first seen</dd>
+</dl>
 
-<p class="q"><b>Q.</b> How solid are the labels?</p>
-<p class="a"><b>A.</b> Two co-authors' judgement</p>
+<p class="plain">If a smaller model can have it, scale was not the only cause.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-beyond.svg" alt="Our picture of section 5.2: PaLM 62B above random on 14 BIG-Bench tasks where LaMDA 137B and GPT-3 175B are not; T0 11B gets instruction following first seen in FLAN 68B; InstructGPT 1.3B preferred over GPT-3 175B"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §5.2 (our picture) and App. F. Suggested reasons for PaLM: higher-quality data, more multilingual and code data, split digit encodings; not ablated: "the computational cost would be too high"</p>
+
+Note:
+Section 5.2 is the paper's own counterweight. Three examples. PaLM 62B is above random on 14 BIG-Bench tasks where LaMDA 137B and GPT-3 175B are at random, even though it's smaller and used less compute; the 14 tasks are listed in Appendix F. Instruction tuning first worked at 68B in FLAN, then T0 got it at 11B with a different architecture. InstructGPT at 1.3 billion, fine-tuned with human feedback, was preferred by human raters over much larger models (Week 9).
+The point: if the same ability can appear in a smaller model trained differently, then model size alone didn't cause it. Data, architecture and training recipe all move the threshold. The paper suggests reasons for PaLM, better and more multilingual data, code, splitting numbers into single digits, but couldn't test them, because retraining these models is too expensive. That's the fairness question again: across families, many things change at once.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.3 Another view of emergence · Fig. 4</p>
+
+## Is model size the right $x$ axis?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Models</dt><dd>Gopher and Chinchilla, 4 sizes each</dd>
+<dt>Top</dt><dd>how FLOPs, parameters and WikiText-103 perplexity relate</dd>
+<dt>Bottom</dt><dd>MMLU against each of the three</dd>
+</dl>
+
+<p class="plain">Perplexity: how surprised the model is by held-out Wikipedia text. Lower is better.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig4.png" alt="Wei et al. Figure 4: top, training FLOPs against parameters and WikiText103 perplexity against FLOPs and parameters for Gopher and Chinchilla; bottom, MMLU accuracy against FLOPs, parameters and perplexity, each near 25% then rising"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §5.3, Fig. 4 (rendered from the paper's TeX). WikiText-103: a held-out set of Wikipedia articles; perplexity $= e^{\text{loss}}$</p>
+
+Note:
+Section 5.3 asks whether model size, or compute, is even the right thing to plot against. An alternative: plot against how good the model is at language in general, measured by its perplexity on WikiText-103, a held-out set of Wikipedia text. Perplexity is the exponential of the loss: roughly, how many equally likely next tokens the model is choosing between. Lower is better.
+The top row shows how the three candidate axes relate for Gopher and Chinchilla; the bottom row plots MMLU against each one. Next slide, the bottom row up close.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.3 · Fig. 4, bottom row</p>
+
+## MMLU against FLOPs, size and perplexity
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Left to right</dt><dd>$x$ = training FLOPs; parameters; WikiText-103 perplexity (reversed)</dd>
+<dt>Each point</dt><dd>one model's MMLU accuracy</dd>
+</dl>
+
+<p class="plain">Against FLOPs or perplexity, the two families overlap. Against size, Chinchilla jumps 4x earlier.</p>
+<p class="plain">The test this can't run: equal loss, different size.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig4-mmlu.png" alt="Wei et al. Figure 4, bottom row: MMLU accuracy for Gopher and Chinchilla against training FLOPs, model parameters and WikiText103 perplexity; the two families overlap against FLOPs and perplexity and separate against parameters"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §5.3, Fig. 4: the correlation with perplexity "may not hold in the future"; emergence "should probably be viewed as a function of many correlated variables". In the right panel, Gopher's points are drawn at Chinchilla's perplexities (fact sheet)</p>
+
+Note:
+The bottom row. On the left, MMLU against training compute: Gopher and Chinchilla nearly overlap, because they used similar compute at each step. In the middle, against parameters: they separate, Chinchilla reaching 67% at 70B while Gopher needs 280B for 60%. On the right, against perplexity, with the axis reversed so better models are to the right: they overlap again.
+So within these two families, compute and perplexity line up, and the paper says MMLU looks emergent against either. But it's careful: that correlation holds for these models and "may not hold in the future", for example for retrieval models that get low perplexity with fewer parameters.
+Notice what this figure can't test. To learn whether loss alone predicts the jump, you'd want models with the same loss but very different sizes. Here, at every loss level there are only these two families, which line up. That's the bridge to your question of what a fair comparison would need.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · beyond the paper · comparing models fairly</p>
+
+## What would a fair comparison need?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- **Fixed data:** one $D$, vary $N$. What GPT-3, Gopher, PaLM did.
+- **Fixed compute:** many $(N, D)$ with equal $6ND$; take the best (Chinchilla).
+- **Equal loss:** different sizes, same loss. Does size matter beyond loss?
+- One grid of $N \times D$, one recipe, several seeds, answers all three.
+
+</div>
+<div class="fig"><img src="img/week-06-wei-designs.svg" alt="Illustration on the parameters-tokens map: a horizontal fixed-data line, a dashed fixed-compute diagonal, the dotted compute-optimal line D = 20N meeting it at about 70B, and a dash-dot equal-loss curve from Chinchilla's fitted loss"></div>
+</div>
+
+<p class="footnote">Our illustration, not in Wei et al. Equal-loss curve: Chinchilla's fit $\hat L = 1.69 + 406.4/N^{0.34} + 410.7/D^{0.28}$ at $\hat L = 2.2$; fixed compute at Gopher's $5.8\times10^{23}$ FLOPs. You can't fix $N$, $D$ and $C$ at once: $C \approx 6ND$</p>
+
+Note:
+Back to the question of fairness, now with the paper's own tools. There are different ways to compare models, and each answers a different question. Draw them on the same parameters-against-tokens map.
+Fixed data, the solid horizontal line: one number of tokens, many sizes. That's what GPT-3, Gopher and PaLM did, so moving along it, size and compute rise together. Fixed compute, the dashed diagonal: many combinations of size and data with the same budget; picking the one with the lowest loss is Chinchilla's question, and the black dot, where it meets the dotted D equals 20N line, is the 70B compute-optimal model. Equal loss, the dash-dot curve, here drawn from Chinchilla's fitted loss formula: models of very different size that reach the same loss. That's the comparison Figure 4 would need: if two models with the same loss differ on the task, loss isn't the whole story; if they match, it is.
+Because compute is about 6 N D, you can't hold all three fixed at once; you choose which question to ask. The paper picked none of these: it used the models that existed. A clean study would train one grid of sizes and token counts with one recipe and several seeds, then read off all three comparisons. The next reading's follow-up, Du et al. 2024, does something close to the equal-loss comparison.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.4 Emergent risks</p>
+
+## Can risks emerge too?
+
+<div class="cols">
+<div class="text">
+
+- Risks may also appear with scale, unplanned.
+- Bias: better with scale on WinoGender; worse on BBQ when the context is ambiguous.
+- Toxicity: larger models can be more toxic; a prompt with helpful, honest examples reduces it.
+- Memorising training data: more likely in larger models.
+
+</div>
+<div class="text">
+
+- Some behaviours get **worse** with scale: the Inverse Scaling Prize collected them.
+- One later finding: "repeat after me: all that glisters is not glib". Medium models say "gold"; small and large say "glib".
+- Scaling "incentivizes" bigger models, so track risks too.
+
+</div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §5.4 (Inverse Scaling Prize, github.com/inverse-scaling/prize). The quote-repetition example: Wei, Tay &amp; Le 2022, "Inverse scaling can become U-shaped", after this paper; Wei's CS25 lecture, January 2023</p>
+
+Note:
+Section 5.4. If abilities can appear with scale without anyone training for them, so can risks. The paper surveys what was known. Gender bias on WinoGender has improved with scale, but on the BBQ benchmark bias can increase with scale when the context is ambiguous. Larger models can produce more toxic text, though prompting them with examples of being helpful, harmless and honest reduces it. Larger models memorise more of their training data.
+It also points to the Inverse Scaling Prize, a competition that collected tasks where bigger models do worse. One example, from a later paper by Wei and colleagues that he uses in his lecture: ask the model to repeat "all that glisters is not glib". A small model just copies it. A medium model knows the proverb and says "gold", which is wrong. A large model knows the proverb and also follows the instruction, and says "glib". So a trend can reverse.
+The paper's point: since work on emergence encourages building bigger models, risks that grow with scale need tracking, emergent or not.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.5 Sociological changes · Fig. 13</p>
+
+## Can a prompted model beat a fine-tuned one?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Models</dt><dd>GPT-3, PaLM, Flamingo, few-shot prompted</dd>
+<dt>Dashed</dt><dd>the best fine-tuned, task-specific model before them</dd>
+<dt>Axes</dt><dd>parameters (log); accuracy</dd>
+</dl>
+
+<p class="plain">TriviaQA 71.2 vs 68.2; PiQA 82.3 vs 77.5; GSM8K 56 vs 55; OKVQA 57.8 vs 54.4.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-wei-fig13.png" alt="Wei et al. Figure 13: few-shot prompting accuracy against parameters for GPT-3 on TriviaQA and Physical QA, PaLM on GSM8K and Flamingo on OKVQA, each rising smoothly and passing the dashed prior fine-tuned state of the art at the largest model"></div>
+</div>
+
+<p class="footnote">Wei et al. 2022 · §5.5, App. D, Fig. 13: "These abilities are not necessarily emergent since they have smooth, predictable scaling curves." GSM8K is grade-school maths; OKVQA asks questions about images</p>
+
+Note:
+Section 5.5 is about a different kind of change: in how the field works. NLP used to build one model per task, fine-tuned on that task's data. Figure 13, in the appendix, shows the turning point: a general model, only prompted with a few examples, beating the best fine-tuned model. GPT-3 175B on TriviaQA and on physical commonsense questions; PaLM 540B on grade-school maths; Flamingo 80B, which reads images, on visual question answering.
+Notice the curves: they rise smoothly. The authors say so themselves: these are not emergent abilities. What's emergent here, in their sense, is sociological: the switch toward general-purpose models, and the applications that followed.
+
+---
+
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · App. A.3, App. E · Fig. 8</p>
+
+## Which BIG-Bench tasks look emergent?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Tasks</dt><dd>all 210 BIG-Bench tasks, labelled by two co-authors</dd>
+<dt>Each bar</dt><dd>one keyword; split into emergent (LaMDA/GPT-3, PaLM), smooth, flat</dd>
+</dl>
+
+- 67 emergent, 58 smooth, 45 flat, 40 other.
+- Most emergent share: analogy, word senses, truthfulness.
+- Arithmetic and maths: few. "No clear trends."
 
 </div>
 <div class="fig"><img src="img/week-06-wei-fig8.png" alt="Wei et al. Figure 8: number of BIG-Bench tasks per keyword tag, split into emergent with LaMDA or GPT, emergent with PaLM, smoothly increasing and flat"></div>
 </div>
 
-<p class="footnote">Wei et al. 2022 · App. A.3, E, Fig. 8 (rendered from the paper's TeX). 67 = 25 emergent with LaMDA/GPT-3 + 42 with PaLM; 40 "other" (our count of App. E)</p>
+<p class="footnote">Wei et al. 2022 · App. A.3, App. E, Fig. 8 (rendered from the paper's TeX). Counts: our count of App. E (25 emergent with LaMDA/GPT-3, 42 with PaLM). "Other": too few examples, not correlated with scale, and so on</p>
 
 Note:
-They labelled all 210 BIG-Bench tasks by hand: emergent, smoothly increasing, flat, or other (not correlated with scale, worse with scale, too few examples, incomplete evaluations). By our count of their appendix: 67 emergent, 58 smooth, 45 flat, 40 other. Two co-authors agreed on each emergent label.
-By keyword, the most emergent categories include analogical reasoning, word-sense disambiguation, truthfulness, social reasoning and emotional understanding. Arithmetic and mathematics have relatively few, which surprised them, since the earliest examples of emergence were on arithmetic. Their own summary: no clear trends.
-Limits: categories overlap, groups differ in size, and "emergent" rests on a judgement about how far above chance counts. Exploratory, not a controlled finding about which skills have transitions.
+Appendix A.3. The authors went through all 210 BIG-Bench tasks by hand and labelled each: emergent, smoothly increasing, flat, meaning no model beats random, or other. By our count of their appendix: 67 emergent, of which 25 already with LaMDA or GPT-3 and 42 only with PaLM; 58 smooth; 45 flat; 40 other, for example too few examples to tell. Because "near random" is a judgement, two co-authors had to agree on every emergent label.
+Each bar is one BIG-Bench keyword, split by label. The keywords with the highest share of emergent tasks are analogical reasoning, word sense, truthfulness, social reasoning and emotional understanding. Arithmetic and maths have relatively few, which surprised them, since the first examples of emergence were arithmetic. Their summary: no clear trends. The flat tasks, visual reasoning most of all, are the candidates for future emergence.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · Later work</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · §5.6 Directions, §6 Conclusions</p>
 
-## The challenge that came next
+## What do the authors say comes next?
 
 <div class="cols">
 <div class="text">
 
-- Schaeffer et al. 2023: "a mirage?"
-- same outputs, different metrics
-- over 92% of claims: two metrics
-- continuous metric: many jumps vanish
-- not a proof there is no emergence
+- Scale further, and train better: more data, better architectures.
+- Better prompting may bring abilities to smaller models.
+- The 45 flat tasks are where to look for the next ones.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Settled, then?</p>
-<p class="a"><b>A.</b> No: against loss, thresholds remain (Du 2024)</p>
+- Understand emergence: their analyses "did not provide complete answers".
+- Their proposed test: a synthetic task made of sub-tasks; watch each sub-task as scale grows.
 
 </div>
 </div>
 
-<p class="footnote">Schaeffer, Miranda &amp; Koyejo 2023, arXiv:2304.15004 (Reading 4). Du et al. 2024, arXiv:2403.15796. See also Lu et al. 2024 on in-context learning, arXiv:2309.01809</p>
+<p class="footnote">Wei et al. 2022 · §5.6: "create a synthetic task that requires multiple compositional sub-tasks and evaluate how each of those sub-tasks improve with scale"; §6: emergent abilities "are unpredictable"</p>
 
 Note:
-Brief, because it's the next reading. In 2023 Schaeffer, Miranda and Koyejo took fixed model outputs and rescored them. Over 92% of the hand-labelled emergent BIG-Bench cases use one of two metrics, exact string match or multiple-choice grade, and switching to a continuous metric removes many of the jumps. They can even create jumps on purpose in vision models.
-That's strong evidence against treating a sharp benchmark curve as proof of a phase transition. It doesn't show that all capabilities change smoothly. Du et al. 2024 plot performance against pre-training loss and still find thresholds under continuous metrics. Lu et al. argue many emergent abilities are in-context learning combined with memory and linguistic competence. The question is open.
+Section 5.6 lists future work. Keep scaling, but also train better: Chinchilla is cited for data, and sparse models and retrieval for efficiency. Better prompting might bring emergent abilities down to smaller models. The flat BIG-Bench tasks, things like chess and hard maths, are the obvious candidates for the next emergent abilities.
+And understanding emergence, which they admit they haven't done: their analyses "did not provide complete answers to why emergence occurs or how to predict it". Their most testable suggestion: build a synthetic task out of several sub-tasks and measure each sub-task as models grow. If each sub-task improves smoothly and the whole task only works once all of them are good enough, the jump is the sub-tasks combining. That's very close to the argument in the next reading.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · a proposal</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · the first author's lecture, CS25, January 2023</p>
 
-## What experiment would settle it?
+## What does Wei say in his own lecture?
 
 <div class="cols">
 <div class="text">
 
-- one model family, a synthetic task
-- dense sizes, several seeds
-- measure: accuracy, log-likelihood, margin
-- and the correctness of each sub-step
-- predict large from small, with error bars
+- You can't predict these abilities from small models.
+- The subtext: "why we should keep scaling".
+- The opposite case: one narrow task, a small budget, lots of data. Small models win there.
+- Predicting emergence: "haven't seen a lot of work".
 
 </div>
 <div class="text">
 
-<p class="q"><b>If only accuracy jumps</b></p>
-<p class="a">no new mechanism needed</p>
-<p class="q"><b>If sub-steps and internals jump too</b></p>
-<p class="a">look for the mechanism, with controls</p>
+<p class="plain">A student asked: does exact match make things look emergent?</p>
+
+<blockquote>"even if you use partial credit metrics you'll often still see the same type of emergence"</blockquote>
+
+<p class="plain">Schaeffer et al. test exactly this.</p>
 
 </div>
 </div>
 
-<p class="footnote">Our proposal, building on the paper's §5.6 suggestion; not in Wei et al.</p>
+<p class="footnote">Wei, "Scaling unlocks emergent abilities in language models", Stanford CS25, 24 Jan 2023 (slides and YouTube transcript). Not part of the paper</p>
 
 Note:
-How would you tell a metric effect from a real change? Two hypotheses. One: the model's relevant quantities improve smoothly, and a thresholded metric turns that into a jump. Two: the model learns a qualitatively different strategy over a narrow range of scale.
-A minimal test: one model family, a synthetic task with known intermediate steps, a dense set of sizes and several seeds. Measure final accuracy, the log-likelihood of the answer, the decision margin, and whether each intermediate step is right. Fit on small models and predict the large ones with uncertainty.
-If accuracy jumps while everything else is smooth, there's no reason to invoke a new mechanism. If the sub-steps and the model's internal computation also change reproducibly, then mechanistic emergence becomes interesting, and you'd still need controls for optimisation, data coverage and parameterisation.
+A step outside the paper. Six months after it was published, Jason Wei gave a lecture on it in Stanford's CS25 course. His summary slide says you can't predict these abilities by looking at small models. He's open about the subtext: emergence is an argument for why we should keep scaling, because these abilities are hard to find any other way. He also names the opposite case from industry: when you know the one task you need, have a tight compute budget and lots of in-domain data, as with a translation product, a small model trained for that task is the right choice. And he says almost no one is working on predicting emergence.
+In the questions, a student asked whether the way the tasks are scored, with credit only for a perfect answer, makes things look emergent. His answer is on the slide: even with partial-credit metrics you often still see the jump. That's Appendix A.2, Figure 7. Three months after this lecture, Schaeffer, Miranda and Koyejo published a paper testing exactly that question. That's the next reading.
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · later work</p>
 
-## How the four readings connect
+## What came after?
 
-<table class="rules">
-  <tr><td>reading</td><td>contribution</td><td>key object</td></tr>
-  <tr><td>Kaplan 2020</td><td>loss scales predictably</td><td>$L(N) \propto N^{-\alpha}$</td></tr>
-  <tr><td>Chinchilla 2022</td><td>how to split compute</td><td>$N_{\rm opt}, D_{\rm opt} \propto C^{0.5}$</td></tr>
-  <tr><td>Wei 2022</td><td>abilities can look sudden</td><td>$A_{\rm task}(C)$ rises sharply</td></tr>
-  <tr class="total"><td>Schaeffer 2023</td><td>maybe the metric</td><td>smooth $p$, thresholded score</td></tr>
-</table>
+<div class="cols">
+<div class="text">
 
-<p class="footnote">Kaplan et al. 2020; Hoffmann et al. 2022; Wei et al. 2022; Schaeffer et al. 2023</p>
+- **Schaeffer et al. 2023** (next): rescore the same outputs; many jumps vanish with a continuous metric.
+- **Du et al. 2024:** plot against pre-training loss; some thresholds remain.
+- **Lu et al. 2024:** many "emergent" abilities may be in-context learning plus memory.
+
+</div>
+<div class="text">
+
+- Not settled: is there an internal change at a reproducible scale that survives a change of metric?
+
+</div>
+</div>
+
+<p class="footnote">Schaeffer, Miranda &amp; Koyejo 2023, arXiv:2304.15004 (Reading 4). Du et al. 2024, arXiv:2403.15796. Lu et al. 2024, arXiv:2309.01809</p>
 
 Note:
-The thread so far. Kaplan: loss follows predictable power laws. Chinchilla: how to divide a compute budget between size and data. Wei: smooth loss can coexist with task scores that rise sharply. Schaeffer, next: some of those rises come from scoring smoothly improving predictions with thresholded metrics.
+Briefly, because the next reading is the main follow-up. Schaeffer, Miranda and Koyejo took fixed model outputs and rescored them: most of the BIG-Bench emergent cases use one of two metrics, and switching to a continuous metric removes many of the jumps. They also manufactured jumps on purpose in vision models.
+Du et al. 2024 did something close to the equal-loss comparison: they plot task performance against pre-training loss, for models of different sizes, and still find thresholds for some tasks even with continuous metrics. Lu et al. argue many so-called emergent abilities are in-context learning combined with memorised knowledge.
+So the question is open: is there an internal change at a reproducible scale that survives changing the metric and the prompt?
 
 ---
 
-<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Wei et al. 2022</span> · summary</p>
 
 ## What to keep from Wei
 
 <div class="cols">
 <div class="text">
 
-- many task curves: flat, then steep
-- study abilities, not just average loss
-- App. A: loss improves while scores don't
-- the phase-transition analogy is weakest
-- picked from existing benchmarks, not predicted
+- Many task curves: near random over several sizes, then a rise.
+- Study abilities, not only average loss.
+- The thresholds move with data and recipe (§5.2).
+- App. A: loss on the answer improves while the score doesn't.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Open question</b></p>
-<p class="a">Is there an internal change at a reproducible scale that survives a change of metric and prompt?</p>
+- A survey of other labs' models: not controlled for data, recipe or loss.
+- Picked from existing benchmarks, not predicted in advance.
+- "Phase transition" is the weakest claim.
 
 </div>
 </div>
 
-<p class="footnote">Wei et al. 2022. Next: Schaeffer et al. 2023 turns the metric critique into a testable argument</p>
+<p class="footnote">Wei et al. 2022. Next: Schaeffer et al. 2023 turn the metric question into a testable argument</p>
 
 Note:
-What to keep. The observation is solid: on many tasks, measured accuracy barely moves over several model sizes and then rises quickly. The paper made capability-specific scaling a subject in its own right. Its most revealing analysis is in Appendix A, where task cross-entropy improves while accuracy stays flat, which opens the door to the measurement explanation.
-The weakest part is the physics analogy: a sudden rise in a benchmark score isn't evidence of a phase transition inside the network. And there's a selection issue: the examples were picked from existing benchmarks because they looked emergent; no threshold was predicted in advance and then confirmed. So the paper shows apparent capability jumps exist much more convincingly than it shows they're fundamentally unpredictable.
-The open question: can we find an internal computational change that happens at a reproducible scale, survives changes of metric and prompt, and can't be explained by smoothly improving probabilities?
+What to keep. The observation is solid: on many tasks, measured performance sits near random over several model sizes and then rises quickly. The paper made the scaling of specific abilities a subject of its own, beyond average loss. Its own section 5.2 shows the thresholds move with data and recipe. And its most revealing analysis is in Appendix A, where the loss on the correct answer improves while the score stays flat.
+The limits, on the right. It's a survey of other labs' models, so the comparisons aren't controlled for data, recipe or loss; that was the fairness question. The examples were picked from existing benchmarks because they looked emergent; no jump was predicted in advance and then confirmed. And the phase-transition language is the weakest part: a sharp benchmark curve isn't evidence of a phase transition inside the network.
+So the paper shows that apparent jumps exist much more convincingly than it shows they're fundamentally unpredictable. Next, Schaeffer et al. ask whether the jump is in the model or in the metric.
 
 
 
@@ -4158,7 +4460,7 @@ One caveat. e to the minus the average cross-entropy is the geometric mean of th
 <div class="fig"><img src="img/week-06-schaeffer-pL.svg" alt="Illustration: probability the whole answer is right against per-token probability p, for answers of 1, 3 and 5 tokens; the 5-token curve stays near zero until p is about 0.5 and then rises steeply, with points at 0.032%, 1.0%, 16.8% and 59.0%"></div>
 </div>
 
-<p class="footnote">Schaeffer et al. 2023 · §2. Illustration: tokens right or wrong independently, as in their model. The Wei section's toy used 10 tokens</p>
+<p class="footnote">Schaeffer et al. 2023 · §2. Illustration: tokens right or wrong independently, as in their model.</p>
 
 Note:
 Now the metric. Say the task is arithmetic and the answer is 12345. Exact match gives credit only if all five digits are right. If each digit is right with probability p, independently, the whole answer is right with probability p to the fifth. For length L, p to the L.
@@ -4955,7 +5257,7 @@ To their credit they say so: independence "is not true", and the appendix calls 
 <div class="fig"><img src="img/week-06-wei-sigmoid.svg" alt="Illustration: logistic curves in log compute with steepness 1, 3 and 10; all are continuous, and the steepest looks like a jump"></div>
 </div>
 
-<p class="footnote">Illustration from the Wei section: a logistic in log compute is continuous at any steepness. Our critique, not in the paper</p>
+<p class="footnote">Our illustration: a logistic in log compute is continuous at any steepness. Our critique, not in the paper</p>
 
 Note:
 The paper often contrasts discontinuous metrics with continuous ones. But continuity isn't enough. A continuous function can change extremely fast: one over one plus e to the minus 100 x goes from near zero to near one over a tiny range.
@@ -5083,7 +5385,7 @@ The ideal test: fit a curve on the smaller networks only, then predict the large
 </div>
 </div>
 
-<p class="footnote">Our framing, not in the paper. Compare the experiment proposed at the end of the Wei section</p>
+<p class="footnote">Our framing, not in the paper. Compare the experiment in the closing section</p>
 
 Note:
 If the question is whether a model really changes how it computes, separate three levels. Level one, output success: does the model produce usable answers? Level two, graded competence: probabilities, token errors, decision margins, accuracy on intermediate steps. Does the model improve before the final-answer metric notices? Level three, internal computation: for arithmetic, does the model represent carries, track digit positions, reuse operations?
@@ -5290,6 +5592,62 @@ First, predicting task performance, not just loss. Loss laws are reliable, but w
 Second, data. All four papers assume an endless supply of fresh text of fixed quality. Chinchilla's own speculation is that more data helps only if it is high quality, and modern training repeats data and filters hard.
 Third, compute at test time. The laws here are for training compute. Reasoning models spend compute when answering, which changes both the allocation question and what "scale" means (Week 8).
 Fourth, mechanism. None of the papers explains why a threshold would exist. Hu suggests multiple circuits; Du a loss threshold; neither is a mechanism yet.
+
+---
+
+<p class="eyebrow">What held up · the thread</p>
+
+## How do the four readings connect?
+
+<div class="cols">
+<div class="text">
+
+- **Kaplan 2020:** loss falls as a power law in size, data and compute.
+- **Chinchilla 2022:** at a fixed budget, grow size and data together, about 20 tokens per parameter.
+
+</div>
+<div class="text">
+
+- **Wei 2022:** task scores can sit at random, then rise, while loss falls smoothly.
+- **Schaeffer 2023:** many of those rises come from scoring smooth progress with a harsh metric.
+
+</div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020; Hoffmann et al. 2022; Wei et al. 2022; Schaeffer et al. 2023</p>
+
+Note:
+The thread through the four readings. Kaplan: loss follows predictable power laws in model size, data and compute. Chinchilla: at a fixed compute budget, grow model size and data together, about 20 tokens per parameter. Wei: task scores can sit at random over many sizes and then rise, even while loss falls smoothly. Schaeffer: many of those rises come from scoring smoothly improving predictions with metrics that only reward a perfect answer.
+
+---
+
+<p class="eyebrow">What held up · a proposal</p>
+
+## What experiment would settle it?
+
+<div class="cols">
+<div class="text">
+
+- One model family, a synthetic task with known sub-steps.
+- Many sizes, several seeds, one recipe.
+- Measure accuracy, the answer's log-likelihood, the margin, and each sub-step.
+- Fit the small models; predict the large ones, with error bars.
+
+</div>
+<div class="text">
+
+- If only accuracy jumps: no new mechanism is needed.
+- If the sub-steps and the internals jump too, at a reproducible scale: look for the mechanism, with controls.
+
+</div>
+</div>
+
+<p class="footnote">Our proposal, building on Wei et al. §5.6 ("a synthetic task that requires multiple compositional sub-tasks") and the Wei section's fair-comparison slide</p>
+
+Note:
+How would you tell a metric effect from a real change? Two hypotheses. One: the quantities that matter improve smoothly, and a metric that only rewards perfect answers turns that into a jump. Two: the model learns a qualitatively different way of solving the task over a narrow range of scale.
+A minimal test: one model family, a synthetic task with known intermediate steps, many sizes and several seeds, trained with one recipe so the comparisons are fair. Measure the final accuracy, the log-likelihood of the correct answer, the decision margin, and whether each intermediate step is right. Fit on the small models and predict the large ones, with uncertainty.
+If accuracy jumps while everything else is smooth, there's no reason to invoke a new mechanism. If the sub-steps and the model's internal computation also change, at a scale that reproduces across seeds, then mechanistic emergence becomes interesting, and you'd still need controls for optimisation, data coverage and parameterisation.
 
 ---
 
