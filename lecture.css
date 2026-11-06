@@ -314,5 +314,8 @@
 .reveal .frame dl.where { display: grid; grid-template-columns: fit-content(42%) 1fr; column-gap: 14px; row-gap: 3px; margin: 2px 0 12px 0; font-size: 21px; line-height: 1.3; text-align: left; }
 .reveal .frame dl.where dt { margin: 0; font-weight: 400; }
 .reveal .frame dl.where dd { margin: 0; }
+/* experiment card: what was trained, what varied, what one mark on the plot is (Week 6 Kaplan, revision 2) */
+.reveal .frame dl.where.card { border-left: 3px solid #c8c8c8; padding-left: 12px; }
+.reveal .frame dl.where.card dt { font-weight: 700; color: #444; }
 /* The equation read out in plain words, right under its legend. */
 .reveal .frame p.plain { font-size: 22px; margin: 0 0 12px 0; text-align: left; }

@@ -45,7 +45,7 @@ Reading 1 of 4. Kaplan, McCandlish and others at OpenAI, January 2020. This is a
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Motivation</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1 · the question</p>
 
 ## You have 10x more compute. Where does it go?
 
@@ -53,163 +53,159 @@ Reading 1 of 4. Kaplan, McCandlish and others at OpenAI, January 2020. This is a
 <div class="points">
 <div class="text">
 
-- a bigger model? more data?
-- train longer? a new architecture?
+- A bigger model? More data?
+- Train longer? A new architecture?
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Why not just try each one? <b>A.</b> One full-size run can cost millions</p>
-<p class="q"><b>Kaplan's bet:</b> loss is predictable from size, data and compute</p>
+<p class="plain">One full-size run can cost millions, so you cannot try them all.</p>
+<p class="plain">Kaplan's bet: test loss is predictable from model size, data and compute.</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig1.png" alt="Kaplan et al. Figure 1: test loss against compute, dataset size and parameters, each a straight line on log-log axes"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · arXiv:2001.08361 · Fig. 1</p>
+<p class="footnote">Kaplan et al. 2020 · arXiv:2001.08361 · Fig. 1, as a preview. Its three panels come from different runs; each comes back later with its own experiment</p>
 
 Note:
 Start with the practical problem. A lab has a budget. It can make the model bigger, give it more data, train it longer, or change the architecture. A full-size run costs too much to try every option, so you need a rule that says, before you spend the money, which knob to turn.
-Kaplan's bet is that the test loss depends mostly on three numbers, model size, data and compute, and in a predictable way. If that's true, you can train small models, fit the trend, and extrapolate. The figure on the right is the evidence they offer: three straight lines. The rest of this section asks whether those lines can be trusted, and what follows from them.
+Kaplan's bet is that the test loss depends mostly on three numbers, model size, data and compute, and in a predictable way. If that's true, you can train small models, fit the trend, and extrapolate.
+The figure is the paper's opening summary: three straight lines. Don't try to read it yet. Each panel comes from a different set of runs, and the paper earns each one in its own section. We'll do the same: setup first, then each panel with the experiment behind it.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.3 Notation</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.3 · notation</p>
 
-## What exactly is "loss"?
+## What exactly is the loss?
 
 <div class="cols">
 <div class="text">
 
 <div class="eq">$$L = -\frac{1}{T}\sum_{t=1}^{T} \log p_\theta(x_t \mid x_{\lt t})$$</div>
 
-- next-token cross-entropy
-- in nats; lower is better
-- perplexity $= e^{L}$
-- $L$: 3.0 ▸ 2.8 means perplexity 20.1 ▸ 16.4
+<dl class="where">
+<dt>$x_t$, $T$</dt><dd>the token at position $t$; the context length, 1,024</dd>
+<dt>$p_\theta$</dt><dd>the model's probability for the real next token</dd>
+</dl>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Is lower loss a smarter model?</p>
-<p class="a"><b>A.</b> Not measured here. Loss only, no benchmarks</p>
-<p class="q"><b>Q.</b> Loss on what?</p>
-<p class="a"><b>A.</b> Held-out WebText2, averaged over a 1,024-token context</p>
+- The next-token cross-entropy, in nats; lower is better.
+- Averaged over held-out WebText2 text.
+- Perplexity is $e^L$, so $L$ is the log of the perplexity.
+- $L$ from 3.0 to 2.8 is perplexity from 20.1 to 16.4.
+
+<p class="plain">Loss only: no benchmarks, no reasoning tests.</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §1.3, §2. Perplexity: the number of equally likely tokens the model is, on average, choosing between</p>
+<p class="footnote">Kaplan et al. 2020 · §1.3, §2.3 (test set: $6.6\times10^8$ tokens held out). Perplexity: roughly how many equally likely tokens the model is choosing between</p>
 
 Note:
-Everything in the paper is about one number: the average cross-entropy of the next token on held-out text. The model sees the tokens so far and puts a probability on the real next token; loss is minus the log of that probability, averaged.
-It's in nats, so e to the loss is the perplexity, roughly how many tokens the model is torn between. A drop from 3.0 to 2.8 looks small, but it takes perplexity from about 20 to about 16.
-Be clear about what this is not. It's not reasoning, instruction following or benchmark accuracy. Whether those scale the same way is a separate question, and it's the one the second half of today (Wei, Schaeffer) is about.
+Everything in the paper is about one number: the average cross-entropy of the next token on held-out text. The model sees the tokens so far and puts a probability on the real next token; the loss is minus the log of that probability, averaged over the positions of the context and over the test text.
+It's in nats, so e to the loss is the perplexity. Put the other way round, the loss is the log of the perplexity, not an average of perplexities. A drop from 3.0 to 2.8 looks small, but it takes perplexity from about 20 to about 16.
+Be clear about what this is not. It's not reasoning, instruction following or benchmark accuracy. Whether those scale the same way is a separate question, and it's the one the second half of today, Wei and Schaeffer, is about.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2 Background and methods</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2 · background and methods</p>
 
-## What did they actually train?
+## What did they train?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- decoder-only Transformers
-- WebText2: $2.29\times10^{10}$ tokens
-- 768 to 1.5B parameters (no embeddings)
-- data subsets: 22M to 23B tokens
-- BPE vocabulary 50,257; context 1,024
-- Adam (Adafactor for the largest)
-- $2.5\times10^{5}$ steps, $2^{19}$ tokens per batch
-- one schedule: 3,000-step warmup, cosine to zero
+- Decoder-only Transformers, like GPT-2.
+- WebText2: $2.29\times10^{10}$ tokens, a 50,257-token vocabulary, 1,024-token contexts.
+- Adam; Adafactor above 1B parameters.
+- Unless noted, every size: 250,000 steps of $2^{19}$ tokens (512 × 1,024).
+- One learning-rate schedule (right).
+
+<p class="plain">Exceptions: the data runs stop early, the batch runs change the batch, the schedule runs change the schedule.</p>
 
 </div>
-<div class="text">
-
-<p class="q"><b>Q.</b> What varies?</p>
-<p class="a"><b>A.</b> Size, shape, data, batch, training length</p>
-<p class="q"><b>Q.</b> What stays fixed?</p>
-<p class="a"><b>A.</b> The learning-rate schedule. Remember this</p>
-
-</div>
+<div class="fig"><img src="img/week-06-kaplan-schedule.svg" alt="Illustration: learning rate against training step, rising linearly to its peak over the first 3,000 steps, then falling along a cosine to zero at step 250,000"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §2.2, §2.3. Also evaluated on Books, Wikipedia, Common Crawl and other text (§3.2.2). The schedule holds "unless otherwise noted"</p>
+<p class="footnote">Kaplan et al. 2020 · §2.2, §2.3. 250,000 × $2^{19}$ ≈ $1.3\times10^{11}$ tokens, about 5.7 passes over WebText2 (ours). The peak learning rate is set by model size (App. D.6)</p>
 
 Note:
-The setup. GPT-2-style decoder-only Transformers trained on WebText2, an extended version of GPT-2's dataset, about 23 billion tokens. Models from 768 to 1.5 billion non-embedding parameters. For the data experiments, subsets from 22 million to 23 billion tokens.
-Unless otherwise noted, every run used Adam for 250,000 steps at about half a million tokens per batch, with one learning-rate schedule: a 3,000-step warmup, then a cosine decay to zero.
-Remember that one schedule. When Chinchilla disagrees two years later, it blames exactly this: compute-limited results were read partway through these long runs.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3, App. D · The experiments</p>
-
-## Which experiments did they run?
-
-<table class="rules">
-  <tr><td>#</td><td>varied</td><td>runs</td><td>gives</td><td>figures</td></tr>
-  <tr><td>1</td><td>model size</td><td>768 to 1.5B, all of WebText2</td><td>$L(N)$, $L(C)$, learning curves</td><td>1, 2, 4, 6, 8, 11, 13, 14</td></tr>
-  <tr><td>2</td><td>shape</td><td>fixed $N$: depth, width, heads, feed-forward</td><td>shape barely matters</td><td>5</td></tr>
-  <tr><td>3</td><td>model × data</td><td>22M to 23B tokens, early stop</td><td>$L(D)$, $L(N, D)$, overfitting</td><td>1, 4, 9, 16</td></tr>
-  <tr><td>4</td><td>batch size</td><td>3M and 85M models</td><td>critical batch $B_{\rm crit}(L)$</td><td>10, 18</td></tr>
-  <tr><td>5</td><td>schedule</td><td>a 3M model</td><td>schedule barely matters</td><td>22</td></tr>
-  <tr><td>6</td><td>architecture</td><td>LSTMs, recurrent Transformers</td><td>LSTMs worse on late tokens</td><td>7, 17</td></tr>
-  <tr><td>7</td><td>context</td><td>8-token contexts</td><td>better on the first tokens</td><td>21</td></tr>
-</table>
-
-<p class="footnote">Kaplan et al. 2020 · §3, App. D. The numbering is ours; the paper doesn't number its experiments. §6's compute allocation is fitted from 1 and 4, not new runs. Schedule: learning-rate schedule. Figures: the main ones</p>
-
-Note:
-The paper doesn't number its experiments, so here is the list we'll use for the rest of this section. Section 3 opens by naming what they varied: model size, dataset size, shape, context length and batch size. The appendices add a learning-rate schedule scan and the comparison with other architectures.
-Experiment 1 is the backbone: models from 768 to 1.5 billion non-embedding parameters, many shapes, all trained on the whole of WebText2 for 250,000 steps. Most of the paper's figures come from these runs: the size law, the compute law read off their learning curves, the learning-curve law, and the transfer to other text.
-Experiments 2, 3 and 4 each vary one more thing: the shape at fixed size; dataset size crossed with model size, with early stopping; and the batch size, on two small models. Keep experiment 4 in mind. Its critical batch size is what turns raw compute into the adjusted compute later on.
-Experiments 5, 6 and 7 are checks: the learning-rate schedule, LSTMs and recurrent Transformers, and models trained on an 8-token context.
-The compute-allocation result of Section 6 isn't a new experiment; it's fitted from experiments 1 and 4. From here on, the running header of each results slide says which experiment it comes from, or "from the fit" when the slide is derived rather than measured.
+The setup. GPT-2-style decoder-only Transformers trained on WebText2, an extended version of GPT-2's dataset, about 23 billion tokens, with GPT-2's tokenizer and 1,024-token contexts.
+Unless the paper says otherwise, every model, whatever its size, trains for the same 250,000 steps at the same batch of 512 sequences of 1,024 tokens, about half a million tokens a step. That's about 130 billion tokens per run, five or six passes over the data by our arithmetic. And every run uses the one schedule on the right: a 3,000-step linear warmup, then a cosine decay to zero at the last step.
+So yes, all the main models trained for the same number of steps. Three families of runs break that rule on purpose, and we'll name them when they come up: the data runs stop as soon as the test loss stops falling; the batch runs change the batch size; and the schedule runs try other schedules.
+Remember the one schedule. When Chinchilla disagrees two years later, it blames exactly this: losses for small budgets were read partway through these long runs.
 
 --
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1, 3 and 4 · How the figures are made</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. D.6 · the schedule runs · Fig. 22</p>
 
-## How do the same runs become most of the figures?
+## Does the schedule matter?
 
-<div class="rows">
-<div class="fig"><img src="img/week-06-kaplan-pipeline.svg" alt="Diagram: experiment 1's learning curves feed five uses: loss at the end of each run gives L(N) (Fig. 1 right, 6); the same models on other text give transfer (Fig. 8); rescaling to compute and taking the lowest curve gives the frontier L(C_min) (Fig. 1 left, 13); steps adjusted to S_min give the L(N, S) fit (Fig. 4 right, 11); the best N along the frontier gives N_opt proportional to C_min^0.73 (Fig. 14). Experiment 4's critical batch size adjusts the last three. Experiment 3, on data subsets with early stopping, separately gives L(D) and L(N, D) (Fig. 1 middle, 4 left, 9)"></div>
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>a 3M-parameter model, many times</dd>
+<dt>Varied</dt><dd>the learning-rate schedule: cosine, linear, faster and slower decays</dd>
+<dt>Each line</dt><dd>top: one schedule</dd>
+<dt>Each point</dt><dd>bottom: one run's final loss</dd>
+<dt>Axes</dt><dd>top: learning rate against step; bottom: loss against the learning rate summed over all steps</dd>
+</dl>
+
+<p class="plain">The final loss depends mostly on the summed learning rate, not the shape, given a warmup and a decay.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig22.png" alt="Kaplan et al. Figure 22: top, a variety of learning-rate schedules over 250,000 steps; bottom, final loss between about 3.7 and 3.9 against the learning rate summed over steps, nearly flat once the sum is large enough"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §2.2, §3.2, §3.3, §4, §5, §6. Diagram ours. $C_{\min} = C/(1 + B/B_{\rm crit}(L))$; Fig. 1 left is already on $C_{\min}$ (its footnote), Fig. 13 sets it beside raw $C$. 250k steps × $2^{19}$ tokens ≈ $1.3\times10^{11}$ tokens, about 5.7 passes over WebText2 (ours)</p>
+<p class="footnote">Kaplan et al. 2020 · App. D.6, Fig. 22: the schedule "is mostly irrelevant, as long as the total summed learning rate is sufficiently large". Here not decayed to zero. Run-to-run noise: about 0.05 in loss</p>
 
 Note:
-Most of the paper's figures are not separate experiments. They are the same experiment 1 runs, looked at in different ways.
-Every model in experiment 1 is trained the same way: 250,000 steps at a batch of 512 sequences of 1,024 tokens, so about half a million tokens per step, the same batch for every size. Nobody tuned the batch per model; the paper says the best batch is "a moving target". That's about 1.3 times 10 to the 11 tokens per run, roughly five or six passes over WebText2, by our arithmetic. The paper doesn't give the count; it says the models were trained near convergence with no overfitting except possibly the largest.
-The test loss is logged as each run trains. Those learning curves are Figure 2. From them: the final loss of each run against its size is L of N. Multiply the token axis by 6N to get compute, and the lowest curve at each compute value is the frontier, L of C.
-Experiment 4 comes in here. Its critical batch size converts the steps and compute of these fixed-batch runs into what they would have been at a small batch, S min and C min. With that, the curves fit L of N and S, Figure 4 right, and reading off the best model size along the frontier gives the allocation, Figure 14.
-L of D is the exception. It doesn't come from experiment 1 at all: it's experiment 3, one model trained on smaller and smaller subsets with early stopping.
+Optional. Why is it fair to use one schedule for everything? Appendix D.6 tries many on a small model, 3 million parameters: cosine, linear, and faster or slower decays, the top panel. The bottom panel puts each run's final loss against the learning rate summed over all its steps. Once that sum is large enough, the shape of the schedule barely matters, as long as there is a warmup and a decay.
+Two later findings qualify this. Chinchilla shows that a schedule much longer than the run hurts. Porian et al. show that at the small batches of compute-optimal small models, AdamW's beta-2 needs retuning.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2, §3 · the runs</p>
+
+## Which runs does the paper rely on?
+
+<div class="rows">
+<div class="fig"><img src="img/week-06-kaplan-runs.svg" alt="Illustration: six families of runs and the figures each gives. The size runs, 768 to 1.5B parameters on all of WebText2 for 250k steps: Figs. 1 left and right, 2, 4 right, 6, 8, 11, 13, 14. The shape runs, fixed size with one shape knob changed: Fig. 5. The data runs, subsets of 21M to 22B tokens stopped early: Figs. 1 middle, 4 left, 9. The batch runs, a 3M and an 85M model at many batch sizes: Figs. 10, 18. The schedule runs, a 3M model with many schedules: Fig. 22. The LSTM runs: Fig. 7"></div>
+<p class="plain">The size runs carry most of the paper: the same models, read at the end, along the way, and on other text.</p>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §2.2, §3 (what they varied), §4.2, §5.1, App. D. The paper does not number its experiments; the names are ours</p>
+
+Note:
+Here is the whole paper's evidence on one page. The paper doesn't number its experiments, so we name them by what they are, and each results slide from here on says which family its plot comes from.
+The size runs are the backbone: models from 768 to 1.5 billion non-embedding parameters, all trained the same way on all of WebText2. Most figures are these runs read differently: the final loss of each, the whole learning curve, the loss on other text.
+The other families each change one more thing. The shape runs hold the size fixed and change the shape. The data runs train on smaller subsets and stop early. The batch runs, on two small models, change the batch size. The schedule runs change the learning-rate schedule. The LSTM runs swap the architecture.
+Three figures need no new runs at all: Figures 3, 12 and 15 are computed from fitted equations.
 
 ---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §2.1 · Eq. 2.1</p>
 
-## Where does $N \approx 12\thinspace  n_{\rm layer}\thinspace  d_{\rm model}^2$ come from?
+## Where does $N \approx 12\thinspace n_{\rm layer}\thinspace d_{\rm model}^2$ come from?
 
 <div class="cols">
 <div class="text">
 
-- attention: $Q, K, V, O$, each $d \times d$: $4d^2$
-- MLP: $d \to 4d \to d$: $8d^2$
-- one layer: $12d^2$
-- all layers: $12\thinspace  n_{\rm layer} d^2$
-- embeddings left out: $n_{\rm vocab} d + n_{\rm ctx} d$
+- Attention: $Q, K, V, O$, each $d \times d$: $4d^2$.
+- MLP: $d \to 4d \to d$: $8d^2$.
+- One layer: $12d^2$; all layers: $12\thinspace n_{\rm layer} d^2$.
+- Left out: the embeddings, $n_{\rm vocab} d + n_{\rm ctx} d$.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Check it on GPT-2: 48 layers, $d$ = 1,600?</p>
-<p class="a"><b>A.</b> $12 \times 48 \times 1600^2 \approx 1.47$B</p>
-<p class="q"><b>Q.</b> Embeddings of that model?</p>
-<p class="a"><b>A.</b> $50{,}257 \times 1{,}600 \approx 80$M, about 5%</p>
+<p class="plain">GPT-2's largest shape, 48 layers and $d$ = 1,600: $12 \times 48 \times 1600^2 \approx 1.47$B.</p>
+<p class="plain">Its token table, $50{,}257 \times 1{,}600 \approx 80$M (about 5%), is not counted in $N$.</p>
 
 </div>
 </div>
@@ -217,9 +213,9 @@ L of D is the exception. It doesn't come from experiment 1 at all: it's experime
 <p class="footnote">Kaplan et al. 2020 · Eq. 2.1, Table 1 (with $d_{\rm attn} = d_{\rm ff}/4 = d_{\rm model}$). The 80M is our arithmetic</p>
 
 Note:
-Where the parameter count comes from. In each layer, attention has four d-by-d matrices (queries, keys, values, output), 4 d squared. The MLP goes from d to 4d and back, 8 d squared. Twelve d squared per layer, times the number of layers. Biases and norms are tiny and ignored.
+Where the parameter count comes from. In each layer, attention has four d-by-d matrices, queries, keys, values and output: 4 d squared. The MLP goes from d to 4d and back: 8 d squared. Twelve d squared per layer, times the number of layers. Biases and norms are tiny and ignored.
 Check it on GPT-2's largest shape: 48 layers, width 1,600. Twelve times 48 times 1,600 squared is about 1.47 billion, the "1.5B" model.
-The embeddings, token and position tables, are left out of N. For this model the token table is about 80 million, 5% of the total. For small models it's a much bigger share, which comes back later.
+The embeddings, the token and position tables, are left out of N. For this model the token table is about 80 million, 5% of the total. For small models it's a much bigger share, which comes back with Figure 6.
 
 ---
 
@@ -230,499 +226,1091 @@ The embeddings, token and position tables, are left out of N. For this model the
 <div class="cols">
 <div class="text">
 
-- forward: one multiply-add per weight: $2N$
-- backward: about twice the forward: $4N$
-- per token: $6N$
-- whole run: $C \approx 6N \times$ tokens $= 6NBS$
-- fixed $C$: bigger $N$ means fewer tokens
+- Forward: one multiply-add per weight: $2N$.
+- Backward: about twice the forward: $4N$.
+- Per token: $6N$; a whole run: $C \approx 6NBS$.
+- Fixed $C$: a bigger $N$ means fewer tokens.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> What does $6N$ leave out?</p>
-<p class="a"><b>A.</b> Attention over the context, and the output layer</p>
-<p class="q"><b>Q.</b> Does that matter?</p>
-<p class="a"><b>A.</b> For small models, yes (end of section)</p>
+<p class="plain">Left out: attention over the context, and the output layer.</p>
+<p class="plain">For small models these matter (Porian et al. 2024, last slide).</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §2.1, Table 1. $B$: tokens per batch; $S$: steps; 1 PF-day = $8.64\times10^{19}$ FLOPs. Table 1 lists the output layer's $2 d_{\rm model} n_{\rm vocab}$ FLOPs, then drops them from the total</p>
+<p class="footnote">Kaplan et al. 2020 · §2.1, Table 1. $B$: tokens per batch; $S$: steps; 1 PF-day = $8.64\times10^{19}$ FLOPs. Table 1 lists the output layer's $2 d_{\rm model} n_{\rm vocab}$ FLOPs, then drops them</p>
 
 Note:
-Compute. In the forward pass each weight is used once per token, a multiply and an add, so 2N FLOPs. The backward pass costs about twice the forward pass, 4N. Six N per token.
-Multiply by tokens processed and you get the budget: C is about 6 N B S, batch times steps being the number of tokens. This one line is the whole trade-off of the next two papers: with C fixed, a bigger model means fewer tokens.
-What it leaves out: the attention computation over the context, which the paper says matters only for very long contexts, and the output layer's FLOPs, which Table 1 lists and then drops. In 2024 Porian et al. show that dropping the output layer is one of the reasons Kaplan's allocation came out wrong.
+Compute. In the forward pass each weight is used once per token, a multiply and an add, so 2N FLOPs. The backward pass costs about twice the forward, 4N. Six N per token.
+Multiply by the tokens processed and you get the budget: C is about 6 N B S, batch times steps being the number of tokens. This one line is the whole trade-off of the next two papers: with C fixed, a bigger model means fewer tokens.
+What it leaves out: the attention computation over the context, which the paper says matters only for long contexts, and the output layer's FLOPs, which Table 1 lists and then drops. In 2024 Porian et al. show that dropping the output layer is one reason Kaplan's allocation came out wrong.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §1.1 · Fig. 2</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5</p>
 
-## Does even one training run follow a power law?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- plot loss against tokens seen
-- after warmup: a straight-ish line on log axes
-- bigger models: lower, and faster
-- the same shape at every size
-
-<p class="q"><b>Q.</b> Seen this in nanoGPT?</p>
-<p class="a"><b>A.</b> Yes: loss vs tokens bends the same way</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig2.png" alt="Kaplan et al. Figure 2: test loss against tokens processed and against compute for models from 10^3 to 10^9 parameters; larger models reach a given loss with fewer tokens, and the compute-efficient frontier stops well short of convergence"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 2. "Training curves follow predictable power-laws whose parameters are roughly independent of the model size" (§1.1)</p>
-
-Note:
-Before the formal laws, the place most of us have already seen a power law: a single training run. Plot the loss of a nanoGPT run against tokens seen, on log axes, and after the first few hundred steps it bends into something close to a straight line, then flattens.
-Figure 2 is that, for models from a thousand to a billion parameters. Two things to notice. Bigger models are lower everywhere, and they get to a given loss with fewer tokens, which the paper calls sample efficiency. And the curves have the same shape at every size; the paper says the parameters of the training curve are roughly independent of model size.
-That regularity is the hint that loss as a function of scale might be a power law too. The next slide makes it precise.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §5.2 · Eq. 1.6, Fig. 4</p>
-
-## A power law in steps, on top of a floor
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$L(N,S) = \Big(\frac{N_c}{N}\Big)^{\alpha_N} + \Big(\frac{S_c}{S_{\min}}\Big)^{\alpha_S}$$</div>
-
-- first term: the size's floor
-- second: still training, $\alpha_S \approx 0.76$
-- subtract the floor: one straight line
-- fits only after the warmup transient
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-learning-curve.svg" alt="Illustration from Kaplan's Eq. 1.6: left, loss against steps for models of 1M, 10M, 100M and 1B parameters, each flattening to its own floor; right, loss minus the floor against steps on log axes, the same straight line of slope -0.76 for every size"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Eq. 1.6 with Table 3 constants ($N_c = 6.5\times10^{13}$, $\alpha_N = 0.077$, $S_c = 2.1\times10^3$, $\alpha_S = 0.76$). Illustration drawn from the equation. Fig. 4 right: real runs</p>
-
-Note:
-Optional depth. The paper's own model of a training curve: loss equals a floor set by the model's size plus a term that falls as a power law in steps, with exponent 0.76. So a training curve is not a pure power law; it is a power law sitting on top of a constant. Subtract each model's floor and every size falls on the same line. That's the right panel, drawn from the equation with the paper's fitted constants.
-Two caveats, both from the paper. It only fits after an initial transient, the warmup. And S here is S_min: the steps the run would need at a very large batch, the fewest possible (defined later, with the critical batch). On optimiser choice: the paper finds the learning-rate schedule matters little, as long as there is a warmup and a decay to near zero (next sub-slide).
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §5.2 · Fig. 4 (right)</p>
-
-## Do real learning curves fit it?
-
-<div class="cols">
-<div class="text">
-
-- solid: measured runs
-- dotted: Eq. 1.6
-- one fit for all sizes
-- "the fits are imperfect"
-
-<p class="q"><b>Q.</b> What could break it?</p>
-<p class="a"><b>A.</b> Early transient; a different schedule</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig4-right.png" alt="Kaplan et al. Figure 4 right: loss against estimated S_min for models of many sizes, measured curves with the fitted equation dotted, close for all sizes after the start"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 4 right, §5.2: "Though the fits are imperfect, we believe they are quite compelling given the simplicity"</p>
-
-Note:
-Optional. The measured learning curves (solid) against the fitted equation (dotted), coloured by model size. One equation with four constants tracks all of them reasonably well after the start, which is what makes it useful for predicting where a run will end. The authors' own word is "imperfect".
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 5, learning-rate schedule · App. D.6 · Fig. 22</p>
-
-## Does the learning-rate schedule change it?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- many schedules tried
-- final loss: nearly the same
-- what matters: total learning rate
-- needs: a warmup and a final decay
-
-<p class="q"><b>Q.</b> So optimiser choice is irrelevant?</p>
-<p class="a"><b>A.</b> Within these runs. Porian 2024 disagrees for small batches</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig22.png" alt="Kaplan et al. Figure 22: top, a variety of learning-rate schedules; bottom, final test loss against the summed learning rate, nearly the same for all schedules once the sum is large enough"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 22, App. D.6: the schedule "is mostly irrelevant, as long as the total summed learning rate is sufficiently large, and the schedule includes a warmup period and a final decay"</p>
-
-Note:
-Optional. You're right to ask about the optimiser. Kaplan tried a range of schedules on a small model: cosine, linear and faster or slower decays, on a 3M-parameter model. The final loss depends mostly on the total learning rate summed over training, not on the shape of the schedule, provided there is a warmup and a decay to near zero at the end.
-That holds for these runs, with Adam at a fixed batch. Two later findings qualify it. Chinchilla shows a schedule much longer than the run hurts. Porian et al. show that at the small batches of compute-optimal small models, AdamW's beta-2 needs retuning.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.2 · Background</p>
-
-## What does a power law buy you?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- $L(X) \propto X^{-\alpha}$
-- straight line on log-log axes
-- every 10x: loss × $10^{-\alpha}$
-- $\alpha_N = 0.076$: 10x params, loss × 0.84
-- so: fit small, extrapolate big
-
-<p class="q"><b>Q.</b> Why not just say "bigger is better"?</p>
-<p class="a"><b>A.</b> A power law says <i>how much</i> better, at every scale</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-powerlaw.svg" alt="Illustration: the power law L = X^-0.076 on linear axes, where it flattens quickly, and on log-log axes, where it is a straight line and each tenfold step multiplies loss by 0.84"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · illustration from $\alpha_N$ (Eq. 1.1), not a paper figure. Valid only inside the regime where it was measured</p>
-
-Note:
-Why the power-law form matters. On ordinary axes the curve flattens fast, which looks like diminishing returns. On log-log axes it's a straight line: every tenfold increase multiplies the loss by the same factor.
-With the model-size exponent 0.076, ten times the parameters gives loss times 0.84, about 16% lower; a hundred times, 0.84 squared.
-That constant ratio is what makes extrapolation possible: estimate the exponent from small models, predict big ones. The catch, which the Chinchilla story is about, is that it holds only while you stay in the same regime.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 3 · §1.2 · Eq. 1.1 to 1.3</p>
-
-## The three laws: what does 10x of each buy?
+## Does the shape matter at a fixed size?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- $L(C_{\min}) \propto C_{\min}^{-0.050}$: 10x ▸ 11% lower
-- $L(D) = (D_c/D)^{0.095}$: 10x ▸ 20% lower
-- $L(N) = (N_c/N)^{0.076}$: 10x ▸ 16% lower
+<dl class="where card">
+<dt>Runs</dt><dd>models at fixed sizes: 25M, 50M, 274M, 1.5B</dd>
+<dt>Varied</dt><dd>one shape knob at a time; width adjusted to keep $N$ fixed</dd>
+<dt>Each point</dt><dd>one run's final loss, % above the best shape</dd>
+</dl>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> So buy data, it has the biggest exponent? <b>A.</b> No: different regimes, different costs</p>
-<p class="q"><b>Q.</b> Why is compute's the smallest? <b>A.</b> It is split between size and training</p>
+<p class="plain">Loss moves by a few percent over wide ranges of shape.</p>
 
-</div>
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig1.png" alt="Kaplan et al. Figure 1: the three power laws in compute, dataset size and parameters"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Eq. 1.1 to 1.3, Fig. 1. $N_c = 8.8\times10^{13}$, $D_c = 5.4\times10^{13}$ tokens; the constants depend on the tokenizer and "do not have a fundamental meaning"</p>
-
-Note:
-The three laws of Figure 1, read as numbers. Ten times the parameters, with plenty of data and training: about 16% lower loss. Ten times the data, with a big enough model: about 20%. Ten times compute, spent optimally: about 11%.
-Two traps. Don't compare these as if you could buy ten times of each at the same price: each was measured in a different regime, with the other two factors made generous. And the compute exponent is the smallest because extra compute has to be divided between a bigger model and more training, so you only get part of each benefit.
-The constants N_c and D_c depend on the tokenizer; the paper says they have no fundamental meaning. The exponents are what carry information.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 2, shape · §3.1 · Fig. 5</p>
-
-## Deep and narrow, or shallow and wide?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- hold $N$ fixed, vary the shape
-- aspect ratio varied 40x: loss moves a few %
-- (6, 4288) within 3% of GPT-2's (48, 1600)
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> So architecture doesn't matter?</p>
-<p class="a"><b>A.</b> Shape, within limits. One layer, or extreme shapes, do worse</p>
+- $(n_{\rm layer}, d_{\rm model}) = (6, 4288)$ is within 3% of GPT-2's $(48, 1600)$.
+- Next: one panel at a time (↓).
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-kaplan-shape.png" alt="Kaplan et al. Figure 5: loss increase relative to the best shape against feed-forward ratio, aspect ratio and attention head dimension, for several fixed parameter counts; a few percent over wide ranges"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 5, §3.1. Up to about 8% at the extreme shapes. Aspect ratio: width $d_{\rm model}$ over depth $n_{\rm layer}$</p>
+<p class="footnote">Kaplan et al. 2020 · §3.1, Fig. 5. Up to about 8% at the extreme shapes. Small differences in $N$ are corrected with the $L(N)$ fit as the baseline</p>
 
 Note:
-At a fixed parameter count, they vary the shape: the feed-forward ratio, the aspect ratio (width over depth) and the head size. Loss moves by a few percent over wide ranges. A 6-layer model 4,288 wide gets within 3% of the 48-layer, 1,600-wide GPT-2 shape.
-Why it's surprising: much of neural network design had been about finding the right architecture. This says that, for standard Transformers in this range, how much capacity you have matters far more than how you arrange it.
-The limits: within reasonable shapes, standard Transformers only. Models with one layer, or extreme depth-to-width ratios, deviate.
+The first result section asks whether the shape matters once you fix the size. They train models at a fixed number of non-embedding parameters and change one shape knob at a time: the feed-forward width, the depth (changing the width with it to keep N fixed), or the number of heads. Each point is one run's final loss, written as a percentage above the best shape at that size.
+The answer, across all three panels: a few percent over wide ranges. A 6-layer model 4,288 wide gets within 3% of the 48-layer, 1,600-wide GPT-2 shape.
+Why it's surprising: much of neural network design had been about finding the right architecture. This says that, for standard Transformers in this range, how much capacity you have matters far more than how you arrange it. The limits: within reasonable shapes, standard Transformers only. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, left</p>
+
+## How wide should the feed-forward layer be?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>50M-parameter models</dd>
+<dt>Varied</dt><dd>$d_{\rm ff}/d_{\rm model}$, from 0.5 to about 40</dd>
+<dt>Each line</dt><dd>8 heads, or heads of size 64</dd>
+<dt>Axes</dt><dd>feed-forward ratio (log); loss above the best</dd>
+</dl>
+
+<p class="plain">Flat from 0.5 to 4, the usual choice; 8% worse near 40.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig5-ff.png" alt="Kaplan et al. Figure 5 left: loss increase against feed-forward ratio for 50M-parameter models; under 1% from 0.5 to 4, rising to about 8% near 40"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 5, left panel</p>
+
+Note:
+The left panel. All 50-million-parameter models. The knob is the feed-forward width as a multiple of the model width; to keep N fixed, the model width shrinks as the feed-forward layer grows. The two lines are two ways of choosing the heads. From half to four times the width, the loss barely moves; four is the standard Transformer choice. Push it to about 40 and the loss is 8% worse.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, middle</p>
+
+## Deep and narrow, or shallow and wide?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>models of 50M, 274M and 1.5B parameters</dd>
+<dt>Varied</dt><dd>aspect ratio $d_{\rm model}/n_{\rm layer}$, about 3 to 2,000</dd>
+<dt>Each line</dt><dd>one model size</dd>
+<dt>Axes</dt><dd>aspect ratio (log); loss above the best</dd>
+</dl>
+
+<p class="plain">From about 10 to 300 every size is within about 2%; only the extremes cost more.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig5-aspect.png" alt="Kaplan et al. Figure 5 middle: loss increase against aspect ratio for 50M, 274M and 1.5B parameter models; near zero between aspect ratios of about 10 and 300, rising to 3 to 8% at the extremes"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 5, middle panel: "A wide range of architectures achieve similar performance"</p>
+
+Note:
+The middle panel is the depth question. At each of three sizes, they trade depth for width at a fixed parameter count; the x axis is width over depth. Between about 10 and 300 the curves are nearly flat, within about 2 percent, at every size. Only very deep-and-narrow or very shallow-and-wide models pay more, up to 8% for the 274M model at the widest extreme. The paper's aside: this would follow if deep Transformers behave like ensembles of shallower ones, as has been suggested for ResNets.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, right</p>
+
+## How big should each attention head be?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>25M-parameter models</dd>
+<dt>Varied</dt><dd>head size $d_{\rm model}/n_{\rm head}$, 16 to about 256</dd>
+<dt>Each line</dt><dd>one width: 256, 512 or 1,024</dd>
+<dt>Axes</dt><dd>head size (log); loss above the best</dd>
+</dl>
+
+<p class="plain">Under 2% everywhere: the number of heads hardly matters.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig5-heads.png" alt="Kaplan et al. Figure 5 right: loss increase against attention head dimension for 25M parameter models of widths 256, 512 and 1024; all under 2%. A bar marks that 22% more compute compensates for a 1% loss increase"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 5, right panel. Its bar: 22% more compute makes up for a 1% loss increase</p>
+
+Note:
+The right panel: the head size, which at a fixed width is the same as choosing the number of heads. Three widths of 25-million-parameter models. Everything stays under 2%. The bar on the plot puts these percentages in compute terms: 22% more compute buys back a 1% higher loss. So a few percent of loss from a bad shape is real money at scale, but small next to a 10x change in size.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §3.2 · Fig. 6</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 2, left</p>
+
+## What do the size runs look like?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs: $10^3$ to $10^9$ parameters, all of WebText2, 250k steps</dd>
+<dt>Varied</dt><dd>model size (colour: dark small, yellow large)</dd>
+<dt>Each line</dt><dd>one model's test loss as it trains</dd>
+<dt>Axes</dt><dd>tokens processed (log); test loss</dd>
+</dl>
+
+<p class="plain">Bigger models are lower everywhere, and reach any given loss with fewer tokens.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig2-tokens.png" alt="Kaplan et al. Figure 2 left: test loss against tokens processed for models from 10^3 to 10^9 parameters, coloured from dark to yellow by size; larger models fall lower and sooner"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §1.1, Fig. 2 left: "Larger models require fewer samples to reach the same performance". Panel titles cropped</p>
+
+Note:
+Now the backbone: the size runs. Every line is one model, trained on all of WebText2 for the same 250,000 steps, and the plot shows its test loss as it trains. Colour is size, from a thousand parameters (dark) to a billion (yellow).
+Two things to notice. Bigger models are lower everywhere. And they reach any given loss with fewer tokens, which the paper calls sample efficiency. The curves also share one shape: a plateau, a fast drop, then a slow decline.
+Hold on to these curves. The next several results are all read off them: the end of each curve gives the size law, and the lower envelope gives the compute law.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 2, right</p>
+
+## What do the same runs look like against compute?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the same size runs</dd>
+<dt>Each line</dt><dd>one model's test loss as it trains</dd>
+<dt>Axes</dt><dd>compute so far, $6N$ × tokens, in PF-days (log); test loss</dd>
+</dl>
+
+<p class="plain">At any budget, the lowest curve belongs to a model that is still far from converged.</p>
+
+- Its lower envelope becomes Fig. 1's compute law, later in §3.
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig2-compute.png" alt="Kaplan et al. Figure 2 right: the same learning curves against compute in PF-days; larger models start later but cross below smaller ones; a bar marks that compute-efficient training stops far short of convergence"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 2 right: "Compute-efficient training stops far short of convergence". 1 PF-day = $8.64\times10^{19}$ FLOPs</p>
+
+Note:
+The same runs, with the x axis changed from tokens to compute: each token costs 6N FLOPs, so a big model's curve slides to the right. Now the curves cross. At a small budget a small model is lowest; at a bigger budget, a bigger model that is still mid-training beats a small one that has finished.
+The bar marks the paper's point: at any budget, the model that does best is one stopped well before it converges. That lower envelope, the best loss you can get for each budget, becomes the compute law of Figure 1 a few slides on.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 6</p>
 
 ## Why leave the embeddings out of $N$?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- count all parameters: depths split apart
-- count non-embedding only: one line
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, at many depths</dd>
+<dt>Each point</dt><dd>one model's final test loss; colour: its number of layers</dd>
+<dt>Axes</dt><dd>parameters, top with embeddings and bottom without (log); test loss</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Are embeddings then useless?</p>
-<p class="a"><b>A.</b> No. A counting choice that cleans up the fit</p>
-<p class="q"><b>Q.</b> What can go wrong?</p>
-<p class="a"><b>A.</b> In small models, embeddings are most of the weights</p>
+<p class="plain">Counted with embeddings, depths split apart; without, they fall on one line.</p>
+
+- Next: each panel (↓).
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig6.png" alt="Kaplan et al. Figure 6: loss against parameters; with embeddings, depths lie on separate curves; without, they collapse onto one trend"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig6.png" alt="Kaplan et al. Figure 6: loss against parameters; top, with embeddings, models of different depth lie on separate curves; bottom, without embeddings, they collapse onto one trend"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 6, §3.2. The last answer is Pearce &amp; Song 2024 (arXiv:2406.12907), end of this section</p>
+<p class="footnote">Kaplan et al. 2020 · §3.2, Fig. 6 (the paper's left and right, stacked here)</p>
 
 Note:
-Why Kaplan counts N without embeddings. Counted with embeddings (top), models of different depth lie on different curves. Without (bottom), every model with at least two layers lines up.
-Does that mean embeddings do nothing? No. It's a bookkeeping choice that makes one curve fit everything.
-What can go wrong: for a small model the embedding table dwarfs the rest. A 2-layer, 128-wide model has about 0.4M non-embedding parameters and 6.4M in its token table. Leaving them out distorts the size axis exactly where Kaplan had most of his runs. Pearce and Song argue that this is much of why the compute-optimal rule came out wrong.
+Why does Kaplan count N without the embeddings? Because of this figure. The same size runs, final losses, coloured by depth. Count every parameter, top, and models of different depth lie on different curves. Count only the non-embedding parameters, bottom, and every model with two or more layers lines up on one curve.
+That one clean curve is what makes the size law possible. But it is a counting choice that cleans up the fit, not a claim that embeddings do nothing. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 6, left</p>
+
+## What happens if you count the embeddings?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each line</dt><dd>models of one depth: 0, 1, 2, 3, 6, more than 6 layers</dd>
+<dt>Axes</dt><dd>all parameters, including token and position tables (log); test loss</dd>
+</dl>
+
+<p class="plain">At the same total count, shallow models do worse: more of their count is the embedding table.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig6-all.png" alt="Kaplan et al. Figure 6 left: test loss against parameters including embeddings, one line per depth from 0 layers to more than 6; shallower models lie higher"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 6 left. A 2-layer, 128-wide model: about 0.4M non-embedding parameters and 6.4M in its token table (ours)</p>
+
+Note:
+Counted with embeddings. Each line is one depth. At the same total, shallow models are worse, because for a small or shallow model most of the count is the token table, which contributes much less than layers do. A 2-layer, 128-wide model has about 0.4 million parameters in its layers and 6.4 million in its token table.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 6, right</p>
+
+## And without them?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each line</dt><dd>models of one depth: 1, 2, 3, 6, more than 6 layers</dd>
+<dt>Axes</dt><dd>non-embedding parameters $N$ (log); test loss</dd>
+</dl>
+
+<p class="plain">Two layers and up collapse onto one trend; only 1-layer models sit above it.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig6-nonembed.png" alt="Kaplan et al. Figure 6 right: test loss against non-embedding parameters, one line per depth; all depths of two or more layers lie on one trend, one-layer models above it"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 6 right: only models "with fewer than 2 layers or with extreme depth-to-width ratios deviate". Pearce and Song 2024 trace part of the 0.73 to this choice (last slide)</p>
+
+Note:
+Counted without embeddings. All depths of two or more layers fall on one line; one-layer models are the exception. This is the N used everywhere from now on.
+What can go wrong: in the small models where Kaplan had most of his runs, the left-out table is most of the model. Pearce and Song argue in 2024 that this choice is a large part of why the compute-optimal rule came out wrong.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 1, model size · §3.2.2 · Fig. 8</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 1, right</p>
+
+## Is the final loss a power law in $N$?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, 250k steps on all of WebText2</dd>
+<dt>Each point</dt><dd>one model's final test loss</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss (log)</dd>
+</dl>
+
+<div class="eq">$$L(N) = \Big(\frac{N_c}{N}\Big)^{\alpha_N},\quad \alpha_N \approx 0.076$$</div>
+
+<p class="plain">A straight line on log-log axes is a power law. 10x the parameters: loss × $10^{-0.076}$ = 0.84.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig1-params.png" alt="Kaplan et al. Figure 1 right: test loss against non-embedding parameters from about 10^4 to 10^9 on log axes, points on a straight line with fit L = (N / 8.8e13)^-0.076"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §1.2 Eq. 1.1, §3.2, Fig. 1 right. $N_c = 8.8\times10^{13}$; the constant depends on the tokenizer. No overfitting "except possibly for the very largest models"</p>
+
+Note:
+The first of the three laws, now with its experiment. The size runs again, but only the end of each curve: one point per model, its final test loss, against its non-embedding size. On log-log axes the points lie on a straight line, and a straight line on log-log axes is a power law: L equals N_c over N, to the power 0.076.
+What it buys you: every tenfold increase in N multiplies the loss by 10 to the minus 0.076, which is 0.84, about 16% lower; a hundredfold, 0.84 squared. That constant ratio is what makes extrapolation possible: fit the small models, predict the big one. The catch, which the Chinchilla story is about, is that it holds only while you stay in the same regime.
+These models are trained close to convergence with plenty of data: this is the loss when size is the only limit.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.1 · the LSTM runs · Fig. 7</p>
+
+## Do LSTMs scale the same way?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>LSTMs of 1, 2 and 4 layers, same data and context, against the size runs</dd>
+<dt>Left</dt><dd>each point: one model's final loss, against $N$</dd>
+<dt>Right</dt><dd>each line: one model's loss at each position of the context</dd>
+</dl>
+
+</div>
+<div class="text">
+
+<p class="plain">LSTMs match Transformers on the first tokens, then stop improving; Transformers keep using the whole context.</p>
+
+- Next: each panel (↓).
+
+</div>
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig7.png" alt="Kaplan et al. Figure 7: left, test loss against parameters for Transformers and LSTMs of 1, 2 and 4 layers, the Transformer line below and falling faster; right, per-token test loss against token position in the context, LSTMs flattening after about 100 tokens while Transformers keep improving"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §3.2.1, Fig. 7. Recurrent Transformers, which reuse parameters, are compared in App. D (Fig. 17)</p>
+
+Note:
+Is any of this special to Transformers? Section 3.2.1 trains LSTMs on the same data and context. Two panels. Left: final loss against size, like Figure 1 right. Right: the loss at each position in the 1,024-token context, so you can see where in the text the model is good.
+The LSTMs do as well on early tokens, but they stop improving after about 100 tokens of context, while the Transformers keep improving to the end. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.1 · the LSTM runs · Fig. 7, left</p>
+
+## Are LSTMs worse at every size?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each point</dt><dd>one model's final test loss</dd>
+<dt>Lines</dt><dd>blue: Transformers; red: LSTMs of 1, 2 and 4 layers</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss (log)</dd>
+</dl>
+
+<p class="plain">The LSTM lines sit above the Transformer line and fall more slowly, so the gap grows with size.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig7-size.png" alt="Kaplan et al. Figure 7 left: test loss against non-embedding parameters; the Transformer line falls steadily from 10^5 to 10^9; three LSTM lines lie above it and fall more slowly"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 7 left: "Transformers asymptotically outperform LSTMs due to improved use of long contexts"</p>
+
+Note:
+Left panel. Same axes as the size law. The LSTMs, in red, lie above the Transformers and their lines are shallower, so the gap widens as models grow. The panel title gives the paper's reason, which the right panel shows: Transformers use long contexts better.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.1 · the LSTM runs · Fig. 7, right</p>
+
+## Where in the context do LSTMs fall behind?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each line</dt><dd>one model's loss on the token at each position</dd>
+<dt>Lines</dt><dd>red: LSTMs (400K, 2M, 200M); blue: Transformers (400K, 3M, 300M)</dd>
+<dt>Axes</dt><dd>position in the context, 1 to 1,024 (log); loss on that token</dd>
+</dl>
+
+<p class="plain">Each LSTM goes flat before about 100 tokens; each Transformer keeps falling to the end.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig7-context.png" alt="Kaplan et al. Figure 7 right: per-token test loss against token index in the context; LSTM lines flatten before about 100 tokens while Transformer lines keep falling to 1,024"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 7 right: "LSTM plateaus after &lt;100 tokens. Transformer improves through the whole context"</p>
+
+Note:
+Right panel. Here the x axis is not size but position: how far into the 1,024-token context the predicted token is. Every model is bad at the first tokens, which have little context to use. The LSTMs stop getting better after about a hundred tokens: more context doesn't help them. The Transformers keep improving all the way to position 1,024. That's where the Transformer's advantage in the left panel comes from.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · the size runs on other text · Fig. 8</p>
 
 ## Does it carry over to other text?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- test on Books, Wikipedia, Common Crawl...
-- same trend, shifted up
-- a roughly constant offset
-- a small offset, growing only slowly with size
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, trained only on WebText2</dd>
+<dt>Varied</dt><dd>the test text: Books, Internet Books, Wikipedia, Common Crawl</dd>
+<dt>Top</dt><dd>loss on each test set against $N$</dd>
+<dt>Bottom</dt><dd>loss on Books or Wikipedia against loss on WebText2</dd>
+</dl>
 
-<p class="q"><b>Q.</b> So it generalises?</p>
-<p class="a"><b>A.</b> To related text. Not to any shift</p>
+<p class="plain">The same trend, shifted up by a small, nearly constant amount.</p>
+
+- Next: each panel (↓).
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig8.png" alt="Kaplan et al. Figure 8: top, test loss on other text distributions against model size, parallel lines offset from WebText2; bottom, loss on other distributions against WebText2 loss, close to straight lines"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig8.png" alt="Kaplan et al. Figure 8: top, test loss on other text distributions against model size, roughly parallel lines offset from WebText2; bottom, loss on Books and Wikipedia against WebText2 loss, close to straight lines"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 8, §3.2.2; §1.1: transfer "incurs a constant penalty but otherwise improves roughly in line with performance on the training set"</p>
+<p class="footnote">Kaplan et al. 2020 · §3.2.2, Fig. 8 (left and right, stacked). Transfer "incurs a constant penalty but otherwise improves roughly in line with performance on the training set" (§1.1)</p>
 
 Note:
-Does any of this depend on WebText2? They evaluate the same models on other text: books, Wikipedia, Common Crawl and others. The curves are parallel to the WebText2 curve, shifted up by a roughly constant amount. So a better model on the training distribution is a better model on these, by about the same amount; the shift depends on the distribution, not on the model's size.
+Does any of this depend on WebText2? Section 3.2.2 takes the same size runs, trained only on WebText2, and tests them on other text: books, Wikipedia, Common Crawl. Top: loss on each test set against size. Bottom: loss on two of those sets against loss on WebText2. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · the size runs on other text · Fig. 8, left</p>
+
+## Do other test sets follow the same size law?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each point</dt><dd>one model's final loss on one test set</dd>
+<dt>Lines</dt><dd>one test set each, WebText2's own test text at the bottom</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss (log)</dd>
+</dl>
+
+<p class="plain">Nearly parallel lines: a better model on WebText2 is better on each, by about the same step.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig8-size.png" alt="Kaplan et al. Figure 8 left: test loss against non-embedding parameters on WebText2, Internet Books, Books, Wikipedia and Common Crawl; roughly parallel lines, WebText2 lowest"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 8 left: "only a small and very slowly growing offset from the WebText2 training distribution"</p>
+
+Note:
+Left panel. One line per test set. They are close to parallel, with WebText2's own test set the lowest, as you'd expect, and the others a small step above. The offset grows only slowly with size. So the size law is not a quirk of the training distribution, at least for these kinds of English text.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · the size runs on other text · Fig. 8, right</p>
+
+## Does it matter how long a model trained?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Points</dt><dd>converged models: loss on Books (blue) or Wikipedia (orange)</dd>
+<dt>Dashed</dt><dd>one large model at checkpoints during training</dd>
+<dt>Axes</dt><dd>loss on WebText2; loss on the other set</dd>
+</dl>
+
+<p class="plain">Both lie on the same lines: transfer depends on the WebText2 loss, not on how it was reached.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig8-train.png" alt="Kaplan et al. Figure 8 right: loss on Books and Wikipedia against loss on the training distribution; points for converged models and dashed curves for one large model during training lie on the same lines"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 8 right: "Generalization performance depends only on training distribution performance, and not on the phase of training"</p>
+
+Note:
+Right panel, a cleverer check. The x axis is the loss on WebText2, decreasing to the right. The dots are finished models of different sizes; the dashed lines are a single large model at checkpoints during its training. They lie on the same lines. So a half-trained big model and a converged small model with the same WebText2 loss do equally well on books or Wikipedia. Only the in-distribution loss matters, not the route to it.
 What it does not show: robustness to any distribution shift. These are all English text, mostly web and books.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 3, model × data · §4 Charting the infinite data limit</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.3 · the data runs · Fig. 1, middle</p>
 
-## What if model and data are both limited?
+## What does data alone buy?
 
-<div class="cols">
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>one model, 36 layers × 1,280 wide, on fixed subsets of WebText2</dd>
+<dt>Varied</dt><dd>the subset's size</dd>
+<dt>Each point</dt><dd>the test loss when training stopped: as soon as it stopped falling</dd>
+<dt>Axes</dt><dd>tokens in the subset (log); test loss (log)</dd>
+</dl>
+
+<p class="plain">10x the data: loss × 0.80, on the straight line $L(D) = (D_c/D)^{0.095}$</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig1-data.png" alt="Kaplan et al. Figure 1 middle: test loss against dataset size in tokens on log axes, points on a straight line with fit L = (D / 5.4e13)^-0.095"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §3.3, Eq. 1.2, Fig. 1 middle. $D_c = 5.4\times10^{13}$ tokens. $12 \times 36 \times 1280^2 \approx 708$M parameters (ours)</p>
+
+Note:
+The second law needs a different experiment, and this is the one the old slide hid. It does not come from the size runs. One model, 36 layers and 1,280 wide, about 708 million non-embedding parameters, is trained on smaller and smaller fixed subsets of WebText2. On a small subset it would start to memorise, so each run stops as soon as the test loss stops falling: early stopping. Each point is one subset: its size on the x axis, the best test loss on the y axis.
+Another straight line on log-log axes: L of D equals D_c over D to the 0.095. Ten times the data multiplies the loss by 0.80.
+The model is kept big so that data is the only limit, the mirror image of the size law, where data was plentiful and size was the limit.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.3 · the size runs, re-read · Fig. 1, left</p>
+
+## What does compute alone buy?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs' learning curves (Fig. 2, right)</dd>
+<dt>Blue lines</dt><dd>one model's loss as it trains</dd>
+<dt>Black line</dt><dd>the lowest loss any model has reached at that compute</dd>
+<dt>Axes</dt><dd>compute in PF-days, adjusted to a small batch (log); test loss (log)</dd>
+</dl>
+
+<p class="plain">10x the compute: loss × 0.89, on the straight black envelope $L \propto C_{\min}^{-0.050}$</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig1-compute.png" alt="Kaplan et al. Figure 1 left: test loss against compute in PF-days; many blue learning curves, their lower envelope in black, fit by the orange dashed line L = (C_min / 2.3e8)^-0.050"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §3.3, Eq. 1.3, Fig. 1 left. The axis is the compute each run would have needed at a small batch, $C_{\min}$ (Fig. 1's footnote; §5.1). With raw compute the slope is 0.057 (Fig. 13)</p>
+
+Note:
+The third law is not a new experiment either. It is the size runs' learning curves from Figure 2, against compute. Every blue line is one model training. For each amount of compute, take the lowest loss any model has reached: that's the black line. Each stretch of it belongs to a different model, stopped well before it converged.
+The black envelope is straight on log-log axes, with slope minus 0.050: ten times the compute multiplies the loss by 0.89.
+One wrinkle, which section 5 explains: the x axis is not the compute actually spent. All runs used one fixed batch, and the paper converts each run to the compute it would have needed at a small, efficient batch, called C_min. On the raw compute the slope is 0.057.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.2 · Eq. 1.1 to 1.3 · Fig. 1</p>
+
+## Three laws, three different experiments
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- **Compute**, 0.050: the size runs' learning curves, best model at each budget. 10x ▸ 11% lower.
+- **Data**, 0.095: the data runs, one big model, stopped early. 10x ▸ 20% lower.
+- **Parameters**, 0.076: the size runs' final losses, data plentiful. 10x ▸ 16% lower.
+
+</div>
+<div class="text">
+
+<p class="plain">Each law holds only when the other two are not the limit.</p>
+<p class="plain">The exponents are not prices: 10x of each costs a different amount.</p>
+
+</div>
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig1.png" alt="Kaplan et al. Figure 1: the three power laws in compute, dataset size and parameters"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §1.2: each law holds "when not bottlenecked by the other two" (Fig. 1 caption). $N_c$, $D_c$ depend on the tokenizer and "do not have a fundamental meaning"</p>
+
+Note:
+Now Figure 1 again, and this time every panel has its experiment. Left, compute: the size runs' learning curves, taking the best model at each budget. Middle, data: the data runs, one large model on subsets, stopped early. Right, parameters: the size runs' final losses, with data plentiful.
+Read as numbers: ten times the compute, spent well, about 11% lower loss; ten times the data, with a big enough model, about 20%; ten times the parameters, with plenty of data and training, about 16%.
+Two traps. Each law was measured with the other two factors made generous, so each holds only in its own regime. And don't compare them as if ten times of each cost the same: ten times the compute has to be split between a bigger model and more training, which is why its exponent is the smallest.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.1 · the data runs, many sizes · Eq. 1.5, Fig. 4 left</p>
+
+## What if size and data are both limited?
+
+<div class="cols wide-fig">
 <div class="text">
 
 <div class="eq">$$L(N,D) = \Big[\Big(\frac{N_c}{N}\Big)^{\alpha_N/\alpha_D} + \frac{D_c}{D}\Big]^{\alpha_D}$$</div>
 
-- $D \to \infty$: back to $L(N)$
-- $N \to \infty$: back to $L(D)$
-- in between: one smooth surface
+- $D \to \infty$: back to $L(N)$; $N \to \infty$: back to $L(D)$.
+- A guess with the right limits (an ansatz), then tested.
+- $N_c$, $D_c$, $\alpha_N$, $\alpha_D$: the constants and exponents of the two single laws, refitted jointly.
 
-<p class="q"><b>Q.</b> Derived or assumed?</p>
-<p class="a"><b>A.</b> Assumed (an ansatz), then tested</p>
+<dl class="where card">
+<dt>Runs</dt><dd>six sizes, 393K to 708M, on subsets of 21M to 22B tokens, stopped early</dd>
+<dt>Each point</dt><dd>one (size, subset) run's best test loss; dotted: the fit</dd>
+</dl>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig9a.png" alt="Kaplan et al. Figure 9 left: test loss against non-embedding parameters for dataset sizes from 21M to 22B tokens, with fits; small datasets flatten early"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig4-left.png" alt="Kaplan et al. Figure 4 left: loss against tokens in the dataset for models from 393K to 708M parameters, with dotted fits; each model's curve flattens at its own floor, larger models lower"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 1.5, §4.1, Fig. 9 left. Joint fit: $\alpha_N = 0.076$, $\alpha_D = 0.103$ (Table 2)</p>
+<p class="footnote">Kaplan et al. 2020 · §4.1, Eq. 1.5 (= 4.1), Fig. 4 left (x: tokens in the dataset; colour: model size). 10% dropout; regularisation not tuned</p>
 
 Note:
-Real training is limited by both size and data at once, so they need one function of both. Equation 1.5. Check its limits: with infinite data the second term vanishes and you get the model-size law back; with an infinite model the first term vanishes and you get the data law back. In between, it interpolates.
-The form is an ansatz: chosen to have those limits, then tested against runs. The authors give three principles for it; the third, that it should be a series in 1/D at large D, they call "more speculative".
-The figure: loss against model size for datasets from 21 million to 22 billion tokens. With little data, bigger models stop helping and the curve flattens; the fitted surface (dotted) follows them.
+Real training is limited by size and data at once, so section 4 needs one function of both. Equation 1.5. Check its limits: with infinite data the second term vanishes and you get the size law back; with an infinite model the first term vanishes and you get the data law back. In between, it interpolates.
+The form is an ansatz: chosen to have those limits, then tested. The authors give three principles for it; the third, that it should be a series in 1 over D at large D, they call "more speculative".
+The test is the data runs, extended: six model sizes from 393 thousand to 708 million parameters, each on subsets from 21 million to 22 billion tokens, each stopped early, with 10% dropout. Each point is one pair. On this plot, loss against data, each model flattens at its own floor once data stops being the limit; the dotted lines are the fitted equation.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 3, model × data · §4.2 · Fig. 9 (right)</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.2 · the data runs, many sizes · Fig. 9, left</p>
 
 ## When does a bigger model stop helping?
 
-<div class="cols">
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the same (size, subset) runs, stopped early</dd>
+<dt>Each line</dt><dd>one subset size, 21M to 22B tokens</dd>
+<dt>Each point</dt><dd>one model's best test loss on that subset; dotted: the fit</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss</dd>
+</dl>
+
+<p class="plain">With 22B tokens the line is the size law; with little data, bigger models stop helping.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig9a.png" alt="Kaplan et al. Figure 9 left: test loss against non-embedding parameters for dataset sizes from 21M to 22B tokens, with dotted fits; small datasets flatten early"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §4.2, Fig. 9 left. Joint fit: $\alpha_N = 0.076$, $\alpha_D = 0.103$ (Table 2). The 21M-token runs fit worst: an epoch is only 40 steps</p>
+
+Note:
+The same runs, plotted the other way: loss against model size, one line per subset. With the whole 22 billion tokens, the yellow line, you get the straight size law. With less data, each line bends flat: past some size, a bigger model doesn't help, because it can only memorise the small subset. The dotted lines are the single fitted equation, and they follow every subset except the very smallest, 21 million tokens, where an epoch is only 40 steps.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.2 · the data runs, many sizes · Eq. 4.3, Fig. 9 right</p>
+
+## Does overfitting depend on $N$ and $D$ separately?
+
+<div class="cols wide-fig">
 <div class="text">
 
 <div class="eq">$$\delta L = \frac{L(N,D)}{L(N,\infty)} - 1$$</div>
 
-- the overfitting penalty
-- depends on $N^{0.74}/D$ alone
-- all runs fall on one curve
-- 0.74 = 0.076 / 0.103
+<dl class="where card">
+<dt>Each point</dt><dd>one (size, subset) run: its loss over the same size's 22B-token loss, minus 1</dd>
+<dt>Axes</dt><dd>$N^{0.74}/D$ (log); the overfitting penalty $\delta L$</dd>
+</dl>
 
-<p class="q"><b>Q.</b> A collapse means universality?</p>
-<p class="a"><b>A.</b> Suggestive. Not proof of a mechanism</p>
+<p class="plain">All runs fall on one curve: the penalty depends on $N^{0.74}/D$ alone.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig9b.png" alt="Kaplan et al. Figure 9 right: the relative overfitting penalty L/L(D=infinity) - 1 against N^(alpha_N/alpha_D)/D for all dataset sizes, collapsing onto one curve"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig9b.png" alt="Kaplan et al. Figure 9 right: the relative overfitting penalty against N^(alpha_N/alpha_D)/D for all dataset sizes, collapsing onto one curve"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 4.3, Fig. 9 right. Early stopping at the best test loss, 10% dropout, regularisation not tuned</p>
+<p class="footnote">Kaplan et al. 2020 · Eq. 4.2, 4.3, Fig. 9 right. 0.74 = 0.076/0.103 from the joint fit; the separate data exponent, 0.095, would give 0.80. The full dataset stands in for $D = \infty$</p>
 
 Note:
-How much worse a finite dataset makes things: delta L, the loss relative to an infinite-data model, minus one. Substitute the joint law and the penalty depends only on N to the 0.74 over D, not on N and D separately.
-The figure tests it: runs with very different N and D all land on one curve. In physics you'd call that a scaling collapse. It's suggestive of shared structure, but a collapse by itself doesn't identify a mechanism or a universality class.
-A detail: 0.74 is the ratio of the joint-fit exponents, 0.076 over 0.103. The separately fitted data exponent, 0.095, would give 0.80.
+How much worse does a finite dataset make things? Delta L: a run's loss relative to the same size trained on all the data, minus one. If the equation is right, delta L depends only on N to the 0.74 over D, not on N and D separately.
+The plot tests it: each point is one size-subset pair, placed by that one combination. Runs with very different N and D land on one curve. In physics you'd call that a scaling collapse. It's suggestive of shared structure, but a collapse by itself doesn't identify a mechanism.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 3 fit · §4.2 · Eq. 4.4</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §4.2 · from the fit · Eq. 4.4</p>
 
-## How much data does a billion-parameter model need?
+## How much data does a model need?
 
 <div class="cols">
 <div class="text">
 
-<div class="eq">$$D \gtrsim 5\times10^{3}\thinspace  N^{0.74}$$</div>
+<div class="eq">$$D \gtrsim 5\times10^{3}\thinspace N^{0.74}$$</div>
 
-- keeps the penalty under seed noise (0.02)
-- $N = 10^9$: $D \gtrsim 2.3\times10^{10}$ tokens
-- about all of WebText2
-- 8x the model: $8^{0.74} \approx 4.7$x the data
+- Keeps the overfitting penalty under seed noise, about 0.02 in loss.
+- $N = 10^9$: $D \gtrsim 2.3\times10^{10}$ tokens, about all of WebText2.
+- 8x the model needs $8^{0.74} \approx 4.7$x the data.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Why less than 8x?</p>
-<p class="a"><b>A.</b> Bigger models use data more efficiently</p>
-<p class="q"><b>Q.</b> Is this compute-optimal?</p>
-<p class="a"><b>A.</b> No. It only avoids overfitting</p>
+<p class="plain">Less than 8x, because bigger models use data more efficiently.</p>
+<p class="plain">This only avoids overfitting; it is not the compute-optimal amount.</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 4.4, §4.2. "this does not typically represent maximally compute-efficient training". The 2.3e10 and 4.7x are our arithmetic</p>
+<p class="footnote">Kaplan et al. 2020 · Eq. 4.4, §4.2: "this does not typically represent maximally compute-efficient training". The $2.3\times10^{10}$ and 4.7x are our arithmetic</p>
 
 Note:
-A rule you can use. To keep the overfitting penalty below the run-to-run noise of about 0.02 in loss, D should be at least 5,000 times N to the 0.74.
+A rule you can use, read off the fit rather than a new experiment. To keep the overfitting penalty below the run-to-run noise of about 0.02 in loss, D should be at least 5,000 times N to the 0.74.
 Plug in a billion parameters: about 23 billion tokens, essentially the whole of WebText2, which is why their largest models start to overfit mildly.
-Scale the model 8x and the data needs only about 4.7x. That sublinear rule is the root of Kaplan's advice to grow models faster than data.
-But note the paper's own warning: this is the data needed to avoid overfitting, not the compute-optimal amount. Those are different questions, and confusing them is easy.
+Scale the model 8x and the data needs only about 4.7x. That sublinear rule is the root of Kaplan's advice to grow models faster than data. But note the paper's own warning: this is the data needed to avoid overfitting, not the compute-optimal amount.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 4, batch size · §5.1 · App. D.3, Fig. 18</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1, App. D.3 · the batch runs · Fig. 18</p>
 
-## How big can a batch be before it's wasteful?
+## How big can a batch be before it is wasteful?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- small batch: few tokens, many steps
-- large batch: few steps, many tokens
-- $(S/S_{\min} - 1)(E/E_{\min} - 1) = 1$
-- $B_{\rm crit} = E_{\min}/S_{\min}$
-- at $B_{\rm crit}$: $2S_{\min}$ steps, $2E_{\min}$ tokens
+<dl class="where card">
+<dt>Runs</dt><dd>a 3M (top) and an 85M (bottom) model, at many batch sizes</dd>
+<dt>Each curve</dt><dd>one target loss (colour)</dd>
+<dt>Each point</dt><dd>one batch size: the steps and tokens it took to reach that loss</dd>
+<dt>Axes</dt><dd>steps (log); tokens processed (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Why care?</p>
-<p class="a"><b>A.</b> Steps cost time; tokens cost FLOPs</p>
+<div class="eq">$$\Big(\frac{S}{S_{\min}} - 1\Big)\Big(\frac{E}{E_{\min}} - 1\Big) = 1$$</div>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig18.png" alt="Kaplan et al. Figure 18: for a 3M and an 85M parameter model, steps against examples processed to reach fixed values of the loss, each a hyperbola-like Pareto front fit by Equation 5.1"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig18.png" alt="Kaplan et al. Figure 18: for a 3M and an 85M parameter model, tokens processed against steps to reach fixed values of the loss, each loss a hyperbola-like front fit by Equation 5.1"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 5.1, 5.2, Fig. 18. $S_{\min}$: fewest steps to reach a loss; $E_{\min}$: fewest examples (tokens). Builds on the gradient noise scale (McCandlish et al. 2018)</p>
+<p class="footnote">Kaplan et al. 2020 · Eq. 5.1, 5.2, App. D.3, Fig. 18. $S_{\min}$: fewest steps to reach the loss; $E_{\min}$: fewest tokens. $B_{\rm crit} = E_{\min}/S_{\min}$. After McCandlish et al. 2018</p>
 
 Note:
-A detour that the compute numbers depend on. To reach a target loss you can use small batches and many steps, which is cheap in FLOPs but slow, or big batches and few steps, which is fast on parallel hardware but wastes compute.
-Kaplan finds the trade-off is a hyperbola: S over S_min minus one, times E over E_min minus one, equals one. S_min is the fewest steps possible, E_min the fewest tokens possible. Figure 18 shows these fronts for two model sizes.
-The critical batch size is E_min over S_min. Training at it costs twice the minimum steps and twice the minimum tokens: a reasonable compromise between time and compute.
+A detour the compute numbers depend on. To reach a target loss you can use small batches and many steps, cheap in FLOPs but slow, or big batches and few steps, fast on parallel hardware but wasteful.
+The batch runs measure this trade-off on two small models. Each curve is one target loss; each point on it is one batch size, placed by how many steps and how many tokens it took to get there. Every curve has the same hyperbola shape: S over S_min minus one, times E over E_min minus one, equals one. S_min is the fewest steps possible, at a huge batch; E_min the fewest tokens possible, at a tiny batch.
+The critical batch size is E_min over S_min, the corner of the hyperbola. Training there costs twice the minimum steps and twice the minimum tokens: a reasonable compromise between time and compute.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiment 4, batch size · §5.1 · Fig. 10</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1 · the batch runs · Fig. 10</p>
 
-## Why does the critical batch grow as loss falls?
+## How does the critical batch change during training?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$B_{\rm crit}(L) \approx \frac{B_*}{L^{1/\alpha_B}},\quad B_* \approx 2\times10^{8},\ \alpha_B \approx 0.21$$</div>
+<dl class="where card">
+<dt>Runs</dt><dd>the batch runs, 3M and 85M</dd>
+<dt>Each point</dt><dd>$B_{\rm crit}$ read off one hyperbola of Fig. 18; green: the gradient noise scale</dd>
+<dt>Axes</dt><dd>training loss, falling to the right (log); $B_{\rm crit}$ in tokens (log)</dd>
+</dl>
 
-- about $L^{-4.8}$
-- doubles every 13% drop in loss
-- depends on loss, not model size
-- 1 to 2M tokens for the largest models
-
-<p class="q"><b>Q.</b> Why define $C_{\min}$?</p>
-<p class="a"><b>A.</b> All runs used one batch; $C_{\min}$ is what they'd cost at a small one</p>
+<p class="plain">$B_{\rm crit} \approx 2\times10^8\,L^{-4.8}$ tokens: it doubles for every 13% drop in loss, at both sizes.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig10.png" alt="Kaplan et al. Figure 10: critical batch size in tokens against WebText2 train loss on log axes, a straight line B_crit = 2.1e8 tokens times L^-4.8"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig10.png" alt="Kaplan et al. Figure 10: critical batch size in tokens against WebText2 train loss on log axes; the 3M and 85M models follow the same rising line, B_crit = 2.1e8 tokens times L^-4.8, with noise scale measurements in green"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 1.4, 5.5, Fig. 10. $C_{\min} = C/(1 + B/B_{\rm crit}(L))$. Not confident "for values of the loss far outside the range we have explored" (App. C)</p>
+<p class="footnote">Kaplan et al. 2020 · Eq. 1.4, 5.3, Fig. 10. Depends on the loss, "not directly on the model size". 1 to 2M tokens for the largest models</p>
 
 Note:
-The critical batch size itself follows a power law, in the loss rather than in model size: as the model gets better, gradients get noisier relative to their signal, and you can usefully average over a bigger batch. It doubles for every 13% drop in loss, reaching one to two million tokens for their largest models.
-Why this matters for the main result: every run used one fixed batch of half a million tokens, which is not optimal. So the paper converts each run's compute to C_min, the compute it would have needed with small, efficient batches. The headline allocation, 0.73, is in C_min. In raw compute the same fit gives 0.88.
+Each hyperbola in Figure 18 gives one critical batch size, at one loss. Put them against the loss: the 3M and the 85M models follow the same line. So the critical batch depends on how good the model is, not on its size. As the loss falls, gradients get noisier relative to their signal, and you can usefully average over a bigger batch: it doubles for every 13% drop in loss. The green dots are the gradient noise scale, a cheaper estimate that roughly agrees.
+Why this matters: every size run used one fixed batch, half a million tokens, which is too big early in training and too small late. Next slide: how the paper corrects for that.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §5.2 · Fig. 11</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1 · Eq. 5.4, 5.5</p>
 
-## Fixed compute vs fixed steps: which size wins?
+## How do they correct for the fixed batch?
 
-<div class="cols">
+<div class="rows">
+<div class="eq">$$S_{\min} = \frac{S}{1 + B_{\rm crit}(L)/B}, \qquad C_{\min} = \frac{C}{1 + B/B_{\rm crit}(L)}$$</div>
+<div class="fig"><img src="img/week-06-kaplan-pipeline.svg" alt="Diagram: the size runs' learning curves feed five uses: loss at the end of each run gives L(N); the same models on other text give transfer; rescaling to compute and taking the lowest curve gives the frontier L(C_min); steps adjusted to S_min give the L(N, S) fit; the best N along the frontier gives N_opt proportional to C_min^0.73. The batch runs' critical batch size adjusts the last three. The data runs separately give L(D) and L(N, D)"></div>
+<p class="plain">Each logged step of a size run is converted: the steps it would need at a huge batch, the compute at a small one.</p>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §5.1. $B = 2^{19}$ tokens, the size runs' batch. Why not train at $B_{\rm crit}$? It is "a moving target" (§6). Diagram ours</p>
+
+Note:
+Every size run used one batch, so their step counts and compute are not the most efficient possible. The paper converts each point on each learning curve. S_min: the steps that loss would have taken at a very large batch. C_min: the compute it would have taken at a very small batch. Both use the critical batch at that loss.
+The diagram shows where this matters. The size law and the transfer plots use final losses, no conversion. The compute frontier, the learning-curve fit of the next slide, and the allocation result all use the converted numbers. The data runs are separate.
+Why not just train at the critical batch? Because it changes as the loss falls: "a moving target", in the paper's words.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Eq. 1.6, Fig. 4 right</p>
+
+## Does one equation fit every learning curve?
+
+<div class="cols wide-fig">
 <div class="text">
 
-- fixed compute: one best size
-- too small: capacity-limited
-- too big: too few steps
-- fixed steps: bigger always better
+<div class="eq">$$L(N,S) = \Big(\frac{N_c}{N}\Big)^{\alpha_N} + \Big(\frac{S_c}{S_{\min}}\Big)^{\alpha_S}$$</div>
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, after warmup</dd>
+<dt>Each line</dt><dd>one model's test loss, solid; the fit, dashed; colour: size</dd>
+<dt>Axes</dt><dd>$S_{\min}$, steps converted to a large batch (log); test loss</dd>
+</dl>
+
+<p class="plain">One equation with four constants tracks every size: "imperfect", but close after the start.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig4-right.png" alt="Kaplan et al. Figure 4 right: loss against estimated S_min for models of many sizes, measured curves with the fitted equation dashed, close for all sizes after the start"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §5.2, Eq. 1.6, Table 3 ($\alpha_N = 0.077$, $\alpha_S = 0.76$, $N_c = 6.5\times10^{13}$, $S_c = 2.1\times10^3$), Fig. 4 right: "the fits are imperfect"</p>
+
+Note:
+Now the paper's model of a whole training curve. The loss is a floor set by the model's size, the first term, plus a term that falls as a power law in steps, with exponent 0.76. The steps are S_min, the converted steps from the last slide.
+The test: the size runs' learning curves after warmup, solid, against this one equation with four constants, dashed. It tracks all sizes reasonably well after the start. The authors' own word is "imperfect". This equation is what section 6 optimises.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · from the fit · Eq. 1.6</p>
+
+## A power law in steps, on top of a floor
+
+<div class="cols wide-fig">
+<div class="text">
+
+- First term: the floor set by size.
+- Second: still training, falling as $S_{\min}^{-0.76}$.
+- Subtract each model's floor: one straight line for all.
+- Fits only after the warmup.
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-learning-curve.svg" alt="Illustration from Kaplan's Eq. 1.6: left, loss against steps for models of 1M, 10M, 100M and 1B parameters, each flattening to its own floor; right, loss minus the floor against steps on log axes, the same straight line of slope -0.76 for every size"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Eq. 1.6 with Table 3 constants. Illustration drawn from the equation, not from runs</p>
+
+Note:
+Optional. What the equation says, drawn from it with the paper's constants. Left: each model's curve flattens to its own floor. Right: subtract the floor and every size falls on the same straight line of slope minus 0.76. So a training curve is not a pure power law; it is a power law sitting on top of a constant.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Fig. 11</p>
+
+## Fixed compute or fixed steps: which size wins?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, read at a fixed budget</dd>
+<dt>Top</dt><dd>each line: one compute budget; each point: one model's loss at that budget</dd>
+<dt>Bottom</dt><dd>each line: one number of steps</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss; dotted: the fit</dd>
+</dl>
+
+<p class="plain">Fixed compute: one best size. Fixed steps: bigger is always better.</p>
+
+- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig11.png" alt="Kaplan et al. Figure 11: top, loss against parameters at fixed compute budgets, each with a minimum at an intermediate size; bottom, loss against parameters at fixed numbers of steps, decreasing with size"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 11, §5.2. The top panel (the paper's left) is the same U-shaped trade-off Chinchilla's IsoFLOP curves measure two years later</p>
+<p class="footnote">Kaplan et al. 2020 · §5.2, Fig. 11 (left and right, stacked). Points: the size runs; dotted: Eq. 1.6 with the $C_{\min}$, $S_{\min}$ conversion</p>
 
 Note:
-Two ways to slice the same runs. Hold compute fixed (top panel) and there is a best model size: smaller ones run out of capacity, bigger ones get too few steps. Hold the number of steps fixed (bottom) and bigger is always better, since the bigger model just costs more.
-The top panel is the seed of the whole Chinchilla paper: a U-shaped curve at fixed compute whose minimum moves with the budget. Where exactly that minimum sits is what the two papers disagree on.
+Two ways to slice the same learning curves. Pick a compute budget, find where each model's curve is at that compute, and plot those losses against size: the top panel. Pick a number of steps instead: the bottom panel. Press down for each.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Fig. 11, left</p>
+
+## At a fixed budget, which size is best?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each line</dt><dd>one compute budget (colour, PF-days)</dd>
+<dt>Each point</dt><dd>one model's loss after spending that budget</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss</dd>
+</dl>
+
+<p class="plain">A U: too small runs out of capacity, too big runs out of steps. The bottom moves right as the budget grows.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig11-compute.png" alt="Kaplan et al. Figure 11 left: test loss against non-embedding parameters at fixed compute budgets, each a U-shaped curve whose minimum moves to larger models as the budget grows"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 11 left: "Each value of compute budget has an associated optimal model size". The same U Chinchilla's IsoFLOP curves measure two years later</p>
+
+Note:
+Fixed compute. Every curve is one budget; along it, smaller models train for more steps and bigger ones for fewer. Each curve has a minimum: too small and the model runs out of capacity; too big and it runs out of steps. The minimum moves to bigger models as the budget grows, and where exactly it sits is what Kaplan and Chinchilla disagree on.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Fig. 11, right</p>
+
+## At a fixed number of steps?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each line</dt><dd>one number of steps (colour)</dd>
+<dt>Each point</dt><dd>one model's loss after that many steps</dd>
+<dt>Axes</dt><dd>non-embedding parameters (log); test loss</dd>
+</dl>
+
+<p class="plain">No U: after the same number of steps a bigger model is always better, because it also spent more.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig11-steps.png" alt="Kaplan et al. Figure 11 right: test loss against non-embedding parameters at fixed numbers of steps; every line falls steadily with size"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 11 right. Mediocre fits at small $S$: the power law breaks down very early in training</p>
+
+Note:
+Fixed steps. Now there is no minimum: after the same number of steps, a bigger model is always lower. That's not a contradiction; at the same steps, the bigger model has used more compute. Which slicing matters depends on what you're short of: compute, or wall-clock time.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §6 Optimal allocation of the compute budget</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6 · the size runs, re-read · Fig. 13</p>
 
-## The question, as an optimisation
+## Does the batch correction change the compute law?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs' learning curves</dd>
+<dt>Black</dt><dd>the frontier, the lowest loss at each compute: raw, and converted to $C_{\min}$</dd>
+<dt>Dashed</dt><dd>orange: fit on raw $C$; blue: fit on $C_{\min}$</dd>
+<dt>Axes</dt><dd>compute in PF-days (log); test loss (log)</dd>
+</dl>
+
+<p class="plain">A slightly gentler slope after correction: 0.057 raw, 0.050 on $C_{\min}$.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig13.png" alt="Kaplan et al. Figure 13: test loss against compute, the raw frontier at fixed batch and the frontier adjusted to C_min, with fits L = (C / 2.0e7)^-0.057 and L = (C_min / 2.3e8)^-0.050"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §6.1, Fig. 13: "It is the $L(C_{\min})$ trend that we expect to provide a reliable extrapolation". The lump near $10^{-5}$ PF-days: the switch from 1-layer to 2-layer models</p>
+
+Note:
+Section 6 returns to the compute frontier of Figure 1, now with the batch correction in hand. Two black frontiers from the same runs: on the compute actually spent at the fixed batch, and on C_min. Their fits differ a little, 0.057 and 0.050. The authors trust the corrected one for extrapolation; later papers sometimes quote the raw 0.057, a small source of confusion in the literature.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · the size runs and the batch runs · Fig. 14</p>
+
+## How big should the model be for a budget?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>the size runs, converted with the batch runs' $B_{\rm crit}$</dd>
+<dt>Top</dt><dd>each point: the best model size at one compute budget</dd>
+<dt>Bottom</dt><dd>each point: that model's steps at that budget</dd>
+<dt>Axes</dt><dd>compute in PF-days (log); parameters (log), or steps</dd>
+</dl>
+
+<p class="plain">$N_{\rm opt} \propto C_{\min}^{0.73}$; steps hardly grow. 10x compute: 5x the model, 2x the data.</p>
+
+- Next: each panel (↓).
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig14.png" alt="Kaplan et al. Figure 14: top, compute-efficient model size against compute, N = 1.3e9 C_min^0.73 (adjusted) and N = 1.6e9 C^0.88 (fixed batch); bottom, steps against compute, S_min = 5.4e3 C_min^0.03, nearly flat, against fixed-batch steps that rise"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · §6.1, Eq. 6.1, Fig. 14 (left and right, stacked), its caption: "increasing by 5x for each 10x increase in compute"</p>
+
+Note:
+The headline result. For every compute budget, find the model size whose curve is lowest at that budget: that's one point in the top panel. Those points fall on a line: the best size grows as C_min to the 0.73. The bottom panel shows the steps that best model takes: nearly flat.
+In words, from the caption: for every 10x of compute, about 5x into the model and only 2x into data. Hold on to how it was measured: these points are checkpoints read partway through the long runs with one fixed schedule. That is the step Chinchilla attacks. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 14, left</p>
+
+## How fast does the best size grow?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each point</dt><dd>the size with the lowest loss at one compute budget</dd>
+<dt>Blue</dt><dd>budgets in $C_{\min}$: fit $N = 1.3\times10^9\,C_{\min}^{0.73}$</dd>
+<dt>Orange</dt><dd>budgets in raw $C$ at the fixed batch: fit $N = 1.6\times10^9\,C^{0.88}$</dd>
+<dt>Axes</dt><dd>compute in PF-days (log); non-embedding parameters (log)</dd>
+</dl>
+
+<p class="plain">Kaplan's exponent is 0.73, in non-embedding $N$ and $C_{\min}$. On raw compute it is 0.88.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig14-size.png" alt="Kaplan et al. Figure 14 left: compute-efficient model size against compute; blue points and fit N = 1.3e9 C_min^0.73, orange points and fit N = 1.6e9 C^0.88"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 14 left; the 0.88 appears only in its legend. Both come up again in later work (last slide)</p>
+
+Note:
+The left panel. The same best-size points on two compute axes. On C_min, blue, the slope is 0.73: that's "Kaplan's exponent". On the raw compute at the fixed batch, orange, it's 0.88, printed only in the legend. Both numbers come back when later papers try to explain why Chinchilla got 0.5.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 14, right</p>
+
+## Do the best runs take more steps?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each point</dt><dd>the best model's step count at one compute budget</dd>
+<dt>Blue</dt><dd>$S_{\min}$, converted: fit $5.4\times10^3\,C_{\min}^{0.03}$</dd>
+<dt>Orange</dt><dd>$S$, the steps actually taken at the fixed batch</dd>
+<dt>Axes</dt><dd>compute in PF-days (log); steps</dd>
+</dl>
+
+<p class="plain">Almost no: the extra data goes into bigger batches, not more steps.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig14-steps.png" alt="Kaplan et al. Figure 14 right: steps against compute; blue S_min points nearly flat around 3,000 to 5,000 with fit 5.4e3 C_min^0.03; orange fixed-batch steps rising to over 15,000"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 14 right, §6.1: "the measured exponent is sufficiently small that our results may even be consistent with an exponent of zero"</p>
+
+Note:
+The right panel. In converted steps, blue, the best runs take about the same number of steps at every budget, a few thousand: exponent 0.03, perhaps zero. So the data that does grow, about 2x per 10x compute, goes into bigger batches, since the critical batch grows as the loss falls. The orange fixed-batch steps do rise, which is one more reason the conversion matters.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.1 · from the fits · Fig. 3</p>
+
+## Where does a billion times the compute go?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- Model size: over 1,000,000x.
+- Batch: about 100x.
+- Serial steps: under 10x.
+- Data = batch × steps: only a few hundred times.
+
+<p class="plain">Mostly into the model.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-allocation.png" alt="Kaplan et al. Figure 3: over a billion-fold increase in compute, more than a million-fold goes into model size, about 100-fold into batch size and less than 10-fold into serial steps"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 3, drawn from the fitted exponents, not new runs. Data grows as $C^{0.27}$</p>
+
+Note:
+The same allocation drawn as shares of a billion-fold increase in compute: more than a million-fold into the size, about a hundred-fold into the batch, under ten-fold into steps. This figure is not data; it's the fitted exponents drawn out.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Table 6 · our arithmetic</p>
+
+## What does 100x more compute buy, Kaplan's way?
 
 <div class="cols">
 <div class="text">
 
-<div class="eq">$$\min_{N,\thinspace B,\thinspace S}\ L(N,S) \quad \text{subject to}\quad 6NBS = C$$</div>
+- Parameters: $100^{0.73} \approx 29$x.
+- Batch: $100^{0.24} \approx 3$x.
+- Steps: $100^{0.03} \approx 1.15$x.
+- Tokens: $100^{0.27} \approx 3.5$x.
+
+<p class="plain">Labs then grew models while staying near 300B training tokens.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-100x.svg" alt="Illustration: growth for 100x compute under Kaplan's exponents: parameters 28.8x, batch 3.0x, steps 1.1x, tokens 3.5x"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Table 6 exponents; illustration, our arithmetic. The token exponent is for compute-efficient training, not the overfitting rule of §4</p>
+
+Note:
+Optional. Make it concrete. A hundred times more compute, under Kaplan's exponents: about 29 times the parameters, 3 times the batch, barely more steps, and only 3.5 times the tokens.
+This is what people mean when they say Kaplan's laws favour bigger models over more data. It's visible in the models of 2020 to 2021: GPT-3, Gopher, MT-NLG all grew in size while staying near 300 billion training tokens. Chinchilla's first table lists them.
+
+---
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.2 · from the fit</p>
+
+## Why does the best model stop early, in theory?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\min_{N,\thinspace S}\ L(N,S) \quad \text{subject to}\quad 6NBS = C$$</div>
 
 <div class="eq">$$L = \underbrace{\Big(\frac{N_c}{N}\Big)^{\alpha_N}}_{\text{capacity}} + \underbrace{\Big(\frac{S_c}{S}\Big)^{\alpha_S}}_{\text{still training}}$$</div>
-
-- bigger $N$: capacity term falls
-- but fewer steps: training term rises
-- best $N$: where they balance
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Why not train each size to convergence?</p>
-<p class="a"><b>A.</b> Convergence wastes compute (next slides)</p>
-<p class="q"><b>Q.</b> Where's the batch?</p>
-<p class="a"><b>A.</b> $B$ tracks $B_{\rm crit}(L)$, so it grows as loss falls</p>
+- A bigger $N$ lowers the capacity term.
+- At fixed $C$ it leaves fewer steps, so the training term rises.
+- The best $N$ is where the two balance.
+
+<p class="plain">The batch follows $B_{\rm crit}(L)$, so it grows as the loss falls.</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · §6, Eq. 1.6 to 1.8. With $S = C/(6NB)$: $L = (N_c/N)^{\alpha_N} + (6NBS_c/C)^{\alpha_S}$</p>
+<p class="footnote">Kaplan et al. 2020 · §6.2, App. B, Eq. 1.6 to 1.8. With $S = C/(6NB)$: $L = (N_c/N)^{\alpha_N} + (6NBS_c/C)^{\alpha_S}$</p>
 
 Note:
-Now the main result, as an optimisation. Fix the compute C. Choose model size, batch and steps to minimise loss, using the learning-curve law: a capacity term that falls with N plus a still-training term that falls with steps.
-The tension: at fixed compute, a bigger model leaves fewer steps. Substitute S = C over 6NB and the training term grows with N. So the capacity term pushes N up, the training term pushes it down, and the optimum is where their marginal effects balance.
-The batch isn't free either: training at the critical batch means B grows as the loss falls.
+Section 6.2 derives the same answer from the learning-curve equation instead of reading it off the runs. Fix the compute. Choose the model size and steps to minimise the loss: a capacity term that falls with N plus a still-training term that falls with steps.
+The tension: at fixed compute, a bigger model leaves fewer steps. Substitute S equals C over 6NB and the training term grows with N. So the capacity term pushes N up, the training term pushes it down, and the optimum is where their marginal effects balance. The batch isn't free either: training at the critical batch means B grows as the loss falls.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · §6 · App. B</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.2 · from the fit · App. B</p>
 
 ## Where is the balance?
 
@@ -735,15 +1323,13 @@ Call the two terms $A$ (capacity) and $T$ (training). At fixed $B$:
 
 <div class="eq">$$\Rightarrow\quad T = \frac{\alpha_N}{\alpha_S}\thinspace A \approx \frac{0.076}{0.76}\thinspace A = 0.10\thinspace A$$</div>
 
-<div class="eq">$$\Rightarrow\quad L_{\rm opt} \approx 1.10\thinspace  L(N,\infty)$$</div>
+<div class="eq">$$\Rightarrow\quad L_{\rm opt} \approx 1.10\thinspace L(N,\infty)$$</div>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> In words?</p>
-<p class="a"><b>A.</b> Stop about 10% above the model's converged loss</p>
-<p class="q"><b>Q.</b> So what should you do?</p>
-<p class="a"><b>A.</b> Train a bigger model, and stop early</p>
+<p class="plain">In words: stop about 10% above the model's converged loss.</p>
+<p class="plain">So for a fixed budget: train a bigger model, and stop early.</p>
 
 </div>
 </div>
@@ -751,41 +1337,92 @@ Call the two terms $A$ (capacity) and $T$ (training). At fixed $B$:
 <p class="footnote">Kaplan et al. 2020 · App. B: train "to a fixed percentage $\alpha_N/\alpha_S \approx 10\%$ above the converged loss". We hold $B$ fixed for simplicity; App. B keeps $B(L)$, and the extra term drops out at the optimum</p>
 
 Note:
-Set the derivative with respect to N to zero. Because each term is a power of N, the derivative of each is its exponent times itself over N. The capacity term contributes minus alpha_N A over N; the training term, at fixed compute, contributes plus alpha_S T over N. Setting the sum to zero gives T = (alpha_N / alpha_S) A.
+Set the derivative with respect to N to zero. Because each term is a power of N, the derivative of each is its exponent times itself over N. The capacity term contributes minus alpha_N A over N; the training term, at fixed compute, contributes plus alpha_S T over N. Setting the sum to zero gives T equals alpha_N over alpha_S times A.
 With the fitted exponents that's 0.076 over 0.76, a tenth. So at the optimum, the still-training part of the loss is 10% of the capacity part: the model is stopped about 10% above the loss it would converge to.
-That's the paper's most practical claim: for a fixed budget, a bigger model stopped early beats a smaller one trained to convergence. It follows from the fitted model; it isn't a separate experiment.
+That's the paper's most practical claim: for a fixed budget, a bigger model stopped early beats a smaller one trained to convergence. It follows from the fitted equation; it isn't a separate experiment.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From the experiment 1 fit · App. B · Fig. 12</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1, App. B.4 · from the fit · Fig. 12</p>
 
-## How much does early stopping save?
+## How much does a wrong size cost?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- vs stopping 2% above converged:
-- 2.7x more parameters
-- 7.7x fewer steps
-- 65% less compute, same loss
-- sizes 0.6x to 2.2x optimal: under 20% extra
+<dl class="where card">
+<dt>Source</dt><dd>no runs: computed from the $L(N, S)$ fit</dd>
+<dt>Top</dt><dd>extra compute to reach the same loss with a model $N/N_{\rm efficient}$ times the best size</dd>
+<dt>Bottom</dt><dd>the steps that model needs, relative to the best</dd>
+</dl>
 
-<p class="q"><b>Q.</b> How sharp is the optimum?</p>
-<p class="a"><b>A.</b> Flat: being 2x off costs little</p>
+<p class="plain">The optimum is flat: 0.6x to 2.2x the best size costs at most 20% more compute.</p>
+
+- Next: each panel (↓).
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig12.png" alt="Kaplan et al. Figure 12: top, extra compute needed against model size relative to the optimum, small between about 0.6x and 2.2x; bottom, the reduction in serial steps for larger-than-optimal models"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig12.png" alt="Kaplan et al. Figure 12: top, extra compute needed against model size relative to the optimum, small between about 0.6x and 2.2x; bottom, the steps needed, fewer for larger-than-optimal models"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · App. B.3, B.4, Fig. 12. "should not be trusted for very large models", valid only in the power-law region of the learning curve</p>
+<p class="footnote">Kaplan et al. 2020 · App. B.3, B.4, Fig. 12: "should not be trusted for very large models", valid only in the power-law region of the learning curve</p>
 
 Note:
-Appendix B puts numbers on it. Compared with training to 2% above the converged loss, the compute-efficient recipe uses about 2.7 times as many parameters, 7.7 times fewer steps, and 65% less compute to reach the same loss.
-Figure 12 shows the optimum is flat: models from 0.6 to 2.2 times the optimal size cost less than 20% extra compute. That flatness matters later. It's one reason two very different prescriptions could both look reasonable on small-scale data.
+How sharp is the optimum? Figure 12 is drawn from the fitted equation, no new runs. The top panel: if you train a model some multiple of the best size, how much more compute do you need to reach the same loss? The bottom: how many steps it needs.
+Appendix B also puts numbers on early stopping: against training to 2% above the converged loss, the compute-efficient recipe uses about 2.7 times the parameters, 7.7 times fewer steps, and 65% less compute for the same loss. Press down for each panel.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. B.4 · from the fit · Fig. 12, left</p>
+
+## How much extra compute does a wrong size need?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Curve</dt><dd>from the $L(N, S)$ fit, not runs</dd>
+<dt>Axes</dt><dd>model size over the best size (log); compute over the best compute</dd>
+</dl>
+
+<p class="plain">A flat bottom: anywhere from 0.6x to 2.2x the best size needs under 20% more compute.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig12-compute.png" alt="Kaplan et al. Figure 12 left: excess compute against deviation from the optimal model size; a U with its minimum of 1 at the optimal size, under 1.2 between 0.6x and 2.2x"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 12 left: "Models between 0.6x and 2.2x the optimal size can be trained with a 20% larger compute budget"</p>
+
+Note:
+Left panel. The U is flat at the bottom: being off by a factor of two either way costs less than 20% extra compute. That flatness matters later. It's one reason two very different prescriptions, Kaplan's and Chinchilla's, could both look reasonable on small-scale data.
+
+--
+
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. B.4 · from the fit · Fig. 12, right</p>
+
+## And how many steps does it take?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Curve</dt><dd>from the $L(N, S)$ fit, not runs</dd>
+<dt>Axes</dt><dd>model size over the best size (log); steps over the best model's steps (log)</dd>
+</dl>
+
+<p class="plain">Bigger than best needs fewer steps: faster, if you have the parallel hardware.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-fig12-steps.png" alt="Kaplan et al. Figure 12 right: excess steps against deviation from the optimal model size; falling steadily, smaller models need more steps and larger ones fewer, dashed where the framework does not capture early training"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Fig. 12 right. Dashed: "Our framework does not capture early training dynamics"</p>
+
+Note:
+Right panel. A model bigger than the best size reaches the same loss in fewer steps. So if wall-clock time matters more than compute, and you have the hardware to run a big model in parallel, it can pay to go bigger than optimal. The dashed end is where the equation stops being trustworthy.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §1.2 · Eq. 1.7, 1.8</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §1.2, §6.2 · from the fits · Eq. 1.7, 1.8</p>
 
 ## How fast should each knob grow?
 
@@ -803,12 +1440,11 @@ At the optimum $L \propto N^{-\alpha_N}$, so
 </div>
 <div class="text">
 
-- $\alpha_C \approx 0.05$
-- predicted: $N \propto C^{0.71}$
-- measured: $N \propto C^{0.73}$
+- $\alpha_C \approx 0.05$.
+- Predicted: $N \propto C^{0.71}$.
+- Measured (Fig. 14): $N \propto C^{0.73}$.
 
-<p class="q"><b>Q.</b> Why is this neat?</p>
-<p class="a"><b>A.</b> Three measured exponents predict a fourth</p>
+<p class="plain">Three measured exponents predict a fourth.</p>
 
 </div>
 </div>
@@ -816,143 +1452,41 @@ At the optimum $L \propto N^{-\alpha_N}$, so
 <p class="footnote">Kaplan et al. 2020 · Eq. 1.7, 1.8, 6.4, 6.5. The paper prints $\alpha_C$ as 0.054 (Eq. 6.4) and 0.052 (App. B); with 0.054 it gets $C^{0.71}$</p>
 
 Note:
-How the allocation exponents follow. At the optimum the loss scales like the capacity term, N to the minus alpha_N. The batch tracks the critical batch, which goes as L to the minus 1 over alpha_B, so B grows as N to the alpha_N over alpha_B. The optimality condition from two slides back makes the steps grow as N to the alpha_N over alpha_S.
-Multiply: compute goes as N to the power 1 + alpha_N/alpha_B + alpha_N/alpha_S. Invert it and the optimal size goes as C to the alpha_C over alpha_N, where alpha_C is the harmonic-style combination of the three exponents.
-With the fitted values, alpha_C is about 0.05, matching the measured compute law, and the size exponent comes out about 0.71, close to the 0.73 they fit directly. That's the satisfying part: exponents for capacity, training and batch predict the compute exponent and the allocation.
+How the allocation exponents follow. At the optimum the loss scales like the capacity term, N to the minus alpha_N. The batch tracks the critical batch, which goes as L to the minus 1 over alpha_B, so B grows as N to the alpha_N over alpha_B. The balance condition makes the steps grow as N to the alpha_N over alpha_S.
+Multiply: compute goes as N to the power 1 plus alpha_N over alpha_B plus alpha_N over alpha_S. Invert it and the optimal size goes as C to the alpha_C over alpha_N.
+With the fitted values, alpha_C is about 0.05, matching the measured compute law, and the size exponent comes out about 0.71, close to the 0.73 read directly off the runs in Figure 14. That's the satisfying part: exponents for capacity, training and batch predict the compute exponent and the allocation.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §6.1 · Fig. 14</p>
-
-## The measured answer: $N_{\rm opt} \propto C_{\min}^{0.73}$
-
-<div class="cols">
-<div class="text">
-
-- blue: batch-adjusted, $C_{\min}^{0.73}$
-- orange: raw fixed batch, $C^{0.88}$
-- steps: $C^{0.03}$, nearly flat
-- batch $C^{0.24}$, data $C^{0.27}$
-- 10x compute: model 5x, data 2x
-
-<p class="q"><b>Q.</b> Which exponent is "Kaplan's"?</p>
-<p class="a"><b>A.</b> 0.73, in non-embedding $N$ and $C_{\min}$</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig14.png" alt="Kaplan et al. Figure 14: top, compute-efficient model size against compute, N = 1.3e9 C_min^0.73 (adjusted) and N = 1.6e9 C^0.88 (fixed batch); bottom, steps against compute, S_min = 5.4e3 C_min^0.03"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 14 (legend), Eq. 6.1, Table 6. Read from checkpoints of the long fixed-schedule runs (§3.3)</p>
-
-Note:
-The direct measurement. At each compute budget, find the model size with the lowest loss. In batch-adjusted compute it grows as C_min to the 0.73; in raw compute at the fixed batch, 0.88, printed only in the legend. Steps barely grow (exponent 0.03); the batch takes up most of the rest.
-In words, from the caption: for every 10x of compute, about 5x into the model and only 2x into data.
-Hold on to how it was measured: these frontier points are checkpoints read partway through the long runs with one fixed schedule. That is the step Chinchilla attacks.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Experiments 1 and 4 · §6.1 · Fig. 13</p>
-
-## Why adjust for the batch?
-
-<div class="cols">
-<div class="text">
-
-- raw compute: $L \propto C^{-0.057}$
-- adjusted: $L \propto C_{\min}^{-0.050}$
-- adjusted is what to extrapolate
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-fig13.png" alt="Kaplan et al. Figure 13: test loss against compute, raw at fixed batch and adjusted to the critical batch, two parallel power laws"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 13, §6: "It is the $L(C_{\min})$ trend that we expect to provide a reliable extrapolation for larger compute"</p>
-
-Note:
-Optional. The compute frontier before and after the batch adjustment. The authors trust the adjusted one for extrapolation; Pearce and Song later quote the raw 0.057, a small source of confusion in the literature.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §1.1 · Fig. 3</p>
-
-## A billion times the compute, spent how?
-
-<div class="cols">
-<div class="text">
-
-- model size: over 1,000,000x
-- batch: about 100x
-- serial steps: under 10x
-- data = batch × steps
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-allocation.png" alt="Kaplan et al. Figure 3: over a billion-fold increase in compute, more than a million-fold goes into model size, about 100-fold into batch size and less than 10-fold into serial steps"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Fig. 3. Data grows only a few hundred-fold ($C^{0.27}$)</p>
-
-Note:
-Optional. The same allocation drawn as shares of a billion-fold increase in compute: more than a million-fold into size, about a hundred-fold into batch, under ten-fold into steps.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1 and 4 · §6.1 · Table 6</p>
-
-## What does 100x more compute buy, Kaplan's way?
-
-<div class="cols">
-<div class="text">
-
-- parameters: $100^{0.73} \approx 29$x
-- batch: $100^{0.24} \approx 3$x
-- steps: $100^{0.03} \approx 1.15$x
-- tokens: $100^{0.27} \approx 3.5$x
-
-<p class="q"><b>Q.</b> What did labs do with this?</p>
-<p class="a"><b>A.</b> Bigger models, about 300B tokens each</p>
-
-</div>
-<div class="fig"><img src="img/week-06-kaplan-100x.svg" alt="Illustration: growth for 100x compute under Kaplan's exponents: parameters 28.8x, batch 3.0x, steps 1.1x, tokens 3.5x"></div>
-</div>
-
-<p class="footnote">Kaplan et al. 2020 · Table 6 exponents; illustration, our arithmetic. The token exponent is for one epoch of compute-efficient training, not the overfitting rule of §4</p>
-
-Note:
-Make it concrete. A hundred times more compute, under Kaplan's exponents: about 29 times the parameters, 3 times the batch, barely more steps, and only 3.5 times the tokens.
-This is what people mean when they say Kaplan's laws favour bigger models over more data. It's visible in the models of 2020 to 2021: GPT-3, Gopher, MT-NLG all grew in size while staying near 300 billion training tokens. Chinchilla's first table lists them.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · From experiments 1, 3 and 4 · §6.3 · Fig. 15</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.3 · from the fits · Fig. 15</p>
 
 ## Where do the laws break?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- data grows as $C^{0.26}$ (Eq. 6.7)
-- avoiding overfitting needs $C^{0.54}$
-- the two loss predictions cross: $C^* \sim 10^4$ PF-days
-- $N^* \sim 10^{12}$, $L^* \sim 1.7$ nats
-- "highly uncertain", 10x either way
+<dl class="where card">
+<dt>Black</dt><dd>the measured compute frontier (the size runs)</dd>
+<dt>Orange</dt><dd>$L(C_{\min})$, extrapolated</dd>
+<dt>Red</dt><dd>$L(D(C))$: the data law, with data grown as compute-efficient training grows it</dd>
+<dt>Axes</dt><dd>compute in PF-days (log); test loss (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> A target size?</p>
-<p class="a"><b>A.</b> No: a predicted breakdown</p>
+<p class="plain">The two lines cross near $10^4$ PF-days: past that, the laws contradict each other.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-contradiction.png" alt="Kaplan et al. Figure 15: test loss against compute; the compute-efficient law falls faster than the data-limited law and the two cross near 10^4 PF-days"></div>
+<div class="fig"><img src="img/week-06-kaplan-contradiction.png" alt="Kaplan et al. Figure 15: test loss against compute; the measured frontier in black, the compute law extrapolated in orange, the data-limited law in red; the orange line falls faster and crosses the red near 10^4 PF-days"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 15, Eq. 6.6 to 6.8. Conjecture: $L^*$ may estimate "the entropy-per-token of natural language"</p>
+<p class="footnote">Kaplan et al. 2020 · §6.3, Eq. 6.6 to 6.8, Fig. 15. Crossing at $C^* \sim 10^4$ PF-days, $N^* \sim 10^{12}$, $L^* \sim 1.7$ nats; "highly uncertain", 10x either way</p>
 
 Note:
-The paper's own warning. Follow the compute-optimal recipe and data grows only as C to the 0.27. But to stay clear of overfitting, data must grow as N to the 0.74, which is C to the 0.54. Extrapolate both and eventually the compute law predicts a loss lower than the data you have could allow. The lines cross near ten thousand PF-days and a trillion parameters, so the laws must break before that.
-The authors conjecture the crossing might be where models have extracted everything reliable from text, and L-star, about 1.7 nats per token, might estimate the entropy of language. They flag the numbers as uncertain by ten times either way.
-Chinchilla dissolves the contradiction a different way: if data grows as fast as the model, the lines never cross.
+The paper's own warning. Follow the compute-efficient recipe and the data processed grows only as C to the 0.27. But with that little data, the data law sets a floor on the loss: the red line. The compute law, orange, falls faster. Extrapolate both, and near ten thousand PF-days and a trillion parameters the compute law predicts a loss lower than the data could allow. So the laws must break before that.
+The authors conjecture the crossing might be where models have extracted everything reliable from text, and L-star, about 1.7 nats per token, might estimate the entropy of language. They flag the numbers as uncertain by ten times either way. Chinchilla dissolves the contradiction a different way: if data grows as fast as the model, the lines never cross.
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §8 Discussion</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §8 · discussion</p>
 
 ## Smooth loss, sudden abilities?
 
@@ -960,9 +1494,9 @@ Chinchilla dissolves the contradiction a different way: if data grows as fast as
 
 <div class="text">
 
-- loss is an average over all tokens
-- one ability can change faster than the average
-- this paper measures loss only
+- Loss is an average over all tokens.
+- One ability can change faster than the average.
+- This paper measures loss only.
 
 </div>
 
@@ -973,448 +1507,59 @@ One sentence in the discussion points at the second half of today. Loss is an av
 
 ---
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work</p>
-
-## Was 0.73 right?
-
-<div class="cols">
-<div class="text">
-
-- Chinchilla 2022: $N_{\rm opt} \propto C^{0.50}$
-- 100x compute: 10x params, 10x tokens
-- not 29x and 3.5x
-- why the gap: next two slides
-
-</div>
-<div class="fig"><img src="img/week-06-compare-100x.svg" alt="Illustration: growth for 100x compute; Kaplan: parameters 28.8x, tokens 3.5x; Chinchilla: parameters 10x, tokens 10x"></div>
-</div>
-
-<p class="footnote">Hoffmann et al. 2022, arXiv:2203.15556, Table 2 (Approach 1); illustration, our arithmetic. Reading 2 covers Chinchilla in full</p>
-
-Note:
-The twist, briefly; the next reading is the full story. Two years later, DeepMind asked the same question with runs sized to each budget and found the optimal model grows as compute to the 0.5, not 0.73. For 100 times the compute: 10 times the parameters and 10 times the tokens, not 29 and 3.5.
-So the loss laws survived, but the allocation rule didn't. Two 2024 papers explain why Kaplan got his number (sub-slides).
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Porian et al. 2024</p>
-
-## Why did Kaplan get 0.88?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- reproduce Kaplan: 0.84
-- count the output layer: 0.71
-- warmup sized to the model: 0.60
-- tune LR, batch, AdamW $\beta_2$: 0.50
-- cosine per budget: adds little
-
-</div>
-<div class="fig"><img src="img/week-06-porian-fig1.png" alt="Porian et al. Figure 1: five panels of compute-optimal model size against compute; reproducing Kaplan gives a = 0.835; counting last-layer FLOPs 0.706; correcting warmup 0.602; cosine decay 0.571; optimizer tuning with no decay 0.497"></div>
-</div>
-
-<p class="footnote">Porian et al. 2024, arXiv:2406.19146, Fig. 1, Table 1 (RefinedWeb). 16 models, 5M to 901M, over 900 runs; at Kaplan's scale, far below Chinchilla's</p>
-
-Note:
-Porian et al. reproduced Kaplan's setup on open data and got the raw exponent back, about 0.84. Then they fixed one thing at a time. Counting the output layer's FLOPs, which matters most for small models: 0.71. Shortening the warmup, which at small budgets is longer than the whole compute-optimal run: 0.60. Tuning the learning rate, batch and AdamW beta-2 for each size: 0.50. Matching cosine decay to each budget, Chinchilla's own explanation, moved it only from 0.60 to 0.57.
-Three causes of similar size: the output layer, the warmup, and an untuned optimiser.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Pearce &amp; Song 2024</p>
-
-## Is it how parameters are counted?
-
-<div class="cols">
-<div class="text">
-
-- take Chinchilla's fitted law
-- count Kaplan's way: no embeddings
-- at Kaplan's small sizes
-- local exponent: 0.74 to 0.78
-
-<p class="q"><b>Q.</b> Their own check?</p>
-<p class="a"><b>A.</b> 5 tiny models: 0.49 (total) vs 0.74 (non-embedding)</p>
-
-</div>
-<div class="fig"><img src="img/week-06-pearce-fig5.png" alt="Pearce and Song Figure 5: simulated compute-optimal non-embedding parameters against non-embedding compute from Chinchilla's loss model over Kaplan's size range, with local exponent about 0.78"></div>
-</div>
-
-<p class="footnote">Pearce &amp; Song 2024, arXiv:2406.12907, Fig. 5, Table 1. Mostly analytic; tiny models 0.8M to 4.6M at context 16. Explains 0.73, not the raw 0.88</p>
-
-Note:
-A different route to the same gap, mostly on paper. Take Chinchilla's loss function, which uses total parameters, re-express it in Kaplan's non-embedding units, and look only at Kaplan's small sizes. There the optimum isn't a power law: embeddings are a large share of small models, and the curve bends. Fit a line locally and you get 0.74 to 0.78, close to Kaplan's 0.73.
-Their tiny experiment says the same thing directly: the same five runs give 0.49 counted in total parameters and 0.74 counted without embeddings.
-Pearce counts total parameters; Porian leaves out the input embeddings. Both find the learning-rate decay matters little. Pearce puts most of the gap on counting; Porian finds the warmup length matters about as much as counting the output layer.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Summary</p>
-
-## Three kinds of claim, three levels of trust
-
-<table class="rules">
-  <tr><td>claim</td><td>example</td><td>status</td></tr>
-  <tr><td>observation</td><td>loss vs $N$, $D$, $C$ is a power law</td><td>held up</td></tr>
-  <tr><td>fitted model</td><td>$L(N,D)$, $L(N,S)$</td><td>useful, approximate</td></tr>
-  <tr class="total"><td>extrapolation</td><td>$N_{\rm opt} \propto C^{0.73}$</td><td>revised to about 0.5</td></tr>
-</table>
-
-<p class="footnote">Kaplan et al. 2020 · App. C: "we do not have a solid theoretical understanding for any of our proposed scaling laws"</p>
-
-Note:
-Three kinds of claim, and they deserve different trust. The observation, that loss falls as a power law in size, data and compute across many orders of magnitude, has held up. The fitted functions, L(N,D) and L(N,S), add structure beyond the data; they describe the runs well enough to be useful. The extrapolation, how to spend compute far beyond the runs, is the least secure step, and it's the one that was revised.
-The authors say plainly they have no theory for any of the laws.
-
----
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · summary</p>
 
 ## What to keep from Kaplan
 
 <div class="cols">
 <div class="text">
 
-- loss is predictable from scale
-- size, data, training: each can bottleneck
-- laws relate variables, not just slopes
-- a good fit ≠ a good optimisation rule
+- Loss is predictable from scale: three power laws, each from its own runs.
+- Size, data and training time can each be the bottleneck.
+- The joint laws, $L(N,D)$ and $L(N,S)$, relate the variables, not just the slopes.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Open question</b></p>
-<p class="a">Why are there power laws at all?</p>
+- Trust differs by claim: the power laws held up; the fitted joint laws are useful approximations; the 0.73 allocation did not survive.
+- A good fit is not a good optimisation rule.
+
+<p class="plain">Open: why are there power laws at all?</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020. Next: Chinchilla revises the allocation</p>
+<p class="footnote">Kaplan et al. 2020 · App. C: "we do not have a solid theoretical understanding for any of our proposed scaling laws". Next: Chinchilla revises the allocation</p>
 
 Note:
-Four things to keep. Language-model loss improves predictably with scale, which makes planning possible. Size, data and training time interact, and any one can become the bottleneck. Equations like L(N,D) are more useful than single slopes because they say how changing one variable changes the effect of another. And a description of loss that fits the measured range can still give a wrong rule when you optimise and extrapolate with it.
-What the paper leaves open, and what later work tries to answer: why should neural language models show power laws at all?
+Four things to keep. Loss falls predictably with scale, and each of the three laws comes from its own set of runs. Size, data and training time can each be the bottleneck; scale one without the others and you hit a wall. The joint laws are more useful than the single slopes, because they say how changing one variable changes the effect of another.
+And the claims deserve different trust. The power laws themselves held up in later work. The joint equations are useful approximations. The compute allocation, 0.73, did not survive: the next reading revises it. A model of the loss can be good over the measured range and still give a wrong optimisation rule outside it.
+The open question Kaplan leaves: why power laws at all?
 
+---
 
---
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · later work</p>
 
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · why power laws?</p>
-
-## Why are there power laws at all? Five answers
-
-<table class="rules" style="font-size:20px">
-  <colgroup><col style="width:48%"><col style="width:32%"><col style="width:20%"></colgroup>
-  <tr><td>paper</td><td>the power law comes from</td><td>needs power-law data?</td></tr>
-  <tr><td><b>A Solvable Model of Neural Scaling Laws</b><br><small>Maloney, Roberts &amp; Sully 2022</small></td><td>the data's covariance spectrum</td><td>yes</td></tr>
-  <tr><td><b>A Neural Scaling Law from the Dimension of the Data Manifold</b><br><small>Sharma &amp; Kaplan 2020</small><br><b>Explaining Neural Scaling Laws</b><br><small>Bahri et al. 2021/2024</small></td><td>resolving a data manifold of dimension $d$</td><td>no, a smooth manifold</td></tr>
-  <tr><td><b>The Quantization Model of Neural Scaling</b><br><small>Michaud et al. 2023</small></td><td>many skills, Zipf-frequent</td><td>yes</td></tr>
-  <tr><td><b>Superposition Yields Robust Neural Scaling</b><br><small>Liu, Liu &amp; Gore 2025</small></td><td>superposition: overlaps $\sim 1/\text{width}$</td><td>not in the strong regime</td></tr>
-  <tr class="total"><td><b>On the origin of neural scaling laws: from random graphs to natural language</b><br><small>Barkeshli, Alfarano &amp; Gromov 2026</small></td><td>not explained; shown without power-law data</td><td>no</td></tr>
-</table>
-
-<p class="footnote">Kaplan et al. 2020 §8 hoped for "a 'statistical mechanics' underlying the 'thermodynamics' we have observed"</p>
-
-Note:
-Kaplan left the question open; he even hoped for a statistical mechanics underneath the thermodynamics. Here are the main answers proposed since, in one table. They split into two camps. Either the power law is inherited from power laws already in the data, its spectrum or the frequencies of what has to be learned. Or it comes from the learner, from geometry or fluctuations, and would appear even with structureless data. The most recent paper, from Meta FAIR, builds a test case for exactly that question.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Maloney, Roberts &amp; Sully 2022</p>
-
-## Is the power law already in the data?
-
-<div class="cols">
-<div class="text">
-
-- data covariance spectrum: a power law
-- $\lambda_i \sim i^{-(1+\alpha)}$, no gap
-- nonlinear features extend it
-- loss $\sim N^{-\alpha}$ and $T^{-\alpha}$
-- "power-law in, power-law out"
-
-<p class="q"><b>Q.</b> And with a flat spectrum?</p>
-<p class="a"><b>A.</b> In their model, no power law at all</p>
-
-</div>
-<div class="fig"><img src="img/week-06-origins-maloney.png" alt="Maloney et al. Figure 2 right: the sorted eigenvalue spectrum of GPT-2-embedded WikiText tokens on log-log axes, close to a straight line over several decades"></div>
-</div>
-
-<p class="footnote">Maloney, Roberts &amp; Sully 2022 · arXiv:2210.16859 · Fig. 2 (WikiText). Spectrum: sorted eigenvalues of the feature covariance. $N$: features, $T$: samples. A solvable random-feature regression with squared error, not a transformer</p>
-
-Note:
-The first answer: the power law is inherited. Take the data, compute the covariance of its features, sort the eigenvalues. For images and for text they fall as a power law over several decades, with no clear cutoff. This is GPT-2-embedded WikiText.
-Maloney and coauthors solve a random-feature regression model on data like this. The test loss falls with the same exponent as the spectrum, in both model size and number of samples, and plateaus when the other resource runs out. Their slogan: power-law in, power-law out. If you make the data isotropic, with a flat spectrum, the power law disappears.
-The caveat: this is linear regression on random features with squared error. No transformer is trained on language. And the paper prints no fitted exponent for the WikiText spectrum to compare with Kaplan's 0.076.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Sharma &amp; Kaplan 2020; Bahri et al.</p>
-
-## What would set the exponent?
-
-<div class="cols">
-<div class="text">
-
-- the network carves a data manifold into cells
-- halve the cell size: $2^d$ more parameters
-- ReLU nets predict $\alpha \approx 4/d$
-- GPT-2: $4/\alpha \approx 53$, measured $d \ge 90$
-
-<p class="q"><b>Q.</b> Does language fit $4/d$?</p>
-<p class="a"><b>A.</b> Only as a bound: "quite far from equality"</p>
-
-</div>
-<div class="fig"><img src="img/week-06-origins-sharma.png" alt="Sharma and Kaplan Figure 1: intrinsic dimension against 4/alpha; teacher-student and image tasks lie near the line ID = 4/alpha, while GPT is a lower-bound arrow well above it"></div>
-</div>
-
-<p class="footnote">Sharma &amp; Kaplan 2020 · arXiv:2004.10802 · Fig. 1. Intrinsic dimension: estimated from nearest-neighbour distances of final-layer activations. Bahri et al. 2021/2024 (arXiv:2102.06701) add a "variance-limited" regime with exponent 1</p>
-
-Note:
-The second answer is geometric, from Kaplan himself with Sharma. Suppose a network is really doing regression on a smooth manifold of dimension d. Extra parameters buy finer resolution: to halve the size of each region you need 2 to the d times more of them. For piecewise-linear ReLU networks the error per region scales as the fourth power of its size, so the loss falls as N to the minus 4 over d.
-It works well when teacher networks set the dimension; that's the figure. For language it doesn't (the arrow at the top right): Kaplan's 0.076 would mean a dimension of about 53, but the measured dimension of GPT-2's representations is above 90. The inequality holds, the equality doesn't, and the authors say so.
-Bahri and coauthors extend this into four regimes. Besides this resolution-limited regime, there's a variance-limited one, where one resource is effectively infinite and the exponent is exactly 1 whatever the data. No language models are studied there.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Michaud et al. 2023</p>
-
-## Or a long list of skills?
+## What came after?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- skills ("quanta"): learned or not
-- learned in order of use frequency
-- Zipf frequencies ▸ power-law loss
-- smooth average = many small jumps
-- Pythia: 0.083, near Kaplan's 0.076
-
-<p class="q"><b>Q.</b> Do measured frequencies match?</p>
-<p class="a"><b>A.</b> Predicted slope $-1.08$, measured $\approx -1.24 \pm 0.2$</p>
+- **The allocation was revised.** Chinchilla (2022): $N_{\rm opt} \propto C^{0.50}$; 100x compute ▸ 10x the model and 10x the tokens. Reading 2.
+- **Why Kaplan got 0.73 and 0.88.** Counting without embeddings, at small sizes (Pearce and Song 2024); the uncounted output layer, warmup and tuning (Porian et al. 2024).
+- **Why power laws at all?** Not settled: inherited from the data (Maloney et al. 2022; Michaud et al. 2023), from the learner (Sharma and Kaplan 2020; Bahri et al. 2021; Liu, Liu and Gore 2025), or seen even in data with no power laws (Barkeshli et al. 2026).
 
 </div>
-<div class="fig"><img src="img/week-06-origins-michaud.png" alt="Michaud et al. Figure 2: on multitask sparse parity, top row, mean loss against parameters, steps and data follows power laws; bottom row, each subtask's loss drops suddenly at a different scale"></div>
+<div class="fig"><img src="img/week-06-compare-100x.svg" alt="Illustration: growth for 100x compute; Kaplan: parameters 28.8x, tokens 3.5x; Chinchilla: parameters 10x, tokens 10x"></div>
 </div>
 
-<p class="footnote">Michaud, Liu, Girit &amp; Tegmark 2023 · arXiv:2303.13506 · Fig. 2. Multitask sparse parity: many parity sub-tasks drawn with Zipf frequencies. The Pythia fit has no floor term (see Barkeshli, below)</p>
+<p class="footnote">Hoffmann et al. 2022, arXiv:2203.15556; Pearce and Song 2024, arXiv:2406.12907; Porian et al. 2024, arXiv:2406.19146; Maloney, Roberts and Sully 2022, arXiv:2210.16859; Michaud et al. 2023, arXiv:2303.13506; Sharma and Kaplan 2020, arXiv:2004.10802; Bahri et al. 2021, arXiv:2102.06701; Liu, Liu and Gore 2025, arXiv:2505.10465; Barkeshli, Alfarano and Gromov 2026, arXiv:2601.10684</p>
 
 Note:
-The third answer, the quantization model. Prediction needs many discrete skills, "quanta", each either learned or not. Networks learn them in order of how often they're useful, and those frequencies follow Zipf's law. Learn more quanta and you shrink the tail of unlearned ones, and that tail shrinks as a power law.
-In their toy task you can see both levels at once: the mean loss (top) is smooth, while each subtask (bottom) switches on suddenly at its own scale. That links straight to Wei's emergent abilities: a smooth average over many small jumps.
-On real models the evidence is rougher. Their Pythia fit gives 0.083, close to Kaplan's 0.076, but without an irreducible-loss term; the predicted and measured frequency slopes agree within large error bars.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Liu, Liu &amp; Gore 2025</p>
-
-## Can the model, not the data, make the power law?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- more features than dimensions: superposition
-- random directions' squared overlaps $\sim 1/m$
-- loss $\propto 1/\text{width}$, for many data shapes
-- LLMs: width exponent $0.91 \pm 0.04$
-
-<p class="q"><b>Q.</b> Matches Chinchilla?</p>
-<p class="a"><b>A.</b> $\alpha_N = 0.35$, $N \propto m^{2.52}$ gives 0.88</p>
-
-</div>
-<div class="fig"><img src="img/week-06-origins-liu.png" alt="Liu, Liu and Gore Figure 6: left, mean squared overlap of language-model head vectors against inverse model dimension for OPT, Qwen, GPT-2 and Pythia, slope about 1; right, the model part of the loss against model dimension, slope -0.91"></div>
-</div>
-
-<p class="footnote">Liu, Liu &amp; Gore 2025 · arXiv:2505.10465 · Fig. 6. $m$: model width. Toy model plus correlations in real models, not an intervention; data and step scaling not studied</p>
-
-Note:
-The fourth answer puts it in the model. A network that stores more features than it has dimensions must let them overlap. In m dimensions, the typical squared overlap of independent isotropic unit directions is one over m. In their toy model, once superposition is strong, that gives a loss falling as one over width across a broad class of feature frequencies.
-They measure the output heads of OPT, Qwen, GPT-2 and Pythia: the overlaps scale as about 1 over m, and the model part of the loss falls with width at exponent 0.91. Converting Chinchilla's parameter exponent to width gives 0.88.
-It's a toy model plus correlations in real models, not an intervention on superposition, and it says nothing about data scaling.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Liu, Liu &amp; Gore 2025</p>
-
-## Why does superposition give $1/m$?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- store more features than width $m$
-- assign each feature a direction $w_i$
-- unrelated directions are almost orthogonal
-
-<div class="eq">$$\mathbb{E}\!\left[(w_i^\top w_j)^2\right] = \frac{1}{m}$$</div>
-
-- interference loss inherits the same scale
-- converting width to parameters needs $N(m)$
-
-</div>
-<div class="fig"><img src="img/week-06-origins-liu.png" alt="Liu, Liu and Gore Figure 6: language-model head-vector overlaps fall with inverse model width, and the fitted model-dependent loss has width exponent about 0.91"></div>
-</div>
-
-<p class="footnote">Liu, Liu &amp; Gore 2025 · Fig. 6. Equation: independent isotropic unit vectors in $m$ dimensions. LLM fit: $\alpha_m = 0.91 \pm 0.04$. $N \propto m^{2.52}$ and $\alpha_N = 0.35$ imply $\alpha_m = 0.88$. Toy mechanism plus correlation</p>
-
-Note:
-The previous slide gave the claim; this is the geometric step. Give each feature a unit vector in an m-dimensional hidden space. Two unrelated random directions are nearly orthogonal, but not perfectly. Their dot product has mean zero, while its square has expectation one over m. If reconstruction error is dominated by these cross terms, the loss inherits a one-over-m floor.
-That is a power law generated by representation geometry, even when the feature frequencies themselves have no power-law tail. In real language models, Liu, Liu and Gore measure overlaps close to one over width and fit a width exponent of 0.91. They also translate a parameter exponent of 0.35 into a width exponent of 0.88 using the empirical relation between parameter count and width.
-The caveat remains: the paper does not intervene on superposition in a language model. The mechanism is established in the toy setting, then compared with correlations in real models.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Barkeshli, Alfarano &amp; Gromov 2026</p>
-
-## What if the data has no power laws at all?
-
-<div class="rows">
-<div class="points">
-<div class="text">
-
-- random walks on a random graph
-- no power law in degrees or spectrum
-- 2-layer transformer: next node
-
-</div>
-<div class="text">
-
-- loss still a power law in $N$ and $D$
-- $\overline{\alpha_D} = 1.03$, $\overline{\beta_N} = 0.75$
-- beats exponential fits by 7x and 24x
-
-</div>
-</div>
-<div class="fig"><img src="img/week-06-origins-barkeshli-fig1.png" alt="Barkeshli et al. Figure 1: for random walks on an Erdos-Renyi graph, top row, the compute-optimal loss, model size and token count against compute; bottom row, test loss against model parameters at fixed data and against tokens at fixed model size, all following fitted power laws with a floor"></div>
-</div>
-
-<p class="footnote">Barkeshli, Alfarano &amp; Gromov 2026 (Meta FAIR) · arXiv:2601.10684 · Fig. 1. Erdős-Rényi graph: 8,192 nodes, each edge present independently. Their $\alpha_D$ is the exponent in model size at fixed data, $\beta_N$ in data at fixed size. Tiny models, context 50</p>
-
-Note:
-The Meta FAIR paper. If the power law comes from the data, a dataset with no power laws anywhere should give no power law. So they built one: random walks on an Erdős-Rényi random graph, where every node has about the same degree and the spectrum has no power law. A 2-layer transformer learns to predict the next node.
-The loss still scales as a power law in model size and in data, with a floor: exponents about 1.0 and 0.75, and the power-law fit beats the best exponential by about 7 times in model size and 24 times in data, in squared error. Making the graph scale-free, with a power-law degree distribution, doesn't make the fit cleaner; for model size it's slightly worse.
-So "power laws in, power laws out" can't be the whole story. Note the scale, though: tiny models, a 50-token context, and the authors say these graph runs needed careful hyperparameter searches. Also, a simple counting estimator already gives a 1 over D law with no data power law; what's new is a trained transformer showing other exponents.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Bahri et al.; Barkeshli et al.</p>
-
-## Why can more data give an algebraic curve?
-
-<div class="cols">
-<div class="text">
-
-- estimate a transition probability from $D$ samples
-
-<div class="eq">$$\operatorname{Var}(\hat p) = \frac{p(1-p)}{D}$$</div>
-
-- mean squared error: $D^{-1}$
-- typical absolute error: $D^{-1/2}$
-
-</div>
-<div class="text">
-
-- Bahri: variance-limited exponent $1$
-- counting a bigram table: $E + B/D + O(D^{-2})$
-- trained ER transformer: data exponent $0.749$
-
-<p class="q"><b>Q.</b> Does this derive Chinchilla's $0.28$?</p>
-<p class="a"><b>A.</b> No. It gives a baseline regime, not the language exponent</p>
-
-</div>
-</div>
-
-<p class="footnote">Bahri et al. 2021/2024 · variance-limited regime. Barkeshli et al. 2026 · App. F counting baseline; ER 8K transformer, Fig. 1. $E$: limiting cross-entropy. ER: Erdős–Rényi random graph</p>
-
-Note:
-The previous slide already mentioned the counting baseline. Here is why it is algebraic. Estimate one transition probability from D independent samples. Its variance is p times one minus p over D. Mean squared error therefore falls as one over D, while the typical signed or absolute fluctuation is of order one over square root D.
-Bahri and coauthors call this the variance-limited regime and predict exponent one under a strong hierarchy between model size and data. Barkeshli and coauthors derive the same leading one-over-D correction for a counting estimator of a bigram table.
-The trained transformer on the Erdős–Rényi walks has a data exponent of 0.749 instead. The paper does not explain that gap. Finite-sample variance gives a baseline mechanism, but the different transformer exponent still needs explaining. This calculation does not derive Chinchilla's 0.28 or identify SGD as its cause.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Barkeshli et al. 2026, Fig. 2</p>
-
-## From bigrams to real text: how do exponents move?
-
-<div class="cols">
-<div class="text">
-
-- bigrams ▸ text from 1-layer ▸ 2-layer model ▸ real text
-- model-size exponent: 0.98 ▸ 0.55 ▸ 0.50 ▸ 0.50
-- data exponent: about 0.4 to 0.55 throughout
-- richer data, smaller size exponent
-
-<p class="q"><b>Q.</b> A clean trend?</p>
-<p class="a"><b>A.</b> Mostly one step; the last two overlap</p>
-
-</div>
-<div class="fig"><img src="img/week-06-origins-barkeshli-fig2.png" alt="Barkeshli et al. Figure 2 right: model-size exponents against an entropy proxy, with the text endpoint differing across training parameterizations; data exponents stay near 0.5"></div>
-</div>
-
-<p class="footnote">Barkeshli et al. 2026 · Fig. 2 (right). "Entropy": the smallest fitted irreducible loss, a rough proxy. Text: Fineweb-edu (educational web text). 2-layer learner, μP</p>
-
-Note:
-To see what language adds, they dial up the complexity of the data while keeping the same small learner. Start from a bigram model of web text, then text sampled from a 1-layer and a 2-layer transformer trained on real text, then real text. The x axis is a rough entropy proxy: the lowest irreducible loss their fits find.
-The model-size exponent falls from about 1 for bigrams to about 0.5 for text; the data exponent stays around 0.4 to 0.55. Richer data, smaller exponent.
-Read it carefully: most of the drop is the first step, from bigrams to 1-layer text; the last two points overlap within their spreads. What sets the value is still open; the paper offers only speculation, such as power laws developing in the model's internal activations.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · Barkeshli et al. 2026, Fig. 9</p>
-
-## Can we trust the fitted exponents?
-
-<div class="cols">
-<div class="text">
-
-- leave out the floor: exponent halves
-- Pythia: $N^{-0.083}$ without, $N^{-0.17}$ with
-- error 14x lower with the floor
-- embeddings counted or not flips Kaplan ▸ Chinchilla
-
-<p class="q"><b>Q.</b> Is Kaplan's 0.076 too small, then?</p>
-<p class="a"><b>A.</b> Not tested: nobody refits Kaplan's data with a floor</p>
-
-</div>
-<div class="fig"><img src="img/week-06-origins-barkeshli-fig9.png" alt="Barkeshli et al. Figure 9 left: test loss of six Pythia models against non-embedding parameters, fit by N^-0.083 with no floor (dashed) and by E + A N^-0.17 with E = 2.07 (solid), the latter fitting better"></div>
-</div>
-
-<p class="footnote">Barkeshli et al. 2026 · Fig. 9 (Pythia losses from Michaud et al.). Their text gives non-embedding allocation (0.742, 0.386); Fig. 12 prints (0.711, 0.294). Kaplan's $L(N)$ has no constant term</p>
-
-Note:
-Before explaining an exponent, check how it was measured. Fit a straight line on log-log axes without the floor the loss is heading to, and the exponent comes out about half as large. On the same six Pythia models it's 0.083 without the floor and 0.17 with it, and the fit with the floor has about 14 times lower error. That's exactly Michaud's 0.083 from two slides back.
-They also find that, in their 2-layer models, whether you count embedding parameters is enough to move the optimal allocation from Chinchilla-like to Kaplan-like, agreeing with Pearce and Song.
-So is Kaplan's 0.076 too small? Kaplan's law has no constant term, so the same bias could apply, but no paper here refits Kaplan's own data. One more caution from checking: the paper's text and its Figure 12 give different numbers for that allocation.
-
---
-
-<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · Later work · summary</p>
-
-## So, why power laws?
-
-<div class="cols">
-<div class="text">
-
-- not settled
-- inherited from data: spectra, Zipf skills
-- from the learner: geometry, superposition
-- data without power laws still scales
-- exponents depend on how you fit
-
-</div>
-<div class="text">
-
-<p class="q"><b>Q.</b> What would decide it?</p>
-<p class="a"><b>A.</b> Vary the data's structure, and the learner, independently; measure inside the model</p>
-
-</div>
-</div>
-
-<p class="footnote">Maloney et al. 2022; Sharma &amp; Kaplan 2020; Bahri et al. 2021/2024; Michaud et al. 2023; Liu, Liu &amp; Gore 2025; Barkeshli et al. 2026; Cagnetta &amp; Wyart 2024 (arXiv:2406.00048) on language's correlation structure</p>
-
-Note:
-Where this leaves Kaplan's open question. There is no settled answer. One camp says the power law is inherited from power laws in the data, its spectrum or the Zipfian frequencies of skills. Another says it comes from the learner, from resolving a manifold or from superposition. The Meta FAIR result pushes against the first camp: a transformer shows power laws on data with none. And the exponents themselves depend on how you fit, especially whether you include a floor.
-A decisive test would vary the structure of the data and the learner independently and look inside the model, which is roughly what Barkeshli's group has started to do.
+What happened next, briefly; the next reading is the full story.
+First, the allocation was revised. Two years later DeepMind asked the same question with runs sized to each budget and found the best model grows as compute to the 0.5, not 0.73. For 100 times the compute: 10 times the parameters and 10 times the tokens, not 29 and 3.5. The picture compares the two.
+Second, two 2024 papers explain why Kaplan got his numbers. Pearce and Song show that counting parameters without embeddings, at the small sizes Kaplan mostly trained, bends the exponent toward Kaplan's 0.73 even if Chinchilla's law is true. Porian et al. reproduce an exponent close to Kaplan's, 0.84, and then remove the gap step by step: counting the output layer's compute takes it to 0.71, sizing the warmup to the model to 0.60, and tuning the learning rate, batch and AdamW's beta-2 to Chinchilla's 0.50.
+Third, why power laws at all is still open. One camp says the power law is inherited from the data: its covariance spectrum, or the Zipfian frequencies of the skills it contains. Another says it comes from the learner: resolving a data manifold, or superposition. And a 2026 result trains a transformer on random walks over a random graph, data with no power laws in it, and still finds power-law scaling. Each of these papers is worth reading on its own; none is settled.
 
 
 --
@@ -2633,7 +2778,7 @@ Practice moved the same way: Llama 3's 405B saw 15.6 trillion tokens, and its sm
 <div class="fig"><img src="img/week-06-chinchilla-cosine.png" alt="Hoffmann et al. Figure A1, top row: learning-rate schedules with cosine cycles 1, 1.1, 1.25, 1.5, 2 and 5 times the number of training steps, and the resulting training and C4 losses; cycles much longer than the run end at higher loss"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §2, App. B, Fig. A1. The paper says this "contributes to" the difference. Porian et al. 2024 find it a small part (0.60 ▸ 0.57; Kaplan sub-slides)</p>
+<p class="footnote">Hoffmann et al. 2022 · §2, App. B, Fig. A1. The paper says this "contributes to" the difference. Porian et al. 2024 find it a small part (0.60 ▸ 0.57)</p>
 
 Note:
 Chinchilla's first explanation. Picture a cosine schedule planned for 130 billion tokens. At 10 billion tokens the learning rate is still near its peak, because the optimiser expects to keep going. Measure the loss there and a 10-billion-token run looks worse than it would if it had been planned that way.
@@ -5023,7 +5168,7 @@ All four readings together: which claims survived, what the authors admit, what 
   <tr class="total"><td>the jumps are a metric artefact</td><td>Schaeffer §3, §4</td><td>partly: a loss threshold remains</td></tr>
 </table>
 
-<p class="footnote">Revisions: Porian et al. 2024, Pearce &amp; Song 2024, Besiroglu et al. 2024, Sardana et al. 2024, Hu et al. 2024, Du et al. 2024, Snell et al. 2024 (sub-slides above)</p>
+<p class="footnote">Revisions: Porian et al. 2024, Pearce &amp; Song 2024, Besiroglu et al. 2024, Sardana et al. 2024, Hu et al. 2024, Du et al. 2024, Snell et al. 2024 (earlier in the deck)</p>
 
 Note:
 The verdicts in one table.
