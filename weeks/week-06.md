@@ -1933,26 +1933,24 @@ Reading 2 of 4. Hoffmann, Borgeaud, Mensch and others at DeepMind, March 2022. T
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §1 Introduction</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §1 · the question</p>
 
 ## Same question, opposite answer?
 
 <div class="cols">
 <div class="text">
 
-- Kaplan: $N_{\rm opt} \propto C^{0.73}$, $D_{\rm opt} \propto C^{0.27}$
-- Chinchilla: $N_{\rm opt} \propto C^{0.50}$, $D_{\rm opt} \propto C^{0.50}$
-- 100x compute: 29x and 3.5x, or 10x and 10x
-- size and data should grow together
+- Kaplan: $N_{\rm opt} \propto C^{0.73}$, $D_{\rm opt} \propto C^{0.27}$.
+- Chinchilla: $N_{\rm opt} \propto C^{0.50}$, $D_{\rm opt} \propto C^{0.50}$.
+- 100x compute: 29x the model and 3.5x the tokens, or 10x and 10x.
 
-<p class="q"><b>Q.</b> Isn't "train longer" obvious?</p>
-<p class="a"><b>A.</b> The claim is about the <i>balance</i>, and how it moves with scale</p>
+<p class="plain">The claim is about the balance between size and data, and how it moves with scale.</p>
 
 </div>
 <div class="fig"><img src="img/week-06-compare-100x.svg" alt="Illustration: growth for 100x compute; Kaplan: parameters 28.8x, tokens 3.5x; Chinchilla: parameters 10x, tokens 10x"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · arXiv:2203.15556 · Table 2; Kaplan et al. 2020 Table 6. Illustration from the exponents, our arithmetic</p>
+<p class="footnote">Hoffmann et al. 2022 · arXiv:2203.15556 · Table 2; Kaplan et al. 2020 Table 6. $N$: parameters; $D$: training tokens; $C$: training compute. Illustration from the exponents, our arithmetic</p>
 
 Note:
 Kaplan said: as compute grows, put most of it into parameters. Chinchilla says: grow parameters and training tokens at the same rate. For a hundred times the compute that's ten times the parameters and ten times the tokens, instead of Kaplan's 29 times and 3.5 times.
@@ -1964,72 +1962,23 @@ The point is not that training longer helps; everyone knew that. It's that the c
 
 ## Why did every big model see about 300B tokens?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td>model</td><td class="num">params</td><td class="num">tokens</td></tr>
-  <tr><td>LaMDA</td><td class="num">137B</td><td class="num">168B</td></tr>
-  <tr><td>GPT-3</td><td class="num">175B</td><td class="num">300B</td></tr>
-  <tr><td>Jurassic</td><td class="num">178B</td><td class="num">300B</td></tr>
-  <tr><td>Gopher</td><td class="num">280B</td><td class="num">300B</td></tr>
-  <tr><td>MT-NLG</td><td class="num">530B</td><td class="num">270B</td></tr>
-  <tr class="total"><td>Chinchilla</td><td class="num">70B</td><td class="num">1.4T</td></tr>
-</table>
+- From GPT-3 (175B, 2020) to MT-NLG (530B): about 3x the parameters.
+- Training tokens stayed near 300B.
+- That is Kaplan's rule in practice.
+
+<p class="plain">Chinchilla's bet: Gopher's compute, a quarter of the size, 4.7x the tokens.</p>
 
 </div>
-<div class="text">
-
-- GPT-3 (2020) to MT-NLG (2022): about 3x
-- tokens stayed near 300B
-- that is Kaplan's rule in practice
-
-<p class="q"><b>Q.</b> What does Chinchilla bet?</p>
-<p class="a"><b>A.</b> Same compute as Gopher, a quarter of the size</p>
-
-</div>
+<div class="fig"><img src="img/week-06-chinchilla-models.svg" alt="Illustration of Table 1: parameters against training tokens on log axes. LaMDA 137B on 168B tokens; GPT-3 175B and Jurassic 178B on 300B; Gopher 280B on 300B; MT-NLG 530B on 270B; Chinchilla, a star, 70B on 1.4T, on a dashed line of 20 tokens per parameter"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Table 1</p>
+<p class="footnote">Hoffmann et al. 2022 · Table 1, drawn as a picture (ours). LaMDA, GPT-3, Jurassic, Gopher, MT-NLG: the large language models of 2020 to 2022</p>
 
 Note:
-The state of play in 2022. Following Kaplan, models had grown from GPT-3's 175 billion to MT-NLG's 530 billion parameters, while training data stayed near 300 billion tokens. The last row is the paper's bet: a 70B model on 1.4 trillion tokens, with the same compute as the 280B Gopher.
-
----
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4 · Tables 1, 6</p>
-
-## The headline experiment
-
-<div class="cols">
-<div class="text">
-
-<table class="rules">
-  <tr><td></td><td class="num">Gopher</td><td class="num">Chinchilla</td></tr>
-  <tr><td>parameters</td><td class="num">280B</td><td class="num">70B</td></tr>
-  <tr><td>training tokens</td><td class="num">300B</td><td class="num">1.4T</td></tr>
-  <tr><td>training FLOPs</td><td class="num">$5.76\times10^{23}$</td><td class="num">same</td></tr>
-  <tr class="total"><td>MMLU, 5-shot</td><td class="num">60.0%</td><td class="num">67.6%</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- a quarter of the size, 4.7x the tokens
-- better, with a quarter of the weights to serve
-
-<p class="q"><b>Q.</b> What else changed?</p>
-<p class="a"><b>A.</b> Optimizer (AdamW), tokenizer, data mix</p>
-
-</div>
-</div>
-
-<p class="footnote">Hoffmann et al. 2022 · Tables 1, 6, §4.1. MMLU: multiple-choice exams in 57 subjects. The abstract says 67.5%; Table 6 says 67.6%</p>
-
-Note:
-The experiment that made the paper famous. Gopher and Chinchilla have the same training compute. Chinchilla is a quarter of the size and sees almost five times the tokens, and it's better on almost everything: MMLU goes from 60.0 to 67.6%, 7.6 points.
-Two reasons this matters. It shows the scaling-law argument has consequences far beyond a small change in loss. And the smaller model is about four times cheaper to serve and easier to fine-tune.
-Keep one qualification in mind, which we come back to: Chinchilla also changed optimizer, tokenizer and data mix, so this isn't a perfectly controlled swap of size for data.
+The state of play in 2022. Following Kaplan, models had grown from GPT-3's 175 billion to MT-NLG's 530 billion parameters, while the training data stayed near 300 billion tokens: the points on the picture sit in a vertical band. The star is the paper's bet: a 70B model on 1.4 trillion tokens, with the same compute as the 280B Gopher. It sits on the dashed line of 20 tokens per parameter, which we'll see come out of the fits.
 
 ---
 
@@ -2042,17 +1991,18 @@ Keep one qualification in mind, which we come back to: Chinchilla also changed o
 
 <div class="eq">$$(N_{\rm opt}, D_{\rm opt}) = \underset{N,\thinspace D}{\operatorname{argmin}}\ L(N,D) \quad \text{s.t.}\quad \mathrm{FLOPs}(N,D) = C$$</div>
 
-- $N$: parameters; $D$: training tokens
-- $C$: training FLOPs, with $\mathrm{FLOPs} \approx 6ND$
-- one budget, many ways to spend it
+<dl class="where">
+<dt>$N$, $D$</dt><dd>parameters, all of them, embeddings included; training tokens</dd>
+<dt>$L$, $C$</dt><dd>the final loss; the training budget in FLOPs, $\approx 6ND$</dd>
+</dl>
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Why $6ND$?</p>
-<p class="a"><b>A.</b> Forward $2N$ + backward $4N$ per token (as in Kaplan)</p>
-<p class="q"><b>Q.</b> Exact?</p>
-<p class="a"><b>A.</b> An approximation; their own count is within 10%</p>
+- $6N$ per token: a forward pass ($2N$) and a backward pass ($4N$), as in Kaplan.
+- Their own careful count is within 10% of $6ND$.
+
+<p class="plain">One budget, many ways to spend it: choose the split.</p>
 
 </div>
 </div>
@@ -2065,99 +2015,104 @@ They also count FLOPs more carefully in an appendix; their count is within 10% o
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §1 · worked example</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §1 · worked example (ours)</p>
 
 ## One budget, four ways to spend it
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td>parameters</td><td class="num">tokens</td><td class="num">predicted loss</td></tr>
-  <tr><td>100M</td><td class="num">10T</td><td class="num">2.56</td></tr>
-  <tr><td>1B</td><td class="num">1T</td><td class="num">2.22</td></tr>
-  <tr><td>10B</td><td class="num">100B</td><td class="num">2.19</td></tr>
-  <tr class="total"><td>100B</td><td class="num">10B</td><td class="num">2.41</td></tr>
-</table>
+- 100M parameters on 10T tokens: 2.56.
+- 1B on 1T: 2.22.
+- 10B on 100B: 2.19.
+- 100B on 10B: 2.41.
 
-- all cost $6\times10^{21}$ FLOPs
-- too small: no capacity
-- too big: too few tokens
+<p class="plain">All cost $6\times10^{21}$ FLOPs. Too small: no capacity. Too big: too few tokens.</p>
 
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-one-budget.svg" alt="Illustration from Chinchilla's fitted loss at a fixed budget of 6e21 FLOPs: predicted loss against parameters is U-shaped, 2.56 for 100M on 10T tokens, 2.22 for 1B on 1T, 2.19 for 10B on 100B, 2.41 for 100B on 10B"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · losses from the fitted $L(N,D)$ of App. D.2 (next section); illustration, our arithmetic</p>
+<p class="footnote">Predicted losses from the paper's fitted $L(N,D)$ (Eq. 2, later in the section); illustration and arithmetic ours</p>
 
 Note:
 Make the trade-off concrete. Fix a budget of 6 times 10 to the 21 FLOPs. You could train 100 million parameters on 10 trillion tokens, or a billion on a trillion, or 10 billion on 100 billion, or 100 billion on 10 billion: same cost each time.
-They aren't equally good. Using the paper's own fitted loss function (we derive it later), the tiny model is capacity-limited, the huge one has barely trained, and the best is in between, around a few billion parameters.
-And crucially, the bottom of this U moves as the budget changes. The paper's job is to find out how.
+They aren't equally good. Using the paper's own fitted loss function, which we meet later, the tiny model is capacity-limited, the huge one has barely trained, and the best is in between, around a few billion parameters. And the bottom of this U moves as the budget changes. The paper's job is to find out how.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §1 · Fig. 1, a preview</p>
 
-## How did they measure it?
+## What does the paper find?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- over 400 runs
-- 70M to 16B parameters
-- 5B to 500B tokens
-- MassiveText; also C4, GitHub
-- schedule matched to each run's length
-- three methods, one answer?
+<dl class="where card">
+<dt>Lines</dt><dd>the best model size at each budget, by each of the paper's three approaches; dashed: Kaplan's</dd>
+<dt>Stars</dt><dd>Chinchilla, Gopher, GPT-3, MT-NLG</dd>
+<dt>Axes</dt><dd>training FLOPs (log); parameters (log)</dd>
+</dl>
+
+<p class="plain">All three approaches are flatter than Kaplan's line: the big models of the day sit above them, too large for their compute.</p>
 
 </div>
+<div class="fig"><img src="img/week-06-chinchilla-fig1.png" alt="Hoffmann et al. Figure 1: optimal parameters against FLOPs for Approaches 1, 2 and 3, all flatter than the dashed Kaplan line; Chinchilla 70B sits on the approach lines, Gopher, GPT-3 and MT-NLG near the Kaplan line"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 1, as a preview: each line comes back with the runs behind it</p>
+
+Note:
+The paper's opening figure, as a preview. Each solid line is the best model size for each compute budget, estimated three different ways; the dashed line is Kaplan's rule. All three are flatter than Kaplan's, and the large models of the day, the stars for Gopher, GPT-3 and MT-NLG, sit well above them: too big for the compute they were trained with. Chinchilla sits on the lines.
+Don't read the details yet. The next slides set up the runs, and then each approach gets its own figure.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3 · what they trained</p>
+
+## What did they train?
+
+<div class="cols wide-fig">
 <div class="text">
 
-<p class="q"><b>Q.</b> The key change from Kaplan?</p>
-<p class="a"><b>A.</b> Learning-rate decay set to the planned run length</p>
-<p class="q"><b>Q.</b> Are the three methods independent?</p>
-<p class="a"><b>A.</b> No, they share the runs. Cross-checks, not replications</p>
+- Over 400 runs, 70M to over 16B parameters, 5B to 400B+ tokens.
+- MassiveText (DeepMind's text corpus); checks on C4 and GitHub.
+- Every run under one epoch; the loss shown is training loss.
+- Each run's cosine schedule decays 10x by the run's own end (right, top).
+
+<p class="plain">The key change from Kaplan, who read short budgets partway through one long schedule (right, bottom).</p>
 
 </div>
+<div class="fig"><img src="img/week-06-chinchilla-schedules.svg" alt="Illustration: learning rate against training tokens. Top, Chinchilla: four cosine schedules of lengths 8B to 128B tokens, each falling to a tenth of its peak at its own end. Bottom, Kaplan: one cosine over 130B tokens, with a point at 10B tokens where the learning rate is still near its peak"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · abstract, §3. "Over 400" counts runs; Table A9 lists 50 configurations from 44M to 16B. §1 says "5B to over 400B" tokens</p>
+<p class="footnote">Hoffmann et al. 2022 · abstract, §3, App. D.1. "Over 400" counts runs; Table A9 lists 50 configurations from 44M to 16B. Illustration ours: schedule shapes only</p>
 
 Note:
-The experiments. More than 400 training runs, from about 70 million to over 16 billion parameters, on 5 to 500 billion tokens of MassiveText, DeepMind's corpus, with checks on C4 and GitHub code.
-The key design change from Kaplan: they vary model size and training length together, and they set the learning-rate schedule to the planned length of each run.
-Then they estimate the optimal allocation three ways. That's a strength: they don't fit one equation and trust it. But the three methods share the same runs, so they're cross-checks rather than independent replications.
+The experiments. More than 400 training runs, from about 70 million to over 16 billion parameters, on 5 to over 400 billion tokens of MassiveText, DeepMind's corpus, with checks on C4 and GitHub code. No run sees its data more than once, so the training loss is close to a held-out loss, and that is what the plots show.
+The design change that matters most: every run gets its own learning-rate schedule, a cosine that decays the rate tenfold by the end of that run. The top of the picture shows four such runs. Kaplan, bottom, trained everything on one long schedule and read the losses for small budgets partway through it, where the learning rate was still high. A run read mid-schedule looks worse than a run planned to stop there.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3, §4, App. B to G · The experiments</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3, §4, App. B to G · the runs</p>
 
-## Which experiments did they run?
+## Which runs does the paper rely on?
 
-<table class="rules">
-  <tr><td>#</td><td>varied</td><td>runs</td><td>gives</td><td>figures</td></tr>
-  <tr><td>1</td><td>tokens, at fixed sizes</td><td>70M to 10B, 4 schedules each</td><td>the envelope: best size per budget</td><td>2, A5</td></tr>
-  <tr><td>2</td><td>size, at fixed compute</td><td>9 budgets, $6 \times 10^{18}$ to $3 \times 10^{21}$ FLOPs</td><td>a U per budget; its minimum</td><td>3</td></tr>
-  <tr><td>3</td><td>the big test</td><td>Chinchilla 70B on 1.4T vs Gopher 280B</td><td>better at the same compute</td><td>5, 6, 7</td></tr>
-  <tr><td>4</td><td>schedule length</td><td>cosine cycle 1 to 5x the run</td><td>too long hurts</td><td>A1</td></tr>
-  <tr><td>5</td><td>dataset</td><td>C4, GitHub: 4 IsoFLOP profiles</td><td>a near-equal split ($a$ = 0.50, 0.53)</td><td>A2</td></tr>
-  <tr><td>6</td><td>head to head</td><td>2.80B vs Kaplan's 4.74B at $10^{21}$</td><td>the smaller one wins</td><td>A4</td></tr>
-  <tr><td>7</td><td>optimiser</td><td>Adam vs AdamW, 417M to 1.4B</td><td>AdamW better</td><td>A6, A7</td></tr>
-</table>
+<div class="rows">
+<div class="fig"><img src="img/week-06-chinchilla-runs.png" alt="Illustration: seven families of runs with thumbnails of the figures each gives. The fixed-size runs, Approach 1, 70M to 10B with four cosine lengths each: Figs. 2 and A5. The IsoFLOP runs, Approach 2, 9 budgets with sizes up to 16B: Fig. 3. The schedule runs: Fig. A1. The C4 and GitHub runs: Fig. A2. The head-to-head pair at 1e21 FLOPs: Fig. A4. The optimiser runs: Figs. A6 and A7. Chinchilla itself against Gopher: Figs. 5, 6 and 7"></div>
+<p class="plain">Two families carry the allocation; the rest are checks, and Chinchilla itself is the test.</p>
+</div>
 
-<p class="footnote">Hoffmann et al. 2022 · §3, §4, Apps. B, C, D.4, G. The numbering is ours. Approach 3 (Eq. 2, Fig. 4) is a fit to the final losses of 1 and 2, not new runs. IsoFLOP: fixed compute. Figures: the main ones</p>
+<p class="footnote">Hoffmann et al. 2022 · §3, §4, Apps. B, C, D.4, G. Approach 3 (Fig. 4), Table 3 and Figs. 1 and A3 are fits to the first two families, not new runs</p>
 
 Note:
-The paper names three approaches, but only two of them are experiments; the third is a fit. So here is our list, in paper order, and the running header of each results slide says which one it comes from.
-Experiment 1 is Approach 1: a family of models from 70 million to over 10 billion parameters, each trained four times with cosine schedules of different lengths, so that the lower envelope of all the training curves gives the best model at each compute budget. Its envelope also shows the curvature in Appendix E.
-Experiment 2 is Approach 2, the IsoFLOP profiles: 9 fixed budgets from 6 times 10 to the 18 to 3 times 10 to the 21 FLOPs, model size varied up to 16 billion, the schedule matched to each run, and a parabola through each profile's final losses to find its best size. Approach 3, the parametric loss E plus A over N to the alpha plus B over D to the beta, is fitted to the final losses of experiments 1 and 2. Tables 2 and 3 and Figure 1 are read off these fits.
-Experiment 3 is the large-scale test: Chinchilla, 70 billion parameters on 1.4 trillion tokens, against Gopher, 280 billion on 300 billion, at the same compute, evaluated in Section 4.
-The rest are checks in the appendices. Experiment 4: the cosine cycle set to 1 to 5 times the run length; overestimating the length by more than 25% clearly hurts, which is why the main runs match the schedule to the run. Experiment 5: four IsoFLOP profiles each on C4 and GitHub code, which give a near-equal split again: the parameter exponent a is 0.50 on C4 and 0.53 on GitHub, against Kaplan's 0.73. Experiment 6: at 10 to the 21 FLOPs, the 2.80 billion model Approach 1 picks against the 4.74 billion model Kaplan's law picks, same depth-to-width ratio; theirs ends better. Experiment 7: Adam against AdamW, on 417 million and 1.4 billion models, plus a 680 million comparison of the Gopher and Chinchilla setups. AdamW wins, which matters for reading experiment 3, since Chinchilla switched to it.
+The whole paper's evidence on one page. The paper names three approaches, but only two of them are runs; the third is an equation fitted to the first two. So here are the families of runs, named by what they are, and each results slide says which one its plot comes from.
+The fixed-size runs, Approach 1: a family of models from 70 million to 10 billion parameters, each trained four times with schedules of different lengths. The IsoFLOP runs, Approach 2: nine fixed budgets, many sizes at each. Those two carry the allocation.
+The rest are checks: the schedule runs, the C4 and GitHub runs, a head-to-head pair against Kaplan's choice, and the optimiser runs. And Chinchilla itself, against Gopher, is the large-scale test.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 1, fixed sizes · §3.1 Approach 1 · Fig. 2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1 · the fixed-size runs (Approach 1) · Fig. 2</p>
 
 ## Which model is best at each budget?
 
@@ -2165,63 +2120,110 @@ The rest are checks in the appendices. Experiment 4: the cosine cycle set to 1 t
 <div class="points">
 <div class="text">
 
-- train many sizes; plot loss vs FLOPs
-- $L_{\rm best}(C) = \min_N L_N(C)$: the lower envelope
-- the winning size changes with $C$
+<dl class="where card">
+<dt>Runs</dt><dd>the fixed-size runs: 70M to 10B, each with four cosine lengths spanning 16x</dd>
+<dt>Left</dt><dd>each line: one run's training loss; grey: the lowest loss at each budget</dd>
+<dt>Centre, right</dt><dd>each grey dot: the size and tokens of that lowest run</dd>
+</dl>
 
 </div>
 <div class="text">
 
-- envelope point ▸ $N_{\rm opt}(C)$, $D_{\rm opt}(C)$
-- fit: $N_{\rm opt} \propto C^{0.50}$, $D_{\rm opt} \propto C^{0.50}$
-- at Gopher's budget: 67B, 1.5T tokens
+<p class="plain">The best size and its tokens both grow as $C^{0.50}$. At Gopher's budget: 67B on 1.5T.</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-approach1-fig2.png" alt="Hoffmann et al. Figure 2: left, training loss against FLOPs for models from 75M to 10B with the lower envelope in grey; middle and right, parameters and tokens at the envelope against FLOPs, straight lines projecting 67B parameters and 1.5T tokens at Gopher's budget"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Fig. 2, §3.1. 1,500 log-spaced FLOP values; every selected point lies in the last 15% of its run</p>
+<p class="footnote">Hoffmann et al. 2022 · §3.1, App. D.1, Fig. 2. Gopher's budget: $5.76\times10^{23}$ FLOPs</p>
 
 Note:
-Approach 1. Train models of many sizes and plot every training curve against compute (left). A small model improves fast but hits its capacity limit; a big one is wasteful at small budgets but wins once there's enough compute. So the identity of the best model changes with the budget.
-Take the lower envelope, the best loss reached at each FLOP count, and note which size and how many tokens produced it. Middle and right: both grow as compute to the 0.50. At Gopher's budget that projects 67 billion parameters on 1.5 trillion tokens, not 280 billion on 300 billion.
+Approach 1, the fixed-size runs. Take a family of models from 70 million to 10 billion parameters, and train each four times, with cosine schedules whose lengths span a factor of 16. Every run is a training curve: the left panel shows them all against compute. At each compute value, the grey points mark the lowest loss any run reached. The centre and right panels take those lowest runs and plot their size and their tokens against compute. Both grow as compute to the 0.50. The next slides take each panel in turn.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 1, fixed sizes · §3.1</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1 · the fixed-size runs · Fig. 2, left</p>
 
-## Why train each size four times?
+## Which run is lowest at each budget?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- a checkpoint ≠ a run planned to stop there
-- mid-run, the learning rate is still high
-- so the loss looks worse than it should
-- fix: 4 cosine schedules per size
-- horizons spanning 16x; take the best
+<dl class="where card">
+<dt>Each line</dt><dd>one run's training loss (colour: model size, 75M to 10B)</dd>
+<dt>Grey</dt><dd>the envelope: at each of 1,500 FLOP values, the lowest loss of any run</dd>
+<dt>Axes</dt><dd>training FLOPs (log); training loss (log)</dd>
+</dl>
+
+<p class="plain">Small models lead at small budgets; bigger ones take over as the budget grows.</p>
 
 </div>
-<div class="text">
-
-<p class="q"><b>Q.</b> Why does this matter?</p>
-<p class="a"><b>A.</b> It's exactly Kaplan's setup: one long schedule, read mid-run</p>
-<p class="q"><b>Q.</b> How much does it change?</p>
-<p class="a"><b>A.</b> See App. B (end of section)</p>
-
-</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig2-loss.png" alt="Hoffmann et al. Figure 2 left: training loss against FLOPs for models from 75M to 10B parameters, coloured by size, with grey points along the lower envelope"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §3.1: learning rate decayed 10x "over a horizon ... that ranges by a factor of $16\times$"; curves smoothed (Gaussian, 10 steps) and interpolated</p>
+<p class="footnote">Hoffmann et al. 2022 · §3.1, Fig. 2 left. Curves smoothed (Gaussian, 10 steps) and interpolated. Every envelope point lies in the last 15% of its run</p>
 
 Note:
-A subtle point that turns out to be the crux of the disagreement with Kaplan. A checkpoint taken halfway through a long run isn't the same as a run planned to stop there. Mid-run the learning rate is still high, so the loss is worse than a run of that length with a properly decayed schedule would reach.
-So for each size they train four runs with cosine schedules whose lengths span a factor of 16, and at each compute budget they use whichever run did best there. Kaplan read his compute frontier off checkpoints of runs scheduled for 130 billion tokens.
+The left panel. Every line is one run, coloured by model size. A small model improves fast but soon hits its capacity; a big one is wasteful at small budgets but wins once there's enough compute. At each of 1,500 compute values, the grey point is the lowest loss of any run there: the envelope.
+One detail that matters for the disagreement with Kaplan: every point on the envelope comes from the last 15% of its run, where its schedule has decayed. The envelope is made of runs that were planned to stop near there.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 2, IsoFLOP · §3.2 Approach 2 · Fig. 3</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1 · the fixed-size runs · Fig. 2, centre</p>
+
+## How big is the best model at each budget?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each dot</dt><dd>the size of the run on the envelope, at one FLOP value</dd>
+<dt>Red</dt><dd>a power-law fit, $N_{\rm opt} \propto C^{a}$</dd>
+<dt>Teal</dt><dd>the fit read at Gopher's budget</dd>
+<dt>Axes</dt><dd>training FLOPs (log); parameters (log)</dd>
+</dl>
+
+<p class="plain">$a = 0.50$; at Gopher's budget, 67B, not 280B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig2-params.png" alt="Hoffmann et al. Figure 2 centre: parameters of the envelope runs against FLOPs, with a straight power-law fit reaching 67B at Gopher's budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 2 centre, Table 2</p>
+
+Note:
+The centre panel. Each grey dot is the size of the winning run at one compute value. On log axes they lie along a straight line: the best size grows as compute to the 0.50. Extend the line to Gopher's budget and it says 67 billion parameters, a quarter of Gopher's 280.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.1 · the fixed-size runs · Fig. 2, right</p>
+
+## How many tokens does it see?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each dot</dt><dd>the tokens of the run on the envelope, at one FLOP value</dd>
+<dt>Red</dt><dd>a power-law fit, $D_{\rm opt} \propto C^{b}$</dd>
+<dt>Axes</dt><dd>training FLOPs (log); tokens (log)</dd>
+</dl>
+
+<p class="plain">$b = 0.50$; at Gopher's budget, 1.5T tokens, not 300B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig2-tokens.png" alt="Hoffmann et al. Figure 2 right: training tokens of the envelope runs against FLOPs, with a straight power-law fit reaching 1.5T at Gopher's budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 2 right, Table 2. Since $C \approx 6ND$, $a + b = 1$</p>
+
+Note:
+The right panel: the tokens of the same winning runs. Also a straight line, also 0.50. The two exponents must add to one, since compute is about 6 times N times D. At Gopher's budget: 1.5 trillion tokens, five times what Gopher saw.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2 · the IsoFLOP runs (Approach 2) · Fig. 3</p>
 
 ## At a fixed budget, is there a best size?
 
@@ -2229,110 +2231,183 @@ So for each size they train four runs with cosine schedules whose lengths span a
 <div class="points">
 <div class="text">
 
-- fix $C$; vary $N$; set $D = C/6N$
-- measures $L_C(N) = L(N, C/6N)$
-- 9 budgets, $6\times10^{18}$ to $3\times10^{21}$
+<dl class="where card">
+<dt>Runs</dt><dd>the IsoFLOP runs: 9 budgets, $6\times10^{18}$ to $3\times10^{21}$ FLOPs; many sizes at each, up to 16B</dd>
+<dt>Left</dt><dd>each curve: one budget; each dot: one run's final loss; dashed: a parabola</dd>
+<dt>Centre, right</dt><dd>each dot: the bottom of one valley</dd>
+</dl>
 
 </div>
 <div class="text">
 
-- every budget: a U-shaped valley
-- parabola fit finds the bottom
-- $N_{\rm opt} \propto C^{0.49}$, $D_{\rm opt} \propto C^{0.51}$
+<p class="plain">Every budget has a clear best size. $N_{\rm opt} \propto C^{0.49}$, $D_{\rm opt} \propto C^{0.51}$; at Gopher's budget, 63B on 1.4T.</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-isoflop.png" alt="Hoffmann et al. Figure 3: left, final training loss against parameters for nine fixed FLOP budgets, each a U-shaped valley whose minimum moves right as the budget grows; middle and right, the minima against FLOPs projecting 63B parameters and 1.4T tokens at Gopher's budget"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Fig. 3, §3.2. Models up to 16B. At Gopher's budget: 63B parameters, 1.4T tokens</p>
+<p class="footnote">Hoffmann et al. 2022 · §3.2, Fig. 3. Tokens $D = C/6N$; cosine length matched to each run</p>
 
 Note:
-Approach 2, the clearest picture in the paper. Hold the compute budget fixed and train models of different sizes, each on however many tokens that budget allows. Each budget is one curve of loss against size.
-Every curve is a valley, and the bottoms move right as compute grows. Fit a parabola to each valley to find its minimum, then fit a power law through the minima: 0.49 for parameters, 0.51 for tokens. Almost the same as Approach 1.
-Why this matters: the conclusion doesn't depend on the envelope trick. It's visible directly in finished runs that each used the same budget.
+Approach 2, the IsoFLOP runs, the clearest picture in the paper. Hold the compute budget fixed and train models of different sizes, each on however many tokens that budget allows. Nine budgets. Each budget gives one curve of final loss against size. Fit a parabola to each to find its bottom, then fit a power law through the bottoms. The next slides take each panel in turn.
+Why this matters: the conclusion doesn't depend on the envelope trick of Approach 1. It's visible directly in finished runs that each used the same budget.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 2, IsoFLOP · §3.2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2 · the IsoFLOP runs · Fig. 3, left</p>
 
 ## Why is each curve a U?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- left: small $N$, huge $D$
-- capacity-limited
-- right: big $N$, tiny $D$
-- under-trained
-- bottom: the marginal gains balance
+<dl class="where card">
+<dt>Each curve</dt><dd>one budget (colour, $6\times10^{18}$ to $3\times10^{21}$ FLOPs)</dd>
+<dt>Each dot</dt><dd>one run: a size, trained on $C/6N$ tokens; its final loss</dd>
+<dt>Axes</dt><dd>parameters (log); final training loss</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Seen this before?</p>
-<p class="a"><b>A.</b> Kaplan Fig. 11, left panel</p>
+- Left: small $N$ on many tokens, capacity-limited.
+- Right: big $N$ on few tokens, under-trained.
+
+<p class="plain">The bottom moves right as the budget grows.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-chinchilla-one-budget.svg" alt="Illustration from Chinchilla's fitted loss at 6e21 FLOPs: a U-shaped curve of predicted loss against parameters"></div>
+<div class="fig"><img src="img/week-06-chinchilla-fig3-loss.png" alt="Hoffmann et al. Figure 3 left: final training loss against parameters for nine FLOP budgets, each a U-shaped valley with a dashed parabola; the valleys move down and right as the budget grows"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §3.2; illustration from the fitted law (App. D.2)</p>
+<p class="footnote">Hoffmann et al. 2022 · Fig. 3 left: "a clear valley in loss". The same U as Kaplan's Fig. 11 (left)</p>
 
 Note:
 Walk along one curve. On the left the model is tiny and sees an enormous number of tokens; it can't use them, it's capacity-limited. Moving right, more parameters help, so the loss falls. But at fixed compute each step right also cuts the tokens, and eventually the model is too under-trained and the loss rises again.
-The minimum is where the gain from one more parameter exactly balances the cost of the tokens you give up for it. Kaplan's Figure 11 showed the same U; the two papers disagree about where the bottom sits and how fast it moves.
+The minimum is where the gain from one more parameter balances the cost of the tokens you give up for it. Kaplan's Figure 11 showed the same U; the two papers disagree about where the bottom sits and how fast it moves.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 Approach 3 · Eq. 2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2 · the IsoFLOP runs · Fig. 3, centre</p>
+
+## Where is the bottom of each valley?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each dot</dt><dd>the size at the bottom of one budget's parabola</dd>
+<dt>Red</dt><dd>a power-law fit; teal: read at Gopher's budget</dd>
+<dt>Axes</dt><dd>training FLOPs (log); parameters (log)</dd>
+</dl>
+
+<p class="plain">$a = 0.49$; at Gopher's budget, 63B.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig3-params.png" alt="Hoffmann et al. Figure 3 centre: the parameter count at the bottom of each IsoFLOP valley against FLOPs, nine points on a straight line reaching 63B at Gopher's budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 3 centre, Table 2</p>
+
+Note:
+The centre panel. Nine dots, one per budget: the size at the bottom of that budget's valley. They lie on a line with slope 0.49, almost Approach 1's 0.50. At Gopher's budget, 63 billion parameters.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.2 · the IsoFLOP runs · Fig. 3, right</p>
+
+## And how many tokens?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Each dot</dt><dd>the tokens at the bottom of one budget's valley, $C/6N_{\rm opt}$</dd>
+<dt>Axes</dt><dd>training FLOPs (log); tokens (log)</dd>
+</dl>
+
+<p class="plain">$b = 0.51$; at Gopher's budget, 1.4T. Chinchilla is 70B on 1.4T.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig3-tokens.png" alt="Hoffmann et al. Figure 3 right: tokens at the bottom of each IsoFLOP valley against FLOPs, nine points on a straight line reaching 1.4T at Gopher's budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 3 right, Table 2. Its y label is cropped here</p>
+
+Note:
+The right panel: the tokens at each valley's bottom. Slope 0.51, and at Gopher's budget 1.4 trillion tokens, which is exactly what Chinchilla was trained on.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. C · the C4 and GitHub runs · Fig. A2</p>
+
+## Does it hold on other data?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>4 IsoFLOP budgets each on C4 (top) and GitHub code (bottom); MassiveText's tokenizer</dd>
+<dt>Panels</dt><dd>as in Fig. 3: valleys, then the bottoms' sizes and tokens against FLOPs</dd>
+</dl>
+
+<p class="plain">The size exponent: 0.50 on C4, 0.53 on GitHub, 0.49 on MassiveText. Kaplan's: 0.73.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-c4-github.png" alt="Hoffmann et al. Figure A2: IsoFLOP curves and fitted optimal sizes on C4 and GitHub data"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · App. C, Table A2, Fig. A2: "independent of the dataset as long as one does not train for more than one epoch". C4: a cleaned web crawl</p>
+
+Note:
+A check from Appendix C. They repeat the IsoFLOP experiment, four budgets each, on C4, a cleaned web crawl, and on GitHub code. Same layout as Figure 3: valleys on the left, then the bottoms. The size exponent stays near a half: 0.50 on C4 and 0.53 on code.
+That's encouraging evidence the result isn't specific to MassiveText. It doesn't show independence from data quality, language or architecture, and every run is still under one epoch.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Approach 3, a fit to both families · Eq. 2, Fig. 4</p>
 
 ## Can one equation predict the loss?
 
-<div class="rows">
-<div class="points">
+<div class="cols wide-fig">
 <div class="text">
 
 <div class="eq">$$\hat L(N,D) = E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}}$$</div>
 
-</div>
-<div class="text">
+<dl class="where">
+<dt>$E$, $A$, $B$</dt><dd>1.69, 406.4, 410.7</dd>
+<dt>$\alpha$, $\beta$</dt><dd>0.34, 0.28</dd>
+</dl>
 
-- $E = 1.69$, $A = 406.4$, $B = 410.7$
-- $\alpha = 0.34$, $\beta = 0.28$
-- fit: Huber loss on log loss, L-BFGS
+- Fitted to every final loss of the fixed-size and IsoFLOP runs.
+- Huber loss on the log loss, L-BFGS, many starts.
 
-</div>
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-approach3.png" alt="Hoffmann et al. Figure 4: left, iso-loss contours of the fitted function over parameters and FLOPs with the efficient frontier in blue; right, IsoFLOP slices through the fitted surface"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Eq. 2, §3.3, App. D.2, Fig. 4. Huber $\delta = 10^{-3}$; many initialisations. $N$ in parameters, $D$ in tokens</p>
+<p class="footnote">Hoffmann et al. 2022 · Eq. 2, Eq. 3, §3.3, App. D.2, Fig. 4. Huber $\delta = 10^{-3}$: a squared error that turns linear for large misses, so outliers count less</p>
 
 Note:
-Approach 3 is more ambitious: one function that predicts the loss for any size and any number of tokens. An irreducible constant, plus a term that falls with model size, plus a term that falls with tokens. Fitted to all the final losses: E 1.69, A 406, B 411, alpha 0.34, beta 0.28.
-They fit it with a Huber loss on the log of the loss, which is robust to outliers and cares about proportional error, using L-BFGS from many starting points. The fitting choices matter, as a 2024 replication found (sub-slide below the next slides).
-Because it's an explicit formula, you can do calculus on it: that's how the allocation exponents come out.
+Approach 3 is more ambitious: one function that predicts the loss for any size and any number of tokens. An irreducible constant, plus a term that falls with model size, plus a term that falls with tokens. It is not a new experiment: it's fitted to all the final losses of the two families of runs. E 1.69, A 406, B 411, alpha 0.34, beta 0.28.
+They fit it with a Huber loss on the log of the loss, which is robust to outliers and cares about proportional error, using L-BFGS from many starting points. The fitting choices matter, as a 2024 replication found (last slide).
+Because it's an explicit formula, you can do calculus on it: that's how the allocation exponents come out. Figure 4, on the right, is that formula drawn; we read it after the derivation.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · App. D.2</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3, App. D.2 · Approach 3</p>
 
 ## What does each term mean?
 
 <div class="cols">
 <div class="text">
 
-- $E$: loss of an ideal predictor
-- conceptually $H(\text{next token} \mid \text{past})$
-- $A/N^{\alpha}$: limited capacity
-- $B/D^{\beta}$: limited training
-- under one epoch: not overfitting
+- $E$: the loss of an ideal predictor, the entropy of the text.
+- $A/N^{\alpha}$: the best $N$-parameter Transformer still falls short.
+- $B/D^{\beta}$: training stops after $D$ tokens, under one epoch.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Is $E$ the entropy of English?</p>
-<p class="a"><b>A.</b> No: a fitted, extrapolated number for this data and tokenizer</p>
-<p class="q"><b>Q.</b> Do the terms really add?</p>
-<p class="a"><b>A.</b> Assumed. Motivated, not proven</p>
+<p class="plain">$E$ is fitted and extrapolated, for this data and tokenizer: not a measured constant of English.</p>
+<p class="plain">The terms are assumed to add: motivated, not proven.</p>
 
 </div>
 </div>
@@ -2340,13 +2415,13 @@ Because it's an explicit formula, you can do calculus on it: that's how the allo
 <p class="footnote">Hoffmann et al. 2022 · §3.3, App. D.2: "a classical risk decomposition" into "a function approximation term and an optimisation suboptimality term"</p>
 
 Note:
-Read the three terms. E is what even a perfect model would lose. The authors call it the entropy of natural text: conceptually the conditional entropy of the next token given its context (up to the sequence length), under the true distribution. If several next words are equally plausible after a context, no predictor can know which one a random continuation will use, so some uncertainty can't be removed.
-The A term is the gap between a perfect predictor and the best Transformer with N parameters: limited capacity. The B term is the extra loss from seeing only D tokens: since every run is under one epoch, it's mostly incomplete optimisation and gradient noise, not classical overfitting.
-Two cautions. E is fitted and extrapolated, tied to this data and tokenizer, not a measured constant of language. And the additive form is an assumption, motivated by a risk decomposition in the appendix, not something the paper proves.
+Read the three terms. E is what even a perfect model would lose. The authors call it the entropy of natural text: conceptually the uncertainty of the next token given its context, under the true distribution. If several next words are equally plausible, no predictor can know which one a random continuation will use.
+The A term is the gap between a perfect predictor and the best Transformer with N parameters: limited capacity. The B term is the extra loss from seeing only D tokens: since every run is under one epoch, it's mostly incomplete optimisation, not classical overfitting.
+Two cautions. E is fitted and extrapolated, tied to this data and tokenizer. And the additive form is an assumption, motivated by a risk decomposition in the appendix, not something the paper proves.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · compared with Kaplan</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · compared with Kaplan</p>
 
 ## How is this different from Kaplan's $L(N,D)$?
 
@@ -2362,17 +2437,16 @@ Chinchilla:
 </div>
 <div class="text">
 
-- Kaplan: two limits nested in one power
-- Chinchilla: two terms added, plus a floor
-- Kaplan's loss goes to 0; Chinchilla's to $E$
+- Kaplan: two limits nested inside one power.
+- Chinchilla: two penalties added to a floor.
+- Kaplan's loss goes to 0 at infinite scale; Chinchilla's to $E$.
 
-<p class="q"><b>Q.</b> Which is right?</p>
-<p class="a"><b>A.</b> Both are assumptions; they differ most far outside the data</p>
+<p class="plain">Both are assumptions that fit the measured range; they differ most far outside it.</p>
 
 </div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 Eq. 1.5; Hoffmann et al. 2022 Eq. 2</p>
+<p class="footnote">Kaplan et al. 2020 Eq. 1.5; Hoffmann et al. 2022 Eq. 2. $N_c$, $D_c$, $\alpha_N$, $\alpha_D$: Kaplan's fitted constants</p>
 
 Note:
 These aren't the same function with different numbers. Kaplan nests the two limits, model-limited and data-limited, inside one power. Chinchilla adds two separate power-law penalties to a floor. Kaplan's laws go to zero loss at infinite scale, which can't be right for text; Chinchilla's go to E.
@@ -2380,9 +2454,9 @@ Both are empirical assumptions that fit the measured range. They behave differen
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Eq. 4, derivation</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · the optimum, step 1</p>
 
-## Where is the optimum? Steps 1 and 2
+## Where is the optimum?
 
 <div class="cols">
 <div class="text math-block">
@@ -2390,36 +2464,32 @@ Both are empirical assumptions that fit the measured range. They behave differen
 Eliminate $D = C/6N$:
 <div class="eq">$$L(N) = E + A N^{-\alpha} + B\Big(\frac{6}{C}\Big)^{\beta} N^{\beta}$$</div>
 
-Set $dL/dN = 0$:
-<div class="eq">$$\alpha A N^{-\alpha-1} = \beta B\Big(\frac{6}{C}\Big)^{\beta} N^{\beta-1}$$</div>
-
-<div class="eq">$$\Rightarrow\quad \frac{\alpha A}{N^{\alpha}} = \frac{\beta B}{D^{\beta}}$$</div>
+Set $dL/dN = 0$, and multiply by $N$:
+<div class="eq">$$\alpha A N^{-\alpha} = \beta B\Big(\frac{6N}{C}\Big)^{\beta} \quad\Rightarrow\quad \frac{\alpha A}{N^{\alpha}} = \frac{\beta B}{D^{\beta}}$$</div>
 
 </div>
 <div class="text">
 
-- first term falls with $N$
-- second rises with $N$
-- optimum: weighted terms equal
+- The capacity term falls with $N$; the training term rises.
+- At the optimum, their weighted sizes are equal.
 
-<p class="q"><b>Q.</b> Are the two penalties equal?</p>
-<p class="a"><b>A.</b> No: training term $= \alpha/\beta \approx 1.21\times$ capacity term</p>
+<p class="plain">So the training term is $\alpha/\beta \approx 1.21$ times the capacity term there, not equal to it.</p>
 
 </div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §3.3, App. D.2. Multiply the derivative condition by $N$ to get the last line. The 1.21 is our arithmetic from the rounded exponents</p>
+<p class="footnote">Hoffmann et al. 2022 · §3.3, App. D.2. The 1.21 is our arithmetic from the rounded exponents</p>
 
 Note:
-The central derivation, in three steps. First, use the budget to eliminate D: D = C over 6N. Now loss depends on N only. The capacity term falls as N grows; the training term rises, because a bigger model gets fewer tokens. That's the U.
-Second, set the derivative to zero. Multiply through by N and you get a clean condition: alpha times the capacity penalty equals beta times the training penalty.
-So at the optimum the two penalties aren't equal; their ratio is alpha over beta, about 1.21. The training term is about 21% bigger than the capacity term. What balances is their marginal effect, not their size.
+The central derivation. First, use the budget to eliminate D: D equals C over 6N. Now the loss depends on N only. The capacity term falls as N grows; the training term rises, because a bigger model gets fewer tokens. That's the U.
+Second, set the derivative to zero and multiply through by N. You get a clean condition: alpha times the capacity penalty equals beta times the training penalty.
+So at the optimum the two penalties aren't equal; their ratio is alpha over beta, about 1.21. What balances is their marginal effect, not their size.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Eq. 4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · the optimum, step 2 · Eq. 4</p>
 
-## Steps 3 and 4: the exponents
+## What are the exponents?
 
 <div class="cols">
 <div class="text math-block">
@@ -2431,13 +2501,11 @@ So at the optimum the two penalties aren't equal; their ratio is alpha over beta
 </div>
 <div class="text">
 
-- $a = \beta/(\alpha+\beta) = 0.28/0.62 \approx 0.45$
-- $b = \alpha/(\alpha+\beta) \approx 0.55$
-- paper: 0.46 and 0.54
-- again: about equal
+- $a = \beta/(\alpha+\beta) = 0.28/0.62 \approx 0.45$.
+- $b = \alpha/(\alpha+\beta) \approx 0.55$.
+- The paper prints 0.46 and 0.54.
 
-<p class="q"><b>Q.</b> Why equal?</p>
-<p class="a"><b>A.</b> Because $\alpha \approx \beta$</p>
+<p class="plain">About equal, because $\alpha \approx \beta$.</p>
 
 </div>
 </div>
@@ -2446,31 +2514,27 @@ So at the optimum the two penalties aren't equal; their ratio is alpha over beta
 
 Note:
 Solve the condition for N and you get Equation 4: the optimal size grows as C to the power beta over alpha plus beta, and the tokens as C to alpha over alpha plus beta. The two exponents always add to one, because N times D is proportional to C.
-With the fitted values, 0.45 and 0.55; the paper prints 0.46 and 0.54 from its unrounded constants.
-The reason for equal scaling is now visible: the two exponents are nearly the same, because the capacity and data penalties fall at nearly the same rate.
+With the fitted values, 0.45 and 0.55; the paper prints 0.46 and 0.54 from its unrounded constants. The reason for equal scaling is now visible: the two exponents are nearly the same, because the capacity and data penalties fall at nearly the same rate.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · consequence</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · the optimum, step 3 (ours)</p>
 
-## Step 5: how does the best loss fall?
+## How does the best loss fall?
 
 <div class="cols">
 <div class="text math-block">
 
 <div class="eq">$$L_{\rm opt}(C) - E \ \propto\ C^{-\frac{\alpha\beta}{\alpha+\beta}} = C^{-0.154}$$</div>
 
-- 100x compute: excess loss × $100^{-0.154} \approx 0.49$
-- about half the reducible loss gone
-- $E$ stays
+- 100x compute: the loss above $E$ × $100^{-0.154} \approx 0.49$.
+- About half the reducible loss gone; $E$ stays.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Is total loss a power law now?</p>
-<p class="a"><b>A.</b> No: loss <i>above the floor</i> is</p>
-<p class="q"><b>Q.</b> Limit as $C \to \infty$?</p>
-<p class="a"><b>A.</b> $E$. A property of the formula, not a measurement</p>
+<p class="plain">The power law is in the loss above the floor, not in the total loss.</p>
+<p class="plain">As $C \to \infty$ the formula goes to $E$: a property of the formula, not a measurement.</p>
 
 </div>
 </div>
@@ -2478,312 +2542,307 @@ The reason for equal scaling is now visible: the two exponents are nearly the sa
 <p class="footnote">Hoffmann et al. 2022 · follows from Eq. 2 and 4; our arithmetic, not printed in the paper</p>
 
 Note:
-One more consequence. At the optimum both penalties scale with the same power of compute, so the excess loss above the floor falls as C to the minus alpha beta over alpha plus beta, about minus 0.154.
-Concretely: a hundred times more compute removes about half of the reducible loss. The floor E stays.
+One more consequence. At the optimum both penalties scale with the same power of compute, so the excess loss above the floor falls as C to the minus alpha beta over alpha plus beta, about minus 0.154. Concretely: a hundred times more compute removes about half of the reducible loss. The floor E stays.
 That's a real conceptual difference from Kaplan. Here the power law is in the loss above an irreducible floor, not in the total loss. As compute goes to infinity the formula goes to E; that's a property of the chosen formula, not something the experiments show.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the fit to experiments 1 and 2 · §3.3 · Fig. 4 (left)</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Approach 3 · Fig. 4</p>
 
-## Reading the efficient frontier
-
-<div class="cols">
-<div class="text">
-
-- contours: equal predicted loss
-- each loss: the leftmost point is cheapest
-- join those points: the frontier (blue)
-- a straight line in log-log: $N_{\rm opt} \propto C^{a}$
-- at Gopher's budget: 40B
-
-<p class="q"><b>Q.</b> Straight forever?</p>
-<p class="a"><b>A.</b> They see some curvature</p>
-
-</div>
-<div class="fig"><img src="img/week-06-chinchilla-approach3.png" alt="Hoffmann et al. Figure 4: iso-loss contours over training FLOPs and model size with the efficient frontier in blue, and IsoFLOP slices"></div>
-</div>
-
-<p class="footnote">Hoffmann et al. 2022 · Fig. 4 left, App. E. Two dual views: fix the loss and minimise compute, or fix the compute and minimise the loss</p>
-
-Note:
-How to read Figure 4. The coloured lines are contours of equal predicted loss over compute and model size. For one target loss, a big model trained briefly or a small one trained long can both reach it; the cheapest is the leftmost point on that contour. Join those points over all losses and you get the blue frontier.
-The same frontier comes from the dual view: fix the compute and find the lowest loss. It's close to a straight line in log-log, which is the power law. But the authors note curvature at high compute, so one fixed exponent is an approximation.
-
----
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiments 1 and 2, and the fit · §3.4 · Table 2, Fig. 1</p>
-
-## Do the three methods agree?
+## What does the fitted surface look like?
 
 <div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td>method</td><td class="num">$a$</td><td class="num">$b$</td></tr>
-  <tr><td>1. envelope</td><td class="num">0.50</td><td class="num">0.50</td></tr>
-  <tr><td>2. IsoFLOP</td><td class="num">0.49</td><td class="num">0.51</td></tr>
-  <tr><td>3. fitted law</td><td class="num">0.46</td><td class="num">0.54</td></tr>
-  <tr class="total"><td>Kaplan</td><td class="num">0.73</td><td class="num">0.27</td></tr>
-</table>
+<dl class="where card">
+<dt>Source</dt><dd>no new runs: the fitted $\hat L$, with the runs it was fitted to</dd>
+<dt>Left</dt><dd>contours of equal predicted loss over FLOPs and size; blue: the efficient frontier</dd>
+<dt>Right</dt><dd>$\hat L$ along each budget (dashed) against the IsoFLOP runs (dots)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> Agree on the size too?</p>
-<p class="a"><b>A.</b> Less: 67B, 63B, 40B at Gopher's budget</p>
+<p class="plain">The frontier is a straight line on log axes, $a = 0.46$: 40B at Gopher's budget.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-approach3.png" alt="Hoffmann et al. Figure 4: left, iso-loss contours of the fitted function over training FLOPs and model size with the efficient frontier in blue and dashed vertical IsoFLOP slices; right, the fitted loss along each slice with the measured points"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · §3.3, Fig. 4: the frontier "goes through each iso-loss contour at the point with the fewest FLOPs"</p>
+
+Note:
+Figure 4 draws the fitted equation. No new runs: it's the formula, with the data it was fitted to drawn on top. Left: a map of predicted loss over compute and model size. Right: the formula along each IsoFLOP budget, next to the IsoFLOP runs. The next two slides take each panel.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Approach 3 · Fig. 4, left</p>
+
+## How do you read the efficient frontier?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Contours</dt><dd>sizes and budgets with equal predicted loss</dd>
+<dt>Dots</dt><dd>the runs the fit used</dd>
+<dt>Blue</dt><dd>on each contour, the point with the fewest FLOPs</dd>
+<dt>Axes</dt><dd>training FLOPs (log); model size (log)</dd>
+</dl>
+
+<p class="plain">For one target loss, the cheapest way there is the leftmost point of its contour. Join them: the frontier.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig4-contours.png" alt="Hoffmann et al. Figure 4 left: iso-loss contours of the fitted loss over training FLOPs and model size, empirical data points, dashed vertical IsoFLOP slices, and the efficient frontier in blue reaching 40B at Gopher's budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 4 left. Two dual views give the same line: fix the loss and minimise FLOPs, or fix the FLOPs and minimise the loss</p>
+
+Note:
+How to read the left panel. Each curved line is a contour: every combination of compute and model size on it has the same predicted loss. For one target loss, a big model trained briefly or a small one trained long can both reach it; the cheapest is the leftmost point on that contour, the fewest FLOPs. Join those points over all losses and you get the blue frontier.
+The same line comes from the dual view: fix the compute, the dashed verticals, and find the lowest loss along it. It's straight on log axes, which is the power law, slope 0.46, and at Gopher's budget it says 40 billion.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.3 · Approach 3 · Fig. 4, right</p>
+
+## Does the fit follow the IsoFLOP runs?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Dashed</dt><dd>$\hat L$ against size at one budget; the lowest, Gopher's</dd>
+<dt>Dots</dt><dd>the IsoFLOP runs' final losses</dd>
+<dt>Axes</dt><dd>model size (log); loss (log)</dd>
+</dl>
+
+<p class="plain">Close at the valleys; the fit misses some small and large models at the edges.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-fig4-slices.png" alt="Hoffmann et al. Figure 4 right: loss against model size along each IsoFLOP budget; dashed fitted curves and measured points, close near the valleys, with a few points far above the curves at the smallest budget"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · Fig. 4 right. The Gopher slice is pure extrapolation: no runs at that budget</p>
+
+Note:
+The right panel. Each dashed curve is the fitted formula along one budget; the dots are the IsoFLOP runs it should match. Near the bottoms of the valleys they agree well. At the edges, the smallest budget especially, some runs sit well above the curve. The lowest dashed curve is Gopher's budget, where there are no runs at all: that one is pure extrapolation.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.4 · Table 2, Fig. 1</p>
+
+## Do the three approaches agree?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- Approach 1, the envelope: $a$ = 0.50.
+- Approach 2, IsoFLOP: $a$ = 0.49.
+- Approach 3, the fitted law: $a$ = 0.46.
+- Kaplan: $a$ = 0.73.
+
+<p class="plain">On the exponent, yes. On the size at Gopher's budget, less: 67B, 63B, 40B.</p>
 
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-fig1.png" alt="Hoffmann et al. Figure 1: optimal parameters against FLOPs for Approaches 1, 2 and 3, all flatter than the dashed Kaplan line; Chinchilla 70B sits on the approach lines, Gopher, GPT-3 and MT-NLG near the Kaplan line"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Table 2, Fig. 1. Brackets in Table 2 are 10th to 90th bootstrap percentiles, not 95% intervals</p>
+<p class="footnote">Hoffmann et al. 2022 · Table 2, Fig. 1 again. $a$: the exponent in $N_{\rm opt} \propto C^{a}$. Table 2's brackets are 10th to 90th bootstrap percentiles</p>
 
 Note:
-All three methods give roughly equal scaling, and all three disagree sharply with Kaplan's 0.73. In Figure 1 the big models of the day sit near Kaplan's steeper line; Chinchilla sits on the new ones.
-A subtlety: the methods agree on the exponent much more than on the exact optimal size. At Gopher's budget, Approaches 1 and 2 say 67 and 63 billion, Approach 3 says 40 billion. So the evidence is strongest for the qualitative claim, train smaller models on many more tokens, and weaker for any exact optimum.
-
---
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Later work · Besiroglu et al. 2024</p>
-
-## Was the fitted equation right?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- refit Approach 3 on reconstructed data
-- $a = 0.51$: agrees with 1 and 2
-- about 20 tokens per parameter
-- original: fit stopped early; rounded constants
-
-<p class="q"><b>Q.</b> And the original's 0.454 to 0.455 interval?</p>
-<p class="a"><b>A.</b> Implausibly narrow</p>
-
-</div>
-<div class="fig"><img src="img/week-06-besiroglu-ratio.png" alt="Besiroglu et al. Figure 5: tokens per parameter against training compute; Hoffmann's fitted policy rises past 100; the re-fit stays near 20, close to the Chinchilla model"></div>
-</div>
-
-<p class="footnote">Besiroglu et al. 2024 · arXiv:2404.10102 · Fig. 5, Table 1. Data read from Hoffmann's Fig. 4 (240 points). Re-fit: $E$ = 1.82, $A$ = 482, $B$ = 2085, $\alpha$ = 0.35, $\beta$ = 0.37</p>
-
-Note:
-Optional. Epoch AI tried to reproduce Approach 3. The runs aren't public, so they reconstructed the data points from Figure 4, a limitation they state. Fitting the same function the same way gives different constants and a much better fit; the implied exponent is 0.51, agreeing with Approaches 1 and 2, and about 20 tokens per parameter instead of the original fit's 70 or so.
-The causes: rounded constants in the paper, and, as the original authors explained, the Huber losses were averaged instead of summed, so the optimiser stopped early. So the replication confirms Chinchilla's main claim and corrects its third method.
+Back to Figure 1, now that every line has its runs. All three approaches give roughly equal scaling, and all three disagree sharply with Kaplan's 0.73. The big models of the day sit near Kaplan's steeper line; Chinchilla sits on the new ones.
+A subtlety: the approaches agree on the exponent much more than on the exact optimal size. At Gopher's budget, Approaches 1 and 2 say 67 and 63 billion, Approach 3 says 40 billion. So the evidence is strongest for the qualitative claim, train smaller models on many more tokens, and weaker for any exact optimum. Not independent, either: all three use the same runs.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 5, other datasets · App. C · Fig. A2</p>
-
-## Does it hold on other data?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<table class="rules">
-  <tr><td>dataset</td><td class="num">$a$</td><td class="num">$b$</td></tr>
-  <tr><td>MassiveText</td><td class="num">0.49</td><td class="num">0.51</td></tr>
-  <tr><td>C4</td><td class="num">0.50</td><td class="num">0.50</td></tr>
-  <tr class="total"><td>GitHub code</td><td class="num">0.53</td><td class="num">0.47</td></tr>
-</table>
-
-<p class="q"><b>Q.</b> So it's universal?</p>
-<p class="a"><b>A.</b> Three corpora, all under one epoch</p>
-
-</div>
-<div class="fig"><img src="img/week-06-chinchilla-c4-github.png" alt="Hoffmann et al. Figure A2: IsoFLOP curves and fitted optimal sizes on C4 and GitHub data"></div>
-</div>
-
-<p class="footnote">Hoffmann et al. 2022 · App. C, Table A2, Fig. A2. "our results are independent of the dataset as long as one does not train for more than one epoch"</p>
-
-Note:
-Optional. They repeat Approach 2 on C4, web text, and on GitHub code. The exponents stay near a half. That's encouraging evidence the result isn't specific to MassiveText, though it doesn't show independence from data quality, language or architecture, and every run is under one epoch.
-
----
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From the experiment 1 fit · §3.4 · Table 3</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §3.4, App. D.3 · from the fits · Table 3, Fig. A3</p>
 
 ## Where does "20 tokens per parameter" come from?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td>parameters</td><td class="num">tokens</td><td class="num">per param</td></tr>
-  <tr><td>400M</td><td class="num">8.0B</td><td class="num">20.0</td></tr>
-  <tr><td>1B</td><td class="num">20.2B</td><td class="num">20.2</td></tr>
-  <tr><td>10B</td><td class="num">205.1B</td><td class="num">20.5</td></tr>
-  <tr><td>67B</td><td class="num">1.5T</td><td class="num">22.4</td></tr>
-  <tr class="total"><td>280B</td><td class="num">5.9T</td><td class="num">21.1</td></tr>
-</table>
+<dl class="where card">
+<dt>Each dot</dt><dd>the best size and tokens for one budget, $10^{18}$ to $10^{26}$ FLOPs, by one approach</dd>
+<dt>Axes</dt><dd>tokens (log); parameters (log)</dd>
+</dl>
+
+- Approach 1: 1B on 20.2B tokens, 10B on 205B, 67B on 1.5T.
+- Equal exponents keep the ratio fixed; Approach 1's constants make it about 20.
+
+<p class="plain">The paper never writes "20". Approach 3 implies a different ratio.</p>
 
 </div>
-<div class="text">
-
-- equal exponents ▸ constant ratio
-- the 20 comes from Approach 1's constants
-- the paper never writes "20"
-
-<p class="q"><b>Q.</b> Is training past 20:1 wasteful?</p>
-<p class="a"><b>A.</b> No: it still helps, just not compute-optimally</p>
-
-</div>
+<div class="fig"><img src="img/week-06-chinchilla-figA3.png" alt="Hoffmann et al. Figure A3: optimal parameters against optimal tokens for budgets from 1e18 to 1e26 FLOPs; Approaches 1 and 2 overlap, Approach 3 lies to the right with more tokens per parameter; Chinchilla on the Approach 1 and 2 line, Gopher, GPT-3 and MT-NLG far above it"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Table 3 (Approach 1); the last column is our division. Chinchilla itself: 1.4T / 70B = 20</p>
+<p class="footnote">Hoffmann et al. 2022 · Table 3 (Approach 1), App. D.3, Fig. A3. Chinchilla: 1.4T / 70B = 20 (ours)</p>
 
 Note:
-If parameters and tokens both grow as C to the 0.5, their ratio is constant along the frontier. Table 3 shows it: 20 to 22 tokens per parameter at every size. Chinchilla itself, 1.4 trillion over 70 billion, is exactly 20.
-Three cautions. Equal exponents imply a constant ratio but not the value 20; that comes from the constants of Approach 1, and Approach 3 implies a different ratio. The paper never states "20 tokens per parameter"; later papers named the rule. And it doesn't say training past 20 is harmful: more tokens still lower the loss. It says that for a fixed training budget, the extra compute is better spent partly on a bigger model. Nor is it the answer once serving cost counts, which we come to with Sardana et al.
+If parameters and tokens both grow as compute to the 0.5, their ratio is the same at every budget. Figure A3 shows it directly: each dot is the best size and token count for one budget, from 10 to the 18 to 10 to the 26 FLOPs, and Approaches 1 and 2 lie on one straight line. Table 3 gives the numbers from Approach 1: a billion parameters on 20 billion tokens, 10 billion on 205 billion, 67 billion on 1.5 trillion. About 20 tokens per parameter throughout; Chinchilla, 1.4 trillion over 70 billion, is exactly 20.
+Three cautions. Equal exponents imply a constant ratio but not the value 20; that comes from Approach 1's constants, and Approach 3, the line to the right, implies more tokens per parameter. The paper never states "20 tokens per parameter"; later papers named the rule. And it doesn't say training past 20 is harmful: more tokens still lower the loss. It says that for a fixed training budget, the extra compute is better spent partly on a bigger model.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.1 · Table 4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.1 · Chinchilla itself · Tables 1, 4</p>
 
-## The large-scale test: Chinchilla vs Gopher
+## How was Chinchilla trained?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td></td><td class="num">Gopher</td><td class="num">Chinchilla</td></tr>
-  <tr><td>parameters</td><td class="num">280B</td><td class="num">70B</td></tr>
-  <tr><td>layers</td><td class="num">80</td><td class="num">80</td></tr>
-  <tr><td>heads</td><td class="num">128</td><td class="num">64</td></tr>
-  <tr><td>width</td><td class="num">16,384</td><td class="num">8,192</td></tr>
-  <tr class="total"><td>tokens</td><td class="num">300B</td><td class="num">1.4T</td></tr>
-</table>
+- The same family as Gopher: 80 layers; half the width (8,192) and heads (64).
+- Predicted optimum at Gopher's budget: 40B to 70B. They took 70B.
+- Also changed: AdamW, a new tokenizer, the data mix, a float32 weight copy.
+
+<p class="plain">One run of each model: a test of the prediction, not a controlled swap of size for data.</p>
 
 </div>
-<div class="text">
-
-- same family, same compute
-- predicted optimum: 40B to 70B
-- they chose the upper end, 70B
-
-<p class="q"><b>Q.</b> A clean comparison?</p>
-<p class="a"><b>A.</b> No: also AdamW, a new tokenizer, a new data mix</p>
-
-</div>
+<div class="fig"><img src="img/week-06-chinchilla-vs-gopher.svg" alt="Illustration of Tables 1 and 4: bars for Gopher and Chinchilla. Parameters 280B against 70B; training tokens 300B against 1.4T; training FLOPs 5.76e23 for both"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Table 4, §4.1. Also a float32 copy of the weights in the optimiser; App. G shows AdamW alone helps</p>
+<p class="footnote">Hoffmann et al. 2022 · §4.1, Tables 1 and 4, App. G; picture ours. Gopher: Rae et al. 2021</p>
 
 Note:
-Extrapolation is risky, so they test it at Gopher's budget. The three approaches put the optimum between 40 and 70 billion; they train the upper end, 70B, on 1.4 trillion tokens. Same depth, half the width and heads of Gopher.
-As a validation it's sensible: closely related architectures at the same compute. It isn't perfectly controlled: Chinchilla also uses AdamW instead of Adam, a slightly different tokenizer, a different sampling mix of MassiveText and a float32 weight copy. Appendix G shows AdamW alone helps, so the main comparison can't fully separate the allocation from those changes.
+Extrapolation is risky, so they test it at Gopher's budget, the large-scale test. The three approaches put the optimum between 40 and 70 billion; they train the upper end, 70B, on 1.4 trillion tokens. Same depth as Gopher, half the width and half the heads, the same compute.
+As a validation it's sensible: closely related architectures at the same compute. It isn't perfectly controlled: Chinchilla also uses AdamW instead of Adam, a slightly different tokenizer, a different sampling mix of MassiveText, and a float32 copy of the weights. We'll see on a later slide that AdamW alone helps.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2 · Tables 6 to 9</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2 · Chinchilla itself · Tables 6 to 9</p>
 
 ## What did it buy?
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-<table class="rules">
-  <tr><td></td><td class="num">Gopher</td><td class="num">Chinchilla</td></tr>
-  <tr><td>WikiText-103 perplexity</td><td class="num">7.75</td><td class="num">7.16</td></tr>
-  <tr><td>MMLU, 5-shot</td><td class="num">60.0</td><td class="num">67.6</td></tr>
-  <tr><td>BIG-bench average</td><td class="num">54.4</td><td class="num">65.1</td></tr>
-  <tr><td>RACE-h, few-shot</td><td class="num">71.6</td><td class="num">82.3</td></tr>
-  <tr><td>Natural Questions, 5-shot</td><td class="num">24.5</td><td class="num">31.5</td></tr>
-  <tr class="total"><td>TruthfulQA, 0-shot</td><td class="num">29.5</td><td class="num">43.6</td></tr>
-</table>
+- Better than Gopher on almost every benchmark.
+- MMLU up 7.6 points; BIG-bench up 10.7; TruthfulQA up 14.1.
+- WikiText-103 perplexity: 7.75 ▸ 7.16.
+
+<p class="plain">From a model a quarter of the size, so a quarter of the cost to run.</p>
 
 </div>
-<div class="text">
-
-- better on almost everything
-- MMLU: 51 of 57 subjects better
-- The Pile: all subsets better
-
-<p class="q"><b>Q.</b> Any reason to discount?</p>
-<p class="a"><b>A.</b> Leakage risk for the language-modelling scores (WikiText, Pile)</p>
-
-</div>
+<div class="fig"><img src="img/week-06-chinchilla-gains.svg" alt="Illustration of Tables 6 to 9: accuracy of Gopher (open circles) and Chinchilla (filled) with arrows. MMLU 60.0 to 67.6; BIG-bench 54.4 to 65.1; RACE-h 71.6 to 82.3; Natural Questions 24.5 to 31.5; TruthfulQA 29.5 to 43.6"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Tables 6 to 9 and §4.2 text, Figs. 5 to 7. BIG-bench: 62 tasks; RACE-h: high-school reading comprehension; Natural Questions: closed-book factual questions; TruthfulQA: questions that invite misconceptions. One run of each model</p>
+<p class="footnote">Hoffmann et al. 2022 · Tables 6 to 9, §4.2; picture ours. MMLU: exams in 57 subjects; BIG-bench: 62 tasks; RACE-h: reading comprehension; Natural Questions: closed-book facts; TruthfulQA: questions that invite misconceptions</p>
 
 Note:
-The results. Lower perplexity on WikiText-103. MMLU up 7.6 points, better on 51 of 57 subjects. BIG-bench up more than ten points. Reading comprehension up about eleven. Closed-book question answering up too: Natural Questions 5-shot from 24.5 to 31.5%. On the five common-sense benchmarks it matches or beats Gopher (PIQA is a tie). TruthfulQA up fourteen. On The Pile, better on every subset. All this from a model four times smaller.
-The authors' own caution: Chinchilla saw four times more data, which raises the chance that some test text leaked into training, especially for the language-modelling benchmarks. And it's one run of each model.
-One more caution: in Tables 6 to 9 the outside models' scores are quoted from earlier papers, not re-run (the GPT-3 MMLU number, for instance, is taken from Hendrycks et al.), and the authors themselves flag that GPT-3 and MT-NLG used a different prompt format on RACE, so those scores are not comparable. Chinchilla against Gopher is the tight comparison.
+The results, for one run of each model. MMLU up 7.6 points. BIG-bench up more than ten. Reading comprehension up about eleven. Closed-book question answering up too: Natural Questions 5-shot from 24.5 to 31.5%. TruthfulQA up fourteen. Lower perplexity on WikiText-103. On the five common-sense benchmarks it matches or beats Gopher. All this from a model four times smaller, so cheaper to serve and to fine-tune.
+The authors' own caution: Chinchilla saw four times more data, which raises the chance that some test text leaked into training, especially for the language-modelling benchmarks. And in Tables 6 to 9 the other models' scores are quoted from earlier papers, not re-run; Chinchilla against Gopher is the tight comparison.
 
---
+---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2.2 · Fig. 6</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2.1 · Chinchilla itself · Fig. 5</p>
 
-## Better on which subjects?
+## Better on all of The Pile?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where card">
+<dt>Runs</dt><dd>Chinchilla and Gopher, one run each</dd>
+<dt>Each bar</dt><dd>one subset of The Pile: Gopher's bits per byte minus Chinchilla's</dd>
+<dt>Axes</dt><dd>subset; improvement (higher is better)</dd>
+</dl>
+
+<p class="plain">Better on every subset.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-pile.png" alt="Hoffmann et al. Figure 5: bits-per-byte improvement of Chinchilla over Gopher on each evaluation subset of The Pile; positive on all"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · §4.2.1, Fig. 5. The Pile: a mix of 22 text sources. Bits per byte: loss per byte of text, comparable across tokenizers. Leakage risk is highest here</p>
+
+Note:
+Language modelling on The Pile, a benchmark made of many different text sources. Each bar is one subset: how much lower Chinchilla's bits per byte is than Gopher's. Bits per byte normalises the loss by the length of the text, so it's comparable even though the tokenizers differ. Every bar is positive. This is also where leakage is most likely, since some Pile text may overlap with the 1.4 trillion training tokens.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2.2 · Chinchilla itself · Fig. 6</p>
+
+## Better on which MMLU subjects?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- 51 of 57 better, 2 equal, 4 worse
+<dl class="where card">
+<dt>Each bar</dt><dd>one of 57 MMLU subjects: Chinchilla's accuracy relative to Gopher's</dd>
+</dl>
 
 </div>
 <div class="text">
 
-- worse: college maths, econometrics, moral scenarios, formal logic
+<p class="plain">51 better, 2 equal, 4 worse: college maths, econometrics, moral scenarios, formal logic.</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-mmlu.png" alt="Hoffmann et al. Figure 6: relative improvement of Chinchilla over Gopher on each of the 57 MMLU subjects; four get worse, two are unchanged, the rest improve by up to about 35%"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Fig. 6</p>
+<p class="footnote">Hoffmann et al. 2022 · §4.2.2, Fig. 6. MMLU: multiple-choice exam questions, 5-shot</p>
 
 Note:
-Optional. The MMLU gain is broad but not universal: four subjects get worse, including college mathematics and formal logic. Lower loss doesn't mean better at literally everything.
+MMLU by subject. Each bar is one of the 57 subjects, sorted by how much Chinchilla improves on Gopher. The gain is broad but not universal: 51 better, 2 unchanged, 4 worse, including college mathematics and formal logic. Lower loss doesn't mean better at literally everything.
 
---
+---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 3, Chinchilla vs Gopher · §4.2.1 · Fig. 5</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §4.2.4 · Chinchilla itself · Fig. 7</p>
 
-## Language modelling on The Pile
+## Better on which BIG-bench tasks?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+<dl class="where card">
+<dt>Each bar</dt><dd>one of 62 BIG-bench tasks: Chinchilla's accuracy relative to Gopher's</dd>
+</dl>
+
+</div>
+<div class="text">
+
+<p class="plain">Average 54.4% ▸ 65.1%; worse on 4 of 62 tasks.</p>
+
+</div>
+</div>
+<div class="fig"><img src="img/week-06-chinchilla-bigbench.png" alt="Hoffmann et al. Figure 7: relative improvement of Chinchilla over Gopher on each of 62 BIG-bench tasks; most improve, a few get worse"></div>
+</div>
+
+<p class="footnote">Hoffmann et al. 2022 · §4.2.4, Fig. 7. BIG-bench: a crowd-sourced collection of diverse tasks</p>
+
+Note:
+The same picture for BIG-bench, 62 tasks. The average goes from 54.4 to 65.1 percent, and only 4 of the 62 tasks get worse. Like MMLU, the improvement is broad, with a few exceptions.
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. G · the optimiser runs · Figs. A7, A6</p>
+
+## Was the comparison controlled?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- bits per byte, every subset
-- Chinchilla better on all
+<dl class="where card">
+<dt>Runs</dt><dd>a 417M (blue) and a 1.4B (green) model, each with Adam (solid) and AdamW (dashed)</dd>
+<dt>Panels</dt><dd>C4 loss, WikiText-103 perplexity, LAMBADA accuracy, against training sequences</dd>
+</dl>
+
+<p class="plain">AdamW ends better at both sizes, so part of Chinchilla's win may be the optimiser.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-chinchilla-pile.png" alt="Hoffmann et al. Figure 5: bits-per-byte improvement of Chinchilla over Gopher on each evaluation subset of The Pile; positive on all"></div>
+<div class="fig"><img src="img/week-06-chinchilla-figA7.png" alt="Hoffmann et al. Figure A7: C4 loss, WikiText-103 perplexity and LAMBADA accuracy against million training sequences for 417M and 1.4B models trained with Adam and with AdamW; AdamW ends better in each panel"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · Fig. 5. Bits per byte: loss normalised by text length, comparable across tokenizers</p>
+<p class="footnote">Hoffmann et al. 2022 · App. G, Fig. A7. Fig. A6: a 680M model with Gopher's setup against Chinchilla's (optimiser and high-precision weights); Chinchilla's wins. LAMBADA: predict a passage's last word</p>
 
 Note:
-Optional. On every subset of The Pile, Chinchilla has lower bits-per-byte than Gopher. Bits per byte normalises by the length of the text, so it's comparable even though the tokenizers differ.
-
---
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Later work · Sardana et al. 2024</p>
-
-## What if the model is then used a lot?
-
-<div class="cols">
-<div class="text">
-
-- Chinchilla minimises training FLOPs only
-- serving cost grows with $N$
-- minimise $6ND_{\rm tr} + 2ND_{\rm inf}$
-- heavy use: train smaller, longer
-- e.g. 70B on 4.26T ▸ 41.6B on 7.92T
-
-</div>
-<div class="fig"><img src="img/week-06-sardana-model.png" alt="Sardana et al. Figure 2: contours of compute-optimal model size relative to Chinchilla over inference tokens and pre-training loss; the optimal model shrinks as expected inference grows"></div>
-</div>
-
-<p class="footnote">Sardana et al. 2024 · arXiv:2401.00448 · Fig. 2, appendix Table 2: at $10^{13}$ inference tokens, 12% less total compute. Llama 3: 405B on 15.6T tokens (arXiv:2407.21783)</p>
-
-Note:
-Optional. Chinchilla optimises training compute only. A model that's served to many users spends more compute answering than it did in training, and that cost grows with the number of parameters. Sardana et al. minimise training plus inference and find that once lifetime inference is large, the best model is smaller and trained longer. For a 70B model trained Chinchilla-style (4.26T tokens under the fitted law) and expected to serve ten trillion tokens, a 41.6B model on 7.9 trillion tokens matches it with 12% less total compute.
-Practice moved the same way: Llama 3's 405B saw 15.6 trillion tokens, and its smaller models far more per parameter.
+Was the Gopher comparison a clean test of size against data? Appendix G checks the other changes. Here a 417 million and a 1.4 billion parameter model are each trained with Adam, Gopher's optimiser, and with AdamW, Chinchilla's. AdamW ends with lower loss, lower perplexity and higher accuracy at both sizes. Figure A6 does the same for the whole training setup on a 680 million model, and Chinchilla's setup wins.
+So part of Chinchilla's advantage over Gopher may come from these changes. The allocation result itself rests on the small-scale runs, where the optimiser was held fixed; the head-to-head test, a few slides on, is cleaner.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 4, schedule length · App. B · Fig. A1</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. B · the schedule runs · Fig. A1</p>
 
 ## Why did Kaplan disagree? 1. The schedule
 
@@ -2791,210 +2850,166 @@ Practice moved the same way: Llama 3's 405B saw 15.6 trillion tokens, and its sm
 <div class="points">
 <div class="text">
 
-- cosine planned for 130B tokens
-- stop at 10B: learning rate still high
-- loss worse than a run planned for 10B
+<dl class="where card">
+<dt>Runs</dt><dd>one model, a fixed number of steps; the cosine cycle 1, 1.1, 1.25, 1.5, 2 or 5x the steps</dd>
+<dt>Panels</dt><dd>learning rate, training loss, C4 loss, against training sequences</dd>
+</dl>
 
 </div>
 <div class="text">
 
-- Fig. A1: cycle over 25% too long hurts
-- so short runs looked bad to Kaplan
-- which favoured bigger models
+<p class="plain">A cycle more than 25% longer than the run ends clearly worse: the rate never comes down.</p>
+<p class="plain">Kaplan read small budgets partway through a 130B-token schedule, so short training looked worse than it is.</p>
 
 </div>
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-cosine.png" alt="Hoffmann et al. Figure A1, top row: learning-rate schedules with cosine cycles 1, 1.1, 1.25, 1.5, 2 and 5 times the number of training steps, and the resulting training and C4 losses; cycles much longer than the run end at higher loss"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §2, App. B, Fig. A1. The paper says this "contributes to" the difference. Porian et al. 2024 find it a small part (0.60 ▸ 0.57)</p>
+<p class="footnote">Hoffmann et al. 2022 · §2, App. B, Fig. A1 (top row; the bottom row repeats it with a longer run). The paper says this "contributes to" the difference. Porian et al. 2024 find it a small part (0.60 ▸ 0.57)</p>
 
 Note:
-Chinchilla's first explanation. Picture a cosine schedule planned for 130 billion tokens. At 10 billion tokens the learning rate is still near its peak, because the optimiser expects to keep going. Measure the loss there and a 10-billion-token run looks worse than it would if it had been planned that way.
-Appendix B tests it: a cosine cycle more than about 25% longer than the run clearly hurts the final loss. Kaplan read compute-limited losses partway through runs scheduled for 130 billion tokens, so short training looked worse than it is, and the fit pushed toward bigger models on fewer tokens.
-The lesson: a scaling law can partly reflect how the training was organised, not only the model and data. A fair comparison between allocations has to let the schedule fit the compute each run is given. The 2024 rereads under Kaplan find this particular effect is smaller than Chinchilla thought; the parameter counting and warmup matter more.
+Chinchilla's first explanation of the disagreement. The schedule runs train one model for a fixed number of steps with cosine cycles from exactly the run length to five times it. Left, the schedules: the longer the cycle, the less the learning rate has come down by the end. Middle and right, the losses: cycles more than about 25% too long end clearly worse.
+Now recall Kaplan's setup, the bottom of the schedule picture earlier: a cosine planned for 130 billion tokens, read at 10 billion tokens for small budgets. Those losses were measured with the learning rate still high, so short training looked worse than it is, and the fit pushed toward bigger models on fewer tokens.
+The 2024 rereads find this particular effect is smaller than Chinchilla thought; parameter counting and warmup matter more.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · From experiment 1 · App. E · Fig. A5</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. E · the fixed-size runs · Fig. A5</p>
 
 ## 2. Which sizes went into the fit
 
-<div class="cols">
+<div class="cols wide-fig">
 <div class="text">
 
-- Kaplan: many runs under 100M
-- Chinchilla: most over 500M, up to 16B
-- the frontier bends a little
-- fit small models, get a different slope
+<dl class="where card">
+<dt>Runs</dt><dd>the fixed-size runs' training curves, as in Fig. 2 (left)</dd>
+<dt>Dashed</dt><dd>straight lines fitted to the first, middle and last third of the envelope</dd>
+<dt>Axes</dt><dd>training FLOPs (log); training loss (log)</dd>
+</dl>
 
-<p class="q"><b>Q.</b> So an exponent depends on the range?</p>
-<p class="a"><b>A.</b> If the frontier isn't a perfect power law, yes</p>
+<p class="plain">The three slopes differ: the envelope bends, so the exponent depends on which sizes you fit.</p>
 
 </div>
 <div class="fig"><img src="img/week-06-chinchilla-curvature.png" alt="Hoffmann et al. Figure A5: training curve envelope fitted separately to the first, middle and last third of the points along the loss frontier, giving different slopes"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §2, App. E, Fig. A5: "projections from very small models lead to different predictions than those from larger models"</p>
+<p class="footnote">Hoffmann et al. 2022 · §2, App. E, Fig. A5: "projections from very small models lead to different predictions than those from larger models". Kaplan: many runs under 100M; Chinchilla: most over 500M</p>
 
 Note:
-The second explanation: scale. Many of Kaplan's runs were under 100 million parameters; most of Chinchilla's are over 500 million, up to 16 billion. And the frontier isn't perfectly straight: fit the first, middle and last third of it separately (Figure A5) and you get different slopes.
-If the true frontier bends, the exponent you measure depends on the range you measure it over. A slope fitted mostly to small models extrapolates differently from one fitted to large models.
+The second explanation: scale. Many of Kaplan's runs were under 100 million parameters; most of Chinchilla's are over 500 million, up to 16 billion. And the envelope isn't perfectly straight. Figure A5 is the fixed-size runs again, with straight lines fitted to the first, middle and last third of the envelope: three different slopes.
+If the true frontier bends, the exponent you measure depends on the range you measure it over. A slope fitted mostly to small models extrapolates differently from one fitted to large models. The paper notes the bend would favour even smaller models at large budgets, and leaves it out of the main analysis.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Experiment 6, head to head · App. D.4 · Fig. A4</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · App. D.4 · the head-to-head pair · Fig. A4</p>
 
-## A direct test at $10^{21}$ FLOPs
+## 3. A direct test at $10^{21}$ FLOPs
 
 <div class="cols wide-fig">
 <div class="text">
 
-- Kaplan's rule: 4.68B
-- Approach 1: 2.86B
-- trained: 4.74B and 2.80B
-- same batch, max LR and depth-to-width ratio
-- the smaller one wins
+<dl class="where card">
+<dt>Runs</dt><dd>4.74B (Kaplan's choice, orange) and 2.80B (Approach 1's, blue), both $10^{21}$ FLOPs</dd>
+<dt>Fixed</dt><dd>batch 0.5M tokens, peak LR $1.5\times10^{-4}$, depth-to-width ratio</dd>
+<dt>Axes</dt><dd>left: sequences; right: FLOPs; training loss. Dashed: final losses</dd>
+</dl>
 
-<p class="q"><b>Q.</b> How strong is this?</p>
-<p class="a"><b>A.</b> Direct, but one pair; no repeats reported</p>
+<p class="plain">The smaller model, on more data, ends lower.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-chinchilla-kaplan-1e21.png" alt="Hoffmann et al. Figure A4: training loss of a 4.74B model (Kaplan's prediction) and a 2.80B model (Approach 1) at 1e21 FLOPs; the 2.80B model ends lower"></div>
+<div class="fig"><img src="img/week-06-chinchilla-kaplan-1e21.png" alt="Hoffmann et al. Figure A4: training loss of a 4.74B model (Kaplan's prediction) and a 2.80B model (Approach 1) at 1e21 FLOPs, against sequences and against FLOPs; the 2.80B model ends lower"></div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · App. D.4, Fig. A4. Batch 0.5M tokens, max learning rate $1.5\times10^{-4}$; no uncertainty reported</p>
+<p class="footnote">Hoffmann et al. 2022 · App. D.4, Fig. A4. Kaplan's rule gives 4.68B, Approach 1 2.86B; one run each, no uncertainty reported</p>
 
 Note:
-The most direct test of the disagreement. At one budget, 10 to the 21 FLOPs, Kaplan's rule says 4.68 billion parameters and Approach 1 says 2.86 billion. They train models of 4.74 and 2.80 billion, same batch and learning rate, and the smaller one reaches the lower loss at the end.
-That tests the disputed allocation itself, not just two fitted exponents. It's one pair at one budget with one seed each.
+The most direct test of the disagreement. At one budget, 10 to the 21 FLOPs, Kaplan's rule says 4.68 billion parameters and Approach 1 says 2.86 billion. They train models of 4.74 and 2.80 billion, with the same batch, learning rate and shape. Left, against sequences: the smaller model sees almost twice as many. Right, against compute: the smaller one reaches the lower loss at the end.
+That tests the disputed allocation itself, not two fitted exponents. It's one pair at one budget with one run each.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Summary</p>
-
-## What do the experiments actually establish?
-
-<table class="rules">
-  <tr><td>level</td><td>claim</td><td>evidence</td></tr>
-  <tr><td>observation</td><td>fixed compute has a best size, which moves</td><td>strong: IsoFLOP</td></tr>
-  <tr><td>fitted model</td><td>$E + A/N^{\alpha} + B/D^{\beta}$</td><td>useful; mis-fit once</td></tr>
-  <tr><td>prediction</td><td>70B on 1.4T beats 280B on 300B</td><td>strong, not controlled</td></tr>
-  <tr class="total"><td>stronger claims</td><td>exactly 20:1; exponents forever</td><td>weak</td></tr>
-</table>
-
-<p class="footnote">Hoffmann et al. 2022 · §3, §4, §5</p>
-
-Note:
-Separate the levels. The observation, that at fixed compute there's a best model size and it moves systematically with compute, is directly supported by the IsoFLOP sweeps. The fitted function describes the losses and its optimum agrees with the observations, but it doesn't prove that capacity and training penalties are independent universal power laws, and it was mis-fit once. The large-scale prediction, 70B on 1.4T beating 280B on 300B, is strongly supported, though other things changed too.
-Weak: that 20 tokens per parameter is always optimal, that the exponents hold at every scale, or that the decomposition is the true mechanism.
-
----
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §5 Discussion</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · §5 · discussion</p>
 
 ## What are the limitations?
 
 <div class="cols">
 <div class="text">
 
-- only two runs at large scale
-- the frontier curves; one exponent approximates it
-- all scaling runs under one epoch
-- training FLOPs only; serving adds $C_{\rm inference}$
+- Only two comparable runs at large scale: Gopher and Chinchilla.
+- The envelope bends; one exponent approximates it.
+- Every scaling run under one epoch: repeated data not studied.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Is 70B then the exact optimum?</p>
-<p class="a"><b>A.</b> Unknown: no sweep at 30B, 50B, 100B</p>
-<p class="q"><b>Q.</b> Which way would curvature push?</p>
-<p class="a"><b>A.</b> "even smaller models"</p>
+- Training FLOPs only; serving the model adds its own cost.
+
+<p class="plain">So 70B is not shown to be the exact optimum: there was no sweep at 30B, 50B or 100B.</p>
 
 </div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · §5: "we only have two comparable training runs at large scale"; "we may still be overestimating the optimal size of large models"; under one epoch; App. E</p>
+<p class="footnote">Hoffmann et al. 2022 · §5: "we only have two comparable training runs at large scale"; "we may still be overestimating the optimal size of large models"; App. E</p>
 
 Note:
-Four limitations matter, three of them stated by the authors. Only two comparable runs exist at the largest scale, Gopher and Chinchilla, so beating Gopher doesn't show 70B is the precise optimum. The frontier curves, so one exponent is a local approximation; including the curvature would favour even smaller models. All scaling runs are under one epoch, so repeating a limited corpus isn't studied, and tokens processed aren't the same as unique information. And the objective is training FLOPs: C train is about 6ND. A model that answers millions of queries also pays C inference, which grows with model size, so the total C train plus C inference can favour a smaller model trained longer. The paper mentions cheaper inference as a benefit but doesn't optimise the total (that's Sardana, a sub-slide under the results).
+Four limitations matter, three of them stated by the authors. Only two comparable runs exist at the largest scale, Gopher and Chinchilla, so beating Gopher doesn't show 70B is the precise optimum. The envelope curves, so one exponent is a local approximation; including the curvature would favour even smaller models. All scaling runs are under one epoch, so repeating a limited corpus isn't studied.
+And the objective is training compute only. A model that answers millions of queries also pays for serving them, which grows with model size, so the total can favour a smaller model trained longer. That's Sardana et al., on the last slide.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · summary</p>
 
-## What is the deeper lesson?
+## Kaplan and Chinchilla, side by side
 
 <div class="cols">
 <div class="text">
 
-- the law that matters: the path of optima
-- $(N_{\rm opt}(C), D_{\rm opt}(C))$ through $L(N,D)$
-- exponents can belong to the regime
-- fit range and schedule can move them
-- prediction is not explanation
+<p class="plain"><b>Kaplan 2020</b></p>
+
+- $N_{\rm opt} \propto C^{0.73}$, $D_{\rm opt} \propto C^{0.27}$.
+- One long schedule, read partway.
+- Non-embedding parameters; many runs under 100M.
+- Loss: nested power laws, no floor.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Q.</b> Did Kaplan and Chinchilla disagree that bigger helps?</p>
-<p class="a"><b>A.</b> No: both agree. They disagree on the path</p>
-<p class="q"><b>Q.</b> Does App. D.2 explain 0.34 and 0.28?</p>
-<p class="a"><b>A.</b> It motivates the form (theory: about 1/2), not the fitted values</p>
+<p class="plain"><b>Chinchilla 2022</b></p>
+
+- $N_{\rm opt} \propto C^{0.50}$, $D_{\rm opt} \propto C^{0.50}$.
+- A schedule matched to every run.
+- All parameters; most runs over 500M.
+- Loss: $E + A/N^{\alpha} + B/D^{\beta}$, with a floor.
 
 </div>
 </div>
 
-<p class="footnote">Hoffmann et al. 2022 · App. D.2 ("a classical risk decomposition"), App. E (curvature). The three lessons are our reading of the paper</p>
+<p class="footnote">Kaplan et al. 2020; Hoffmann et al. 2022. Parameter counting: Pearce and Song 2024; Porian et al. 2024 (Kaplan section, last slide)</p>
 
 Note:
-The most interesting contribution may not be the number 20 or the exponent 0.5, but the lesson about experimental design. Kaplan showed that simple regularities appear when you scale Transformers. Chinchilla argues those regularities can move with decisions that look secondary: which training lengths you look at, whether the schedule fits them, which model sizes go into the fit.
-Three lessons. First, the scaling law you usually care about isn't the loss surface L of N and D itself; it's the path that the optimum traces through that surface as the budget grows. Two analyses can agree that bigger models and more data both help and still disagree a lot about that path. That is exactly Kaplan versus Chinchilla.
-Second, an exponent fitted as a straight line in log-log over a finite range is easy to read as a fundamental constant. But a different fitting range or optimisation protocol can give a different effective exponent, and the curvature in Chinchilla's own frontier is a warning against assuming exact scale invariance. (Its datasets check, C4 and GitHub, found the exponents stable; and the 2024 rereads under Kaplan find the schedule effect smaller than Chinchilla thought.)
-Third, prediction and explanation are different achievements. Chinchilla's prediction worked: the 70B model beat Gopher. That doesn't tell us why the exponents are 0.34 and 0.28, or why balanced scaling should appear. The appendix motivates the additive terms and even the power-law shapes: theory for two-layer networks and for stochastic gradient descent suggests exponents of about one half. But 0.34 and 0.28 are fitted, not derived. A first-principles account in terms of the structure of language, learning dynamics and data is still missing; the Kaplan sub-slides on why power laws exist at all are the start of that story.
+Side by side. Both papers answer how to split a fixed compute budget, and both agree that bigger models and more data help. They disagree on the path the optimum takes as the budget grows: 0.73 against 0.50. The experimental choices that explain much of the gap: one long schedule read mid-run against schedules matched to each run; non-embedding parameters and small models against total parameters and larger models. And the loss models differ: Kaplan's has no floor; Chinchilla's does.
 
 ---
 
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Summary</p>
-
-## Kaplan vs Chinchilla
-
-<table class="rules">
-  <tr><td></td><td>Kaplan 2020</td><td>Chinchilla 2022</td></tr>
-  <tr><td>allocation from</td><td>charted laws, then derived</td><td>fitted directly, three ways</td></tr>
-  <tr><td>loss model</td><td>nested power laws, no floor</td><td>$E + A/N^{\alpha} + B/D^{\beta}$</td></tr>
-  <tr><td>$N_{\rm opt}$</td><td>$C^{0.73}$</td><td>$C^{0.50}$</td></tr>
-  <tr><td>$D_{\rm opt}$</td><td>$C^{0.27}$</td><td>$C^{0.50}$</td></tr>
-  <tr><td>schedule</td><td>one, read mid-run</td><td>matched to each run</td></tr>
-  <tr><td>parameters counted</td><td>non-embedding</td><td>all</td></tr>
-  <tr><td>main validation</td><td>fits agree</td><td>$10^{21}$ control; Chinchilla vs Gopher</td></tr>
-  <tr><td>weak point (ours)</td><td>allocation extrapolated badly</td><td>exact optimum uncertain</td></tr>
-</table>
-
-<p class="footnote">Kaplan et al. 2020; Hoffmann et al. 2022; parameter counting: Pearce &amp; Song 2024, Porian et al. 2024</p>
-
-Note:
-Side by side. Both papers answer how to split a fixed compute budget. Kaplan charted how loss scales with parameters, data and compute and derived the allocation from those laws; Chinchilla fitted the allocation directly, three ways. Different loss functions, different exponents, and the experimental choices that explain the gap: one long schedule read mid-run versus schedules matched to each run, and non-embedding versus total parameters. Kaplan's main evidence was that their fits agreed with each other; Chinchilla added a direct test at 10 to the 21 FLOPs and the Chinchilla-Gopher comparison. The last row is our judgement: Kaplan's weak point turned out to be the compute-optimal extrapolation; Chinchilla's is that the exact optimum, and extrapolation far beyond its runs, remain uncertain.
-
----
-
-<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · Summary</p>
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · summary</p>
 
 ## What to keep from Chinchilla
 
 <div class="cols">
 <div class="text">
 
-- optimise size and training together
-- IsoFLOP: every budget has a best size
-- $N_{\rm opt} \propto C^{\beta/(\alpha+\beta)}$, $D_{\rm opt} \propto C^{\alpha/(\alpha+\beta)}$
-- smaller and longer can beat bigger
+- Choose model size and training length together, under one budget.
+- The IsoFLOP runs are the cleanest evidence: every budget has a best size.
+- $N_{\rm opt} \propto C^{\beta/(\alpha+\beta)}$, $D_{\rm opt} \propto C^{\alpha/(\alpha+\beta)}$: equal, because $\alpha \approx \beta$.
 
 </div>
 <div class="text">
 
-<p class="q"><b>Open question</b></p>
-<p class="a">Are these exponents fundamental, or effective ones set by training regime, data and fit?</p>
+- A smaller model on far more tokens beat a bigger one at the same compute.
+- Strong: a best size exists and moves. Weaker: exactly 20:1, the exponents forever.
+
+<p class="plain">Open: are the exponents fundamental, or set by the training regime, data and fit?</p>
 
 </div>
 </div>
@@ -3002,8 +3017,35 @@ Side by side. Both papers answer how to split a fixed compute budget. Kaplan cha
 <p class="footnote">Hoffmann et al. 2022. Next: from loss to abilities (Wei et al. 2022)</p>
 
 Note:
-Four things to keep. Model size and training length have to be optimised together under a compute budget. The IsoFLOP experiment is the cleanest evidence: at each budget there's a best size. The separable loss model gives the allocation exponents by simple calculus. And a smaller model trained on far more tokens can beat a much larger one at the same compute.
-The open question: are exponents like 0.34 and 0.28 telling us something fundamental about learning language, or are they effective exponents produced by the training regime, data and fitting procedure? Kaplan found the patterns, Chinchilla showed that experimental design moves the optimum, and explaining why the patterns exist is still open.
+Things to keep. Model size and training length have to be chosen together under a compute budget. The IsoFLOP experiment is the cleanest evidence: at each budget there's a best size, and it moves. The separable loss model gives the allocation exponents by simple calculus. And a smaller model trained on far more tokens beat a much larger one at the same compute.
+Separate the levels of trust. Strong: a best size exists at each budget and moves systematically. Useful but approximate: the fitted equation, which was mis-fit once. Weak: that 20 tokens per parameter is always optimal, or that the exponents hold at every scale.
+The open question: are exponents like 0.34 and 0.28 telling us something fundamental about learning language, or are they effective exponents produced by the training regime, data and fitting procedure?
+
+---
+
+<p class="eyebrow"><span class="paper">Hoffmann et al. 2022 (Chinchilla)</span> · later work</p>
+
+## What came after Chinchilla?
+
+<div class="cols wide-fig">
+<div class="text">
+
+- **The fit was redone.** Refitting Approach 3 on data read off Fig. 4 gives $a$ = 0.51, close to Approaches 1 and 2, and about 20 tokens per parameter (Besiroglu et al. 2024, right).
+- **Serving changes the answer.** Counting the compute to serve the model, heavy use favours smaller models trained longer (Sardana et al. 2024). Llama 3: 405B on 15.6T tokens.
+- **Kaplan's side.** Why Kaplan got 0.73 and 0.88: Pearce and Song 2024; Porian et al. 2024.
+
+</div>
+<div class="fig"><img src="img/week-06-besiroglu-ratio.png" alt="Besiroglu et al. Figure 5: tokens per parameter against training compute; Hoffmann's fitted policy rises past 100; the re-fit stays near 20, close to the Chinchilla model"></div>
+</div>
+
+<p class="footnote">Besiroglu et al. 2024, arXiv:2404.10102 (Fig. 5); Sardana et al. 2024, arXiv:2401.00448; Llama 3: arXiv:2407.21783; Pearce and Song 2024, arXiv:2406.12907; Porian et al. 2024, arXiv:2406.19146</p>
+
+Note:
+What happened next, briefly.
+First, Epoch AI tried to reproduce Approach 3. The runs aren't public, so they reconstructed the data points from Figure 4. Fitting the same function the same way gives different constants and a much better fit; the implied exponent is 0.51, agreeing with Approaches 1 and 2, and about 20 tokens per parameter instead of the original fit's 70 or so. The picture shows the tokens per parameter each fit recommends as compute grows. The causes: rounded constants in the paper and an optimiser that stopped early. So the replication confirms Chinchilla's main claim and corrects its third method.
+Second, Chinchilla optimises training compute only. A model served to many users spends more compute answering than it did in training. Sardana et al. minimise training plus inference and find that once lifetime use is large, the best model is smaller and trained longer. Practice moved the same way: Llama 3's 405B saw 15.6 trillion tokens.
+Third, on Kaplan's side, the two 2024 papers from the end of the Kaplan section explain how Kaplan's own choices produced 0.73 and 0.88.
+
 
 
 
