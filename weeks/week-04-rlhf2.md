@@ -1786,34 +1786,6 @@ What does this KL do? It splits into minus the entropy of the policy plus the cr
 
 ---
 
-<p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · the direction, in a toy (ours)</p>
-
-## What does the direction change, in a toy?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Fit one bump to a two-bump reference.
-- $\mathrm{KL}(\pi \Vert {\rm ref})$: the fit stays inside one bump, with almost no mass in the gap.
-- $\mathrm{KL}({\rm ref} \Vert \pi)$: the fit covers both, and puts mass in the gap.
-- With no one-bump limit, the KL alone would make the policy equal the reference.
-
-<p class="plain">The $\mathrm{KL}({\rm ref} \Vert \pi)$ fit writes outputs the reference finds nearly impossible: its mass in the gap.</p>
-
-</div>
-<div class="fig"><img src="img/week-04-rlhf2-kldir.svg" alt="Illustration: a grey reference with two bumps. The best single bump under KL of pi to ref sits on the left bump. The best single bump under KL of ref to pi is wide, spans both bumps and puts mass in the gap between them"></div>
-</div>
-
-<p class="footnote">Ours: reference $\frac12\mathcal N(-2, 0.6^2) + \frac12\mathcal N(2, 0.6^2)$, fits found by grid search. Often called mode-seeking and mass-covering; a toy shape, not a measured property of RLHF policies</p>
-
-Note:
-Optional, a toy for intuition about the two directions. The grey reference has two bumps. Suppose the policy can only be a single bump, and we pick the single bump that minimises each KL.
-With the policy first, the KL averages the log ratio over the policy's own outputs, so any output where the policy has mass and the reference has almost none is very expensive. The best fit sits inside one of the bumps and ignores the other. Dropping a bump costs only a modest amount: here about log 2.
-With the reference first, the KL averages over the reference's outputs, so the expensive thing is the policy having almost no mass where the reference has some. The best fit stretches to cover both bumps, and in doing so puts mass in the gap between them, where the reference has almost none.
-For RLHF, the outputs in the gap are the worry: text the reference would almost never write, such as the idiosyncratic summaries in Stiennon's figure. The policy-first direction is the one that refuses them. Two cautions. The difference here comes from forcing a single bump; a policy free to take any shape would, under the KL alone, simply become the reference. And "mode-seeking" describes this toy, not a measured property of trained language models.
-
----
-
 <p class="eyebrow"><span class="paper">RLHF, PPO and GRPO</span> · Part 6, PPO on a language model · per-token reward, $k_1$ KL</p>
 
 ## How does one score become a reward for every token?
