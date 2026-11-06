@@ -139,7 +139,7 @@ Unless the paper says otherwise, every model, whatever its size, trains for the 
 So yes, all the main models trained for the same number of steps. Three families of runs break that rule on purpose, and we'll name them when they come up: the data runs stop as soon as the test loss stops falling; the batch runs change the batch size; and the schedule runs try other schedules.
 Remember the one schedule. When Chinchilla disagrees two years later, it blames exactly this: losses for small budgets were read partway through these long runs.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. D.6 · the schedule runs · Fig. 22</p>
 
@@ -175,8 +175,8 @@ Two later findings qualify this. Chinchilla shows that a schedule much longer th
 ## Which runs does the paper rely on?
 
 <div class="rows">
-<div class="fig"><img src="img/week-06-kaplan-runs.svg" alt="Illustration: six families of runs and the figures each gives. The size runs, 768 to 1.5B parameters on all of WebText2 for 250k steps: Figs. 1 left and right, 2, 4 right, 6, 8, 11, 13, 14. The shape runs, fixed size with one shape knob changed: Fig. 5. The data runs, subsets of 21M to 22B tokens stopped early: Figs. 1 middle, 4 left, 9. The batch runs, a 3M and an 85M model at many batch sizes: Figs. 10, 18. The schedule runs, a 3M model with many schedules: Fig. 22. The LSTM runs: Fig. 7"></div>
-<p class="plain">The size runs carry most of the paper: the same models, read at the end, along the way, and on other text.</p>
+<div class="fig"><img src="img/week-06-kaplan-runs.png" alt="Illustration: six families of runs, with a thumbnail of every figure each gives. The size runs, 768 to 1.5B parameters on all of WebText2 for 250k steps: Figs. 1 left and right, 2, 4 right, 6, 8, 11, 13, 14. The shape runs, fixed size with one shape knob changed: Fig. 5. The data runs, subsets of 21M to 22B tokens stopped early: Figs. 1 middle, 4 left, 9. The batch runs, a 3M and an 85M model at many batch sizes: Figs. 10, 18. The schedule runs, a 3M model with many schedules: Fig. 22. The LSTM runs: Fig. 7"></div>
+<p class="plain">The size runs carry most of the paper: 768 to 1.5B parameters, read at the end, along the way, and on other text.</p>
 </div>
 
 <p class="footnote">Kaplan et al. 2020 · §2.2, §3 (what they varied), §4.2, §5.1, App. D. The paper does not number its experiments; the names are ours</p>
@@ -269,7 +269,6 @@ What it leaves out: the attention computation over the context, which the paper 
 <p class="plain">Loss moves by a few percent over wide ranges of shape.</p>
 
 - $(n_{\rm layer}, d_{\rm model}) = (6, 4288)$ is within 3% of GPT-2's $(48, 1600)$.
-- Next: one panel at a time (↓).
 
 </div>
 </div>
@@ -281,9 +280,9 @@ What it leaves out: the attention computation over the context, which the paper 
 Note:
 The first result section asks whether the shape matters once you fix the size. They train models at a fixed number of non-embedding parameters and change one shape knob at a time: the feed-forward width, the depth (changing the width with it to keep N fixed), or the number of heads. Each point is one run's final loss, written as a percentage above the best shape at that size.
 The answer, across all three panels: a few percent over wide ranges. A 6-layer model 4,288 wide gets within 3% of the 48-layer, 1,600-wide GPT-2 shape.
-Why it's surprising: much of neural network design had been about finding the right architecture. This says that, for standard Transformers in this range, how much capacity you have matters far more than how you arrange it. The limits: within reasonable shapes, standard Transformers only. Press down for each panel.
+Why it's surprising: much of neural network design had been about finding the right architecture. This says that, for standard Transformers in this range, how much capacity you have matters far more than how you arrange it. The limits: within reasonable shapes, standard Transformers only. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, left</p>
 
@@ -292,25 +291,31 @@ Why it's surprising: much of neural network design had been about finding the ri
 <div class="cols wide-fig">
 <div class="text">
 
-<dl class="where card">
-<dt>Runs</dt><dd>50M-parameter models</dd>
-<dt>Varied</dt><dd>$d_{\rm ff}/d_{\rm model}$, from 0.5 to about 40</dd>
-<dt>Each line</dt><dd>8 heads, or heads of size 64</dd>
-<dt>Axes</dt><dd>feed-forward ratio (log); loss above the best</dd>
+<dl class="where">
+<dt>$d_{\rm model}$</dt><dd>the residual width: the length of each token's vector between blocks</dd>
+<dt>$d_{\rm ff}$</dt><dd>the width the feed-forward layer projects up into, before projecting back down</dd>
 </dl>
 
-<p class="plain">Flat from 0.5 to 4, the usual choice; 8% worse near 40.</p>
+<img class="inline-fig" src="img/week-06-kaplan-dff.svg" alt="Illustration (ours): one feed-forward block, widths drawn small; a residual vector of width d_model is projected up to a wider vector of width d_ff, then back down to width d_model">
+
+<dl class="where card">
+<dt>Runs</dt><dd>50M-parameter models; lines: 8 heads, or heads of size 64</dd>
+<dt>Varied</dt><dd>$d_{\rm ff}/d_{\rm model}$, 0.5 to about 40</dd>
+</dl>
+
+<p class="plain">Flat from 0.5 to 4, the usual choice; much wider is worse, 8% near 40.</p>
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig5-ff.png" alt="Kaplan et al. Figure 5 left: loss increase against feed-forward ratio for 50M-parameter models; under 1% from 0.5 to 4, rising to about 8% near 40"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Fig. 5, left panel</p>
+<p class="footnote">Kaplan et al. 2020 · Fig. 5, left panel (x: the ratio, log; y: loss above the best shape). At fixed $N$, a wider feed-forward layer means a narrower $d_{\rm model}$</p>
 
 Note:
-The left panel. All 50-million-parameter models. The knob is the feed-forward width as a multiple of the model width; to keep N fixed, the model width shrinks as the feed-forward layer grows. The two lines are two ways of choosing the heads. From half to four times the width, the loss barely moves; four is the standard Transformer choice. Push it to about 40 and the loss is 8% worse.
+The left panel. First, the two widths. Every token is carried between blocks as a vector of length d_model, the residual width. Inside each block, the feed-forward layer projects that vector up to a longer one, of length d_ff, applies the nonlinearity, and projects it back down to d_model. The ratio d_ff over d_model says how much wider that inner layer is: a ratio of 4 means four times wider, 0.5 means half as wide.
+All models here have 50 million parameters. The knob is that ratio; to keep N fixed, the model width shrinks as the feed-forward layer grows. The two lines are two ways of choosing the heads. From half to four times the width, the loss barely moves; four is the standard Transformer choice. Push it to about 40 and the loss is 8% worse.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, middle</p>
 
@@ -337,7 +342,7 @@ The left panel. All 50-million-parameter models. The knob is the feed-forward wi
 Note:
 The middle panel is the depth question. At each of three sizes, they trade depth for width at a fixed parameter count; the x axis is width over depth. Between about 10 and 300 the curves are nearly flat, within about 2 percent, at every size. Only very deep-and-narrow or very shallow-and-wide models pay more, up to 8% for the 274M model at the widest extreme. The paper's aside: this would follow if deep Transformers behave like ensembles of shallower ones, as has been suggested for ResNets.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.1 · the shape runs · Fig. 5, right</p>
 
@@ -393,17 +398,17 @@ Now the backbone: the size runs. Every line is one model, trained on all of WebT
 Two things to notice. Bigger models are lower everywhere. And they reach any given loss with fewer tokens, which the paper calls sample efficiency. The curves also share one shape: a plateau, a fast drop, then a slow decline.
 Hold on to these curves. The next several results are all read off them: the end of each curve gives the size law, and the lower envelope gives the compute law.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 2, right</p>
 
-## What do the same runs look like against compute?
+## What do the size runs look like against compute?
 
 <div class="cols wide-fig">
 <div class="text">
 
 <dl class="where card">
-<dt>Runs</dt><dd>the same size runs</dd>
+<dt>Runs</dt><dd>the size runs: 768 to 1.5B parameters, 250k steps each</dd>
 <dt>Each line</dt><dd>one model's test loss as it trains</dd>
 <dt>Axes</dt><dd>compute so far, $6N$ × tokens, in PF-days (log); test loss</dd>
 </dl>
@@ -419,7 +424,7 @@ Hold on to these curves. The next several results are all read off them: the end
 <p class="footnote">Kaplan et al. 2020 · Fig. 2 right: "Compute-efficient training stops far short of convergence". 1 PF-day = $8.64\times10^{19}$ FLOPs</p>
 
 Note:
-The same runs, with the x axis changed from tokens to compute: each token costs 6N FLOPs, so a big model's curve slides to the right. Now the curves cross. At a small budget a small model is lowest; at a bigger budget, a bigger model that is still mid-training beats a small one that has finished.
+The size runs again, 768 to 1.5 billion parameters, with the x axis changed from tokens to compute: each token costs 6N FLOPs, so a big model's curve slides to the right. Now the curves cross. At a small budget a small model is lowest; at a bigger budget, a bigger model that is still mid-training beats a small one that has finished.
 The bar marks the paper's point: at any budget, the model that does best is one stopped well before it converges. That lower envelope, the best loss you can get for each budget, becomes the compute law of Figure 1 a few slides on.
 
 ---
@@ -439,7 +444,6 @@ The bar marks the paper's point: at any budget, the model that does best is one 
 
 <p class="plain">Counted with embeddings, depths split apart; without, they fall on one line.</p>
 
-- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig6.png" alt="Kaplan et al. Figure 6: loss against parameters; top, with embeddings, models of different depth lie on separate curves; bottom, without embeddings, they collapse onto one trend"></div>
@@ -448,10 +452,10 @@ The bar marks the paper's point: at any budget, the model that does best is one 
 <p class="footnote">Kaplan et al. 2020 · §3.2, Fig. 6 (the paper's left and right, stacked here)</p>
 
 Note:
-Why does Kaplan count N without the embeddings? Because of this figure. The same size runs, final losses, coloured by depth. Count every parameter, top, and models of different depth lie on different curves. Count only the non-embedding parameters, bottom, and every model with two or more layers lines up on one curve.
-That one clean curve is what makes the size law possible. But it is a counting choice that cleans up the fit, not a claim that embeddings do nothing. Press down for each panel.
+Why does Kaplan count N without the embeddings? Because of this figure: the size runs, 768 to 1.5 billion parameters, final losses, coloured by depth. Count every parameter, top, and models of different depth lie on different curves. Count only the non-embedding parameters, bottom, and every model with two or more layers lines up on one curve.
+That one clean curve is what makes the size law possible. But it is a counting choice that cleans up the fit, not a claim that embeddings do nothing. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 6, left</p>
 
@@ -476,7 +480,7 @@ That one clean curve is what makes the size law possible. But it is a counting c
 Note:
 Counted with embeddings. Each line is one depth. At the same total, shallow models are worse, because for a small or shallow model most of the count is the token table, which contributes much less than layers do. A 2-layer, 128-wide model has about 0.4 million parameters in its layers and 6.4 million in its token table.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2 · the size runs · Fig. 6, right</p>
 
@@ -553,7 +557,6 @@ These models are trained close to convergence with plenty of data: this is the l
 
 <p class="plain">LSTMs match Transformers on the first tokens, then stop improving; Transformers keep using the whole context.</p>
 
-- Next: each panel (↓).
 
 </div>
 </div>
@@ -564,9 +567,9 @@ These models are trained close to convergence with plenty of data: this is the l
 
 Note:
 Is any of this special to Transformers? Section 3.2.1 trains LSTMs on the same data and context. Two panels. Left: final loss against size, like Figure 1 right. Right: the loss at each position in the 1,024-token context, so you can see where in the text the model is good.
-The LSTMs do as well on early tokens, but they stop improving after about 100 tokens of context, while the Transformers keep improving to the end. Press down for each panel.
+The LSTMs do as well on early tokens, but they stop improving after about 100 tokens of context, while the Transformers keep improving to the end. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.1 · the LSTM runs · Fig. 7, left</p>
 
@@ -592,7 +595,7 @@ The LSTMs do as well on early tokens, but they stop improving after about 100 to
 Note:
 Left panel. Same axes as the size law. The LSTMs, in red, lie above the Transformers and their lines are shallower, so the gap widens as models grow. The panel title gives the paper's reason, which the right panel shows: Transformers use long contexts better.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.1 · the LSTM runs · Fig. 7, right</p>
 
@@ -636,7 +639,6 @@ Right panel. Here the x axis is not size but position: how far into the 1,024-to
 
 <p class="plain">The same trend, shifted up by a small, nearly constant amount.</p>
 
-- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig8.png" alt="Kaplan et al. Figure 8: top, test loss on other text distributions against model size, roughly parallel lines offset from WebText2; bottom, loss on Books and Wikipedia against WebText2 loss, close to straight lines"></div>
@@ -645,9 +647,9 @@ Right panel. Here the x axis is not size but position: how far into the 1,024-to
 <p class="footnote">Kaplan et al. 2020 · §3.2.2, Fig. 8 (left and right, stacked). Transfer "incurs a constant penalty but otherwise improves roughly in line with performance on the training set" (§1.1)</p>
 
 Note:
-Does any of this depend on WebText2? Section 3.2.2 takes the same size runs, trained only on WebText2, and tests them on other text: books, Wikipedia, Common Crawl. Top: loss on each test set against size. Bottom: loss on two of those sets against loss on WebText2. Press down for each panel.
+Does any of this depend on WebText2? Section 3.2.2 takes the size runs, 768 to 1.5 billion parameters, trained only on WebText2, and tests them on other text: books, Wikipedia, Common Crawl. Top: loss on each test set against size. Bottom: loss on two of those sets against loss on WebText2. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · the size runs on other text · Fig. 8, left</p>
 
@@ -673,7 +675,7 @@ Does any of this depend on WebText2? Section 3.2.2 takes the same size runs, tra
 Note:
 Left panel. One line per test set. They are close to parallel, with WebText2's own test set the lowest, as you'd expect, and the others a small step above. The offset grows only slowly with size. So the size law is not a quirk of the training distribution, at least for these kinds of English text.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §3.2.2 · the size runs on other text · Fig. 8, right</p>
 
@@ -831,7 +833,7 @@ The test is the data runs, extended: six model sizes from 393 thousand to 708 mi
 <div class="text">
 
 <dl class="where card">
-<dt>Runs</dt><dd>the same (size, subset) runs, stopped early</dd>
+<dt>Runs</dt><dd>the data runs: six sizes, 393K to 708M, on subsets of 21M to 22B tokens, stopped early</dd>
 <dt>Each line</dt><dd>one subset size, 21M to 22B tokens</dd>
 <dt>Each point</dt><dd>one model's best test loss on that subset; dotted: the fit</dd>
 <dt>Axes</dt><dd>non-embedding parameters (log); test loss</dd>
@@ -846,7 +848,7 @@ The test is the data runs, extended: six model sizes from 393 thousand to 708 mi
 <p class="footnote">Kaplan et al. 2020 · §4.2, Fig. 9 left. Joint fit: $\alpha_N = 0.076$, $\alpha_D = 0.103$ (Table 2). The 21M-token runs fit worst: an epoch is only 40 steps</p>
 
 Note:
-The same runs, plotted the other way: loss against model size, one line per subset. With the whole 22 billion tokens, the yellow line, you get the straight size law. With less data, each line bends flat: past some size, a bigger model doesn't help, because it can only memorise the small subset. The dotted lines are the single fitted equation, and they follow every subset except the very smallest, 21 million tokens, where an epoch is only 40 steps.
+The data runs again, six sizes on subsets of 21 million to 22 billion tokens, plotted the other way: loss against model size, one line per subset. With the whole 22 billion tokens, the yellow line, you get the straight size law. With less data, each line bends flat: past some size, a bigger model doesn't help, because it can only memorise the small subset. The dotted lines are the single fitted equation, and they follow every subset except the very smallest, 21 million tokens, where an epoch is only 40 steps.
 
 ---
 
@@ -909,6 +911,36 @@ Scale the model 8x and the data needs only about 4.7x. That sublinear rule is th
 
 ---
 
+<p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1 · Eq. 5.1, 5.2 · the idea</p>
+
+## How do steps, tokens and batch size fit together?
+
+<div class="cols wide-fig">
+<div class="text">
+
+<dl class="where">
+<dt>$B$, $S$, $E$</dt><dd>tokens per batch; steps; tokens processed, $E = B \times S$</dd>
+<dt>$S_{\min}$, $E_{\min}$</dt><dd>the fewest steps (at a huge batch) and the fewest tokens (at a tiny batch) that reach a target loss</dd>
+</dl>
+
+<div class="eq">$$\Big(\frac{S}{S_{\min}} - 1\Big)\Big(\frac{E}{E_{\min}} - 1\Big) = 1$$</div>
+
+<p class="plain">The corner, $B_{\rm crit} = E_{\min}/S_{\min}$, costs 2x the fewest steps and 2x the fewest tokens.</p>
+
+</div>
+<div class="fig"><img src="img/week-06-kaplan-batch-idea.svg" alt="Illustration: tokens processed against steps on log axes. Three grey diagonal lines, one per batch size, E = B times S. A black hyperbola for one target loss, approaching S_min on the left and E_min at the bottom. Dots where each batch line meets the hyperbola: the large batch high and left, B_crit at the corner, the small batch low and right"></div>
+</div>
+
+<p class="footnote">Kaplan et al. 2020 · Eq. 5.1, 5.2 (after McCandlish et al. 2018). Illustration ours, made-up numbers. Where a batch $B$ meets the curve: $S = S_{\min}(1 + B_{\rm crit}/B)$, $E = E_{\min}(1 + B/B_{\rm crit})$ (our algebra)</p>
+
+Note:
+Before the real figure, the idea it tests, drawn with made-up numbers. To reach a target loss you can use small batches and many steps, cheap in FLOPs but slow, or big batches and few steps, fast on parallel hardware but wasteful.
+Three letters. B is the batch, in tokens. S is the number of steps. E is the number of tokens processed, which is just B times S. On log axes, a run at one batch size moves along a straight diagonal line as it trains: the grey lines, one per batch size.
+Now fix a target loss. Each batch size reaches it at some point on its line: the dots. Join the dots and you get the black curve, a hyperbola: S over S_min minus one, times E over E_min minus one, equals one. S_min is the fewest steps possible, approached with a huge batch, high and left. E_min is the fewest tokens possible, approached with a tiny batch, low and right.
+The critical batch size is E_min over S_min, the corner of the hyperbola. Training there costs twice the minimum steps and twice the minimum tokens: a reasonable compromise between time and compute.
+
+---
+
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.1, App. D.3 · the batch runs · Fig. 18</p>
 
 ## How big can a batch be before it is wasteful?
@@ -917,24 +949,24 @@ Scale the model 8x and the data needs only about 4.7x. That sublinear rule is th
 <div class="text">
 
 <dl class="where card">
-<dt>Runs</dt><dd>a 3M (top) and an 85M (bottom) model, at many batch sizes</dd>
+<dt>Runs</dt><dd>a 3M-parameter model (shown) and an 85M one, at many batch sizes</dd>
 <dt>Each curve</dt><dd>one target loss (colour)</dd>
-<dt>Each point</dt><dd>one batch size: the steps and tokens it took to reach that loss</dd>
-<dt>Axes</dt><dd>steps (log); tokens processed (log)</dd>
+<dt>Each dot</dt><dd>one run at one batch size $B$: the steps and tokens it took to reach that loss</dd>
+<dt>Axes</dt><dd>steps $S$ (log); tokens processed $E = B \times S$ (log)</dd>
 </dl>
 
-<div class="eq">$$\Big(\frac{S}{S_{\min}} - 1\Big)\Big(\frac{E}{E_{\min}} - 1\Big) = 1$$</div>
+<p class="plain">Every target loss traces the same hyperbola as the last slide, for both models.</p>
 
 </div>
-<div class="fig"><img src="img/week-06-kaplan-fig18.png" alt="Kaplan et al. Figure 18: for a 3M and an 85M parameter model, tokens processed against steps to reach fixed values of the loss, each loss a hyperbola-like front fit by Equation 5.1"></div>
+<div class="fig"><img src="img/week-06-kaplan-fig18-read.png" alt="Kaplan et al. Figure 18, 3M-parameter panel, with arrows: each coloured curve is one target loss; each dot is one run at one batch size reaching it. Tokens processed against steps on log axes; colour bar test loss from about 3 to 10"></div>
 </div>
 
-<p class="footnote">Kaplan et al. 2020 · Eq. 5.1, 5.2, App. D.3, Fig. 18. $S_{\min}$: fewest steps to reach the loss; $E_{\min}$: fewest tokens. $B_{\rm crit} = E_{\min}/S_{\min}$. After McCandlish et al. 2018</p>
+<p class="footnote">Kaplan et al. 2020 · App. D.3, Fig. 18 (3M panel; the 85M panel looks the same). Solid lines: the fit of Eq. 5.1; dotted: the measured points joined. Arrows and side text ours</p>
 
 Note:
-A detour the compute numbers depend on. To reach a target loss you can use small batches and many steps, cheap in FLOPs but slow, or big batches and few steps, fast on parallel hardware but wasteful.
-The batch runs measure this trade-off on two small models. Each curve is one target loss; each point on it is one batch size, placed by how many steps and how many tokens it took to get there. Every curve has the same hyperbola shape: S over S_min minus one, times E over E_min minus one, equals one. S_min is the fewest steps possible, at a huge batch; E_min the fewest tokens possible, at a tiny batch.
-The critical batch size is E_min over S_min, the corner of the hyperbola. Training there costs twice the minimum steps and twice the minimum tokens: a reasonable compromise between time and compute.
+Now the real thing: the batch runs. A 3-million-parameter model, trained many times at different batch sizes; the 85-million model in the paper's other panel looks the same.
+How to read it. The axes are the same as the last slide: steps across, tokens processed up, and tokens are batch times steps. Colour is the test loss. Each coloured curve is one target loss, from 10 at the bottom left, early in training, to about 4 at the top right. Each dot on a curve is one run, at one batch size, at the moment it reached that loss: runs with small batches sit low and to the right, few tokens but many steps; runs with large batches sit high and to the left.
+Every curve has the hyperbola shape from the last slide, and the solid lines are that equation fitted to the dots. So for every loss we can read off its own S_min, E_min, and the critical batch, the corner. The next slide puts those critical batches together.
 
 ---
 
@@ -1011,7 +1043,7 @@ Note:
 Now the paper's model of a whole training curve. The loss is a floor set by the model's size, the first term, plus a term that falls as a power law in steps, with exponent 0.76. The steps are S_min, the converted steps from the last slide.
 The test: the size runs' learning curves after warmup, solid, against this one equation with four constants, dashed. It tracks all sizes reasonably well after the start. The authors' own word is "imperfect". This equation is what section 6 optimises.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · from the fit · Eq. 1.6</p>
 
@@ -1052,7 +1084,6 @@ Optional. What the equation says, drawn from it with the paper's constants. Left
 
 <p class="plain">Fixed compute: one best size. Fixed steps: bigger is always better.</p>
 
-- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig11.png" alt="Kaplan et al. Figure 11: top, loss against parameters at fixed compute budgets, each with a minimum at an intermediate size; bottom, loss against parameters at fixed numbers of steps, decreasing with size"></div>
@@ -1061,9 +1092,9 @@ Optional. What the equation says, drawn from it with the paper's constants. Left
 <p class="footnote">Kaplan et al. 2020 · §5.2, Fig. 11 (left and right, stacked). Points: the size runs; dotted: Eq. 1.6 with the $C_{\min}$, $S_{\min}$ conversion</p>
 
 Note:
-Two ways to slice the same learning curves. Pick a compute budget, find where each model's curve is at that compute, and plot those losses against size: the top panel. Pick a number of steps instead: the bottom panel. Press down for each.
+Two ways to slice the size runs' learning curves, 768 to 1.5 billion parameters. Pick a compute budget, find where each model's curve is at that compute, and plot those losses against size: the top panel. Pick a number of steps instead: the bottom panel. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Fig. 11, left</p>
 
@@ -1089,7 +1120,7 @@ Two ways to slice the same learning curves. Pick a compute budget, find where ea
 Note:
 Fixed compute. Every curve is one budget; along it, smaller models train for more steps and bigger ones for fewer. Each curve has a minimum: too small and the model runs out of capacity; too big and it runs out of steps. The minimum moves to bigger models as the budget grows, and where exactly it sits is what Kaplan and Chinchilla disagree on.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §5.2 · the size runs · Fig. 11, right</p>
 
@@ -1140,7 +1171,7 @@ Fixed steps. Now there is no minimum: after the same number of steps, a bigger m
 <p class="footnote">Kaplan et al. 2020 · §6.1, Fig. 13: "It is the $L(C_{\min})$ trend that we expect to provide a reliable extrapolation". The lump near $10^{-5}$ PF-days: the switch from 1-layer to 2-layer models</p>
 
 Note:
-Section 6 returns to the compute frontier of Figure 1, now with the batch correction in hand. Two black frontiers from the same runs: on the compute actually spent at the fixed batch, and on C_min. Their fits differ a little, 0.057 and 0.050. The authors trust the corrected one for extrapolation; later papers sometimes quote the raw 0.057, a small source of confusion in the literature.
+Section 6 returns to the compute frontier of Figure 1, now with the batch correction in hand. Two black frontiers from the size runs, 768 to 1.5 billion parameters: on the compute actually spent at the fixed batch, and on C_min. Their fits differ a little, 0.057 and 0.050. The authors trust the corrected one for extrapolation; later papers sometimes quote the raw 0.057, a small source of confusion in the literature.
 
 ---
 
@@ -1160,7 +1191,6 @@ Section 6 returns to the compute frontier of Figure 1, now with the batch correc
 
 <p class="plain">$N_{\rm opt} \propto C_{\min}^{0.73}$; steps hardly grow. 10x compute: 5x the model, 2x the data.</p>
 
-- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig14.png" alt="Kaplan et al. Figure 14: top, compute-efficient model size against compute, N = 1.3e9 C_min^0.73 (adjusted) and N = 1.6e9 C^0.88 (fixed batch); bottom, steps against compute, S_min = 5.4e3 C_min^0.03, nearly flat, against fixed-batch steps that rise"></div>
@@ -1170,9 +1200,9 @@ Section 6 returns to the compute frontier of Figure 1, now with the batch correc
 
 Note:
 The headline result. For every compute budget, find the model size whose curve is lowest at that budget: that's one point in the top panel. Those points fall on a line: the best size grows as C_min to the 0.73. The bottom panel shows the steps that best model takes: nearly flat.
-In words, from the caption: for every 10x of compute, about 5x into the model and only 2x into data. Hold on to how it was measured: these points are checkpoints read partway through the long runs with one fixed schedule. That is the step Chinchilla attacks. Press down for each panel.
+In words, from the caption: for every 10x of compute, about 5x into the model and only 2x into data. Hold on to how it was measured: these points are checkpoints read partway through the long runs with one fixed schedule. That is the step Chinchilla attacks. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 14, left</p>
 
@@ -1199,7 +1229,7 @@ In words, from the caption: for every 10x of compute, about 5x into the model an
 Note:
 The left panel. The same best-size points on two compute axes. On C_min, blue, the slope is 0.73: that's "Kaplan's exponent". On the raw compute at the fixed batch, orange, it's 0.88, printed only in the legend. Both numbers come back when later papers try to explain why Chinchilla got 0.5.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Fig. 14, right</p>
 
@@ -1251,7 +1281,7 @@ The right panel. In converted steps, blue, the best runs take about the same num
 Note:
 The same allocation drawn as shares of a billion-fold increase in compute: more than a million-fold into the size, about a hundred-fold into the batch, under ten-fold into steps. This figure is not data; it's the fitted exponents drawn out.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · §6.1 · Table 6 · our arithmetic</p>
 
@@ -1358,7 +1388,6 @@ That's the paper's most practical claim: for a fixed budget, a bigger model stop
 
 <p class="plain">The optimum is flat: 0.6x to 2.2x the best size costs at most 20% more compute.</p>
 
-- Next: each panel (↓).
 
 </div>
 <div class="fig"><img src="img/week-06-kaplan-fig12.png" alt="Kaplan et al. Figure 12: top, extra compute needed against model size relative to the optimum, small between about 0.6x and 2.2x; bottom, the steps needed, fewer for larger-than-optimal models"></div>
@@ -1368,9 +1397,9 @@ That's the paper's most practical claim: for a fixed budget, a bigger model stop
 
 Note:
 How sharp is the optimum? Figure 12 is drawn from the fitted equation, no new runs. The top panel: if you train a model some multiple of the best size, how much more compute do you need to reach the same loss? The bottom: how many steps it needs.
-Appendix B also puts numbers on early stopping: against training to 2% above the converged loss, the compute-efficient recipe uses about 2.7 times the parameters, 7.7 times fewer steps, and 65% less compute for the same loss. Press down for each panel.
+Appendix B also puts numbers on early stopping: against training to 2% above the converged loss, the compute-efficient recipe uses about 2.7 times the parameters, 7.7 times fewer steps, and 65% less compute for the same loss. The next slides take each panel in turn.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. B.4 · from the fit · Fig. 12, left</p>
 
@@ -1395,7 +1424,7 @@ Appendix B also puts numbers on early stopping: against training to 2% above the
 Note:
 Left panel. The U is flat at the bottom: being off by a factor of two either way costs less than 20% extra compute. That flatness matters later. It's one reason two very different prescriptions, Kaplan's and Chinchilla's, could both look reasonable on small-scale data.
 
---
+---
 
 <p class="eyebrow"><span class="paper">Kaplan et al. 2020</span> · App. B.4 · from the fit · Fig. 12, right</p>
 
