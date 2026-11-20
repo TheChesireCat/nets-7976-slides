@@ -242,7 +242,7 @@ The rest of §2.1, briefly: MoE layers run fast on one GPU with special kernels,
 <p class="footnote">Jiang et al. 2024 · §2.1, Fig. 1. <b>SwiGLU</b>: the gated feed-forward block of Week 4, the same one Mistral 7B uses</p>
 
 Note:
-Putting it together, the paper's last equation. The experts are SwiGLU blocks, the same feed-forward form as Mistral 7B, and K is 2. So each token is sent to two SwiGLU blocks with different weights, and the output is their weighted sum. In our example, y equals 0.731 times expert 0's output plus 0.269 times expert 1's. The layer is applied independently per token, so two neighbouring tokens can use different experts, and it replaces the feed-forward sub-block in all 32 layers. The paper closes §2.1 by comparing with an earlier design, GShard, which replaced every other block and used a more elaborate rule for the second expert.
+Putting it together, the paper's last equation. The experts are SwiGLU blocks, the same feed-forward form as Mistral 7B, and K is 2. So each token is sent to two SwiGLU blocks with different weights, and the output is their weighted sum. In our example, y equals 0.731 times expert 0's output plus 0.269 times expert 1's. The layer is applied independently per token, so two neighbouring tokens can use different experts, and it replaces the feed-forward sub-block in all 32 layers.
 
 ---
 
@@ -530,440 +530,428 @@ Table 5 asks whether token i+1 gets the same expert as token i. Two measures: th
 <ol class="track"><li class="done">Mixtral 2024<span>sparse 8x7B</span></li><li class="now">Cai et al. 2024<span>the survey's map</span></li><li>DeepSeekMoE and V3<span>many small experts</span></li></ol>
 
 Note:
-Reading 2 of 3. Cai, Jiang, Wang, Tang, Kim and Huang, first posted July 2024; we read version 3 from April 2025. Mixtral showed one design that works. This survey lays out the whole menu: every decision a builder faces, who chose what, and the numbers the field relied on up to the end of 2024. We follow it the way we followed Raschka in Week 4: one map, then each design choice with the same beats, what it is, who uses it, how it helps, and what it costs. Six choices: how tokens pick experts, how the load is kept balanced, what the experts are, whether they can be small adapters, where the model comes from, and what the hardware has to do. The question to hold: if you had to build one tomorrow, which of these would the survey actually help you decide?
+Reading 2 of 3. Cai, Jiang, Wang, Tang, Kim and Huang, first posted July 2024; we read the latest arXiv version. Mixtral showed one design that works. This survey lays out the menu of designs and who chose what, up to the end of 2024. We follow the survey in its own order: the background with the dense and sparse layer, its taxonomy figure, then algorithm design (gating, experts, adapter experts, training and inference schemes), then system design, applications and open challenges. A survey runs no experiments, so every number on these slides is one the survey relays from another paper. Our own comments in the notes are marked (ours). The question to hold: if you had to build one tomorrow, which of these decisions would the survey actually help you make?
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §3, Fig. 3 · the map</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §2.1 · Eq. 1, Fig. 2</p>
 
-## What kind of paper is this, and what is on its map?
-
-<div class="cols">
-<div class="text">
-
-- A **survey**: no experiments of its own; every number is relayed from another paper.
-- Its model tables stop at DeepSeek-V3 (December 2024); Week 4's 2025 models come after.
-- Three branches: algorithm, system, application; we take six choices from the first two (ours).
-- Read it as a map of options; check each number at its source.
-
-</div>
-<div class="text">
-
-<table class="rules" style="font-size:20px">
-  <tr><td>choice</td><td>what it decides</td></tr>
-  <tr><td>1 gating</td><td>how a token picks experts</td></tr>
-  <tr><td>2 balance</td><td>losses and capacity limits</td></tr>
-  <tr><td>3 experts</td><td>kind, count, size, frequency, shared</td></tr>
-  <tr><td>4 adapter experts</td><td>experts made of small fine-tuning adapters (PEFT, defined on its own slide)</td></tr>
-  <tr><td>5 schemes</td><td>scratch, upcycle, distil, merge</td></tr>
-  <tr><td>6 systems</td><td>computation, communication, storage</td></tr>
-</table>
-
-</div>
-</div>
-
-<p class="footnote">Cai et al. 2024 · arXiv:2407.06204 v3 · §3, Fig. 3. PEFT: parameter-efficient fine-tuning. Not covered: dense gating, activation functions, applications, "derivatives" such as Mixture-of-Depths (skips layers for some tokens)</p>
-
-Note:
-The map. A survey does not run experiments; it organises a literature. Everything quantitative in it is a number someone else measured, so it is useful for finding papers and seeing lineage, and risky for quoting numbers. We will check a few of its numbers against the papers we have read.
-Its cut-off matters. Its open-model table (Table 3) runs from Mixtral in December 2023 to DeepSeek-V3 in December 2024. Version 3 is dated April 2025, but the content is a late-2024 snapshot. Llama 4, Qwen3, gpt-oss and the other 2025 models from Week 4 are after it, so where the survey says "mainstream" we say "as of its cut-off".
-The survey's own tree has three branches: algorithm design, system design, application. The algorithm branch splits into gating function, experts, training and inference scheme, and derivatives. We reorganise it into six choices, numbered by us, in the order a builder meets them. The survey discusses the auxiliary losses under gating; we give balance its own choice because it is where the practical trouble is. Left out, and said here: dense gating (we see it on a sub-slide), the choice of activation function (a progression from ReLU to SwiGLU that follows dense models, no measurement), the derivatives, and the application section, which is a catalogue by domain: language, vision, recommendation, multimodal. The next sub-slide is the full tree.
-
---
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §3, Fig. 3 · the map (sub-slide)</p>
-
-## What does the whole taxonomy look like?
-
-<div class="rows">
-<div class="fig"><a href="img/week-07-cai-fig3-taxonomy.png" target="_blank"><img src="img/week-07-cai-fig3-taxonomy.png" alt="Cai et al. Figure 3, the taxonomy tree of mixture of experts: algorithm design (gating function, experts, training and inference scheme, derivatives), system design (computation, communication, storage) and application (NLP, vision, recommendation, multimodal), each leaf listing the papers"></a></div>
-</div>
-
-<p class="footnote">Cai et al. 2024 · Fig. 3. Several papers sit in more than one leaf (DS-MoE, a dense-training sparse-inference method, appears in five). Click the figure to open it full size</p>
-
-Note:
-Optional. The survey's Figure 3 as printed: the whole tree with every paper placed in a leaf. You do not need to read it. Use it to see the shape: the algorithm branch is by far the largest; the system branch is three leaves (computation, communication, storage); application is four (language, vision, recommendation, multimodal).
-One thing the tree makes visible: many papers appear in several leaves, one method in five, because a paper often changes more than one thing. So the tree is a map of ideas, not a partition of papers.
-
----
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §2.2, §4.1.1 · Choice 1 of 6, gating · What and who · Eq. 3, Fig. 4</p>
-
-## Which experts does a token pick, and in what order?
+## What does a dense mixture of experts compute?
 
 <div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$\mathcal{G}(\mathbf{x})_i = \operatorname{softmax}\big(\operatorname{TopK}(g(\mathbf{x}) + \mathcal{R}_{\rm noise},\thinspace k)\big)_i$$</div>
+<div class="eq">$$\mathcal{F}_{\mathrm{dense}}^{\mathrm{MoE}}(\mathbf{x}; \mathbf{\Theta}, \{\mathbf{W}_i\}_{i=1}^{N}) = \sum_{i=1}^{N}\mathcal{G}(\mathbf{x}; \mathbf{\Theta})_i f_{i}(\mathbf{x}; \mathbf{W}_i)$$</div>
 
 <dl class="where">
-<dt>$\mathcal{G}(\mathbf{x})_i$</dt><dd>the weight on expert $i$ for token $\mathbf{x}$</dd>
-<dt>$g(\mathbf{x})$</dt><dd>the router's score for each expert</dd>
-<dt>$\mathcal{R}_{\rm noise}$</dt><dd>noise added before choosing; never defined in the survey</dd>
-<dt>$\operatorname{TopK}$, $k$</dt><dd>keep the $k$ largest scores, drop the rest</dd>
+<dt>$\mathbf{x}$</dt><dd>the input token</dd>
+<dt>$f_i$, $\mathbf{W}_i$</dt><dd>expert $i$ and its weights; $N$ experts</dd>
+<dt>$\mathcal{G}(\mathbf{x}; \mathbf{\Theta})_i$</dt><dd>the gate's softmax weight on expert $i$; $\mathbf{\Theta}$ are the gate's weights</dd>
 </dl>
-
-<p class="plain">In words: keep the top $k$ scores, then turn them into weights that sum to 1.</p>
-
-- **Token choice**: each token picks its own top $k$ experts.
-- Softmax after TopK (Mixtral): the kept weights sum to 1.
-- TopK after softmax (GShard, Switch, OpenMoE): they do not.
-
-</div>
-<div class="fig"><img src="img/week-07-cai-fig4-gating.png" alt="Cai et al. Figure 4: six gating functions, (a) sparse top-1 as in Switch, (b) BASE layers, (c) grouped domain mapping plus random gating, (d) expert choice, (e) an attention router, (f) soft merging of experts"></div>
-</div>
-
-<p class="footnote">Cai et al. 2024 · §2.2 Eq. 3, §4.1.1, Fig. 4; renormalising helped upcycled vision models, hurt upcycled language models (Komatsuzaki et al.). OpenMoE: an open mixture of experts model family</p>
-
-Note:
-Choice 1, gating. What Mixtral uses is token choice: every token scores all experts and picks its own top k. The survey's Equation 3 is the Shazeer 2017 form: add noise to the router scores, keep the top k, and apply softmax to the survivors. The noise is meant to encourage exploration among experts, and the survey never says what distribution or scale it has. Who uses which k: k equals 1 for Switch; k equals 2 for GShard, GLaM, ST-MoE (Google's stable sparse model), Mixtral and Skywork-MoE.
-Why the order of softmax and TopK matters: with softmax after TopK, as in Mixtral and Equation 3, the surviving weights sum to one. With TopK after softmax, as in GShard, Switch and OpenMoE, the kept weights are slices of a larger distribution and sum to less than one. With k equal to 1, TopK after softmax is what keeps the router learning: if you renormalised a single kept weight it would always be exactly one, and the router would receive no gradient through it. That reasoning is ours (the survey gives only the two orders and the upcycling finding) and ties back to the gradient slide in Mixtral. DeepSeekMoE also takes TopK after softmax without renormalising.
-The survey's only evidence on this is a relayed one: renormalising the combined weights to one helped upcycled vision models and hurt upcycled language models. A caution in passing: its Equation 3 is the Mixtral order, but the survey says later models use the other order, so its background equation is not the order its own text describes for most models. Figure 4 shows six gating ideas in one picture; the next slide takes the ones that are not token choice.
-
---
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §2.1, §2.2 · Choice 1 of 6, gating · What (sub-slide) · Fig. 2</p>
-
-## What is the difference between a dense and a sparse MoE layer?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- **Dense MoE**: every expert runs for every token; the outputs are mixed by the gate.
-- **Sparse MoE**: only the top $k$ experts run; the others cost nothing for that token.
-- The survey says sparse trades some quality for compute; it gives no number.
 
 </div>
 <div class="fig"><img src="img/week-07-cai-fig2-layer.png" alt="Cai et al. Figure 2: the same four feed-forward experts and a linear-softmax gate, in (a) a dense MoE where all four gate probabilities are used and (b) a sparse MoE where only the top two are used"></div>
 </div>
 
-<p class="footnote">Cai et al. 2024 · Fig. 2, §2.1 Eq. 1 and 2, §4.1.2. MoE: mixture of experts. Gate: the router, a linear layer followed by softmax. Dense gating still appears in adapter experts, next</p>
+<p class="footnote">Cai et al. 2024 · §2.1 Eq. 1, 2, Fig. 2. MoE: mixture of experts. FFN: feed-forward network, the block an expert copies</p>
 
 Note:
-Optional. The survey's Figure 2 is the simplest picture of the layer. Left: a dense mixture of experts, where the gate gives every expert a probability and the layer returns the probability-weighted sum of all of them. Right: the sparse version, where only the top two are kept and the rest are skipped. Everything we call a mixture of experts in this deck is the right-hand side.
-The survey states the trade plainly: sparse activation buys computational efficiency at the expense of some performance compared with a densely activated mixture of the same total size. It cites three papers and gives no size for the gap. It also says dense activation still works well where each expert is cheap, which is the adapter case on a later slide.
+The background section starts with the layer in Figure 2. A mixture of experts layer is a set of N expert networks plus a gating network, placed where the feed-forward network sits in each Transformer block. The survey notes that the feed-forward network is where the cost grows: in PaLM, its 540B model, 90 percent of the parameters are in the feed-forward layers. Panel a is the dense version, Equation 1: every expert runs and the output is the gate-weighted sum. The gate is a linear layer with a softmax, Equation 2. The survey says dense mixtures were revisited recently by EvoMoE, MoLE, LoRAMoE and DS-MoE. Panel b, the sparse version, is the next slide. Section 4.1.2 adds that dense activation still works where each expert is cheap, which is the adapter case later.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1, §4.1.3 · Choice 1 of 6, gating · Who and costs · Fig. 4</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §2.2 · Eq. 3, Fig. 2b</p>
 
-## What else could do the choosing?
+## How does the sparse layer pick its experts?
 
-<table class="rules" style="font-size:20px">
-  <tr><td>family</td><td>who chooses</td><td>what it gains</td><td>what it costs</td></tr>
-  <tr><td><b>non-trainable</b> (Hash Layer)</td><td>a fixed hash of the token id</td><td>balanced by construction; no router to train</td><td>cannot learn which expert suits which token</td></tr>
-  <tr><td><b>expert choice</b> (Zhou et al.)</td><td>each expert picks its top tokens</td><td>even load without a balance loss</td><td>some tokens get several experts, some none</td></tr>
-  <tr><td><b>soft</b> (Soft MoE, SMEAR, Lory)</td><td>merge tokens, or merge experts' weights</td><td>fully differentiable; no discrete choice</td><td>token merging needs future tokens</td></tr>
-</table>
-
-<p class="plain">Check (ours): expert choice picks among a batch of tokens, so one token's route can depend on later tokens, which a causal decoder cannot see.</p>
-
-<p class="footnote">Cai et al. 2024 · §4.1.1 (non-trainable, expert choice), §4.1.3 (soft), Fig. 4d, 4f. Hash Layer: routes by hashing the token id. SMEAR: averages experts into one per input. Lory: SMEAR for language-model pretraining, merging per text segment</p>
-
-Note:
-Three alternatives to learned token choice, each trading something away.
-Non-trainable gating: Hash Layer routes by a fixed hash of the token's id. The survey's claimed benefit is that no router has to be trained and the balance is good because the hash spreads tokens evenly. The cost is that nothing is learned about which expert suits which token; the survey says the results are "competitive" and gives no number. Its claim of "full load balancing" is stronger than its own sentence supports: the hash is chosen in advance to spread a batch, which is not an enforced guarantee.
-Expert choice, from Zhou et al. 2022, inverts the direction: each expert picks its top tokens. Every expert gets exactly its share, so no balance loss is needed, and the model can spend more computation on some tokens. The cost, in the survey's words, is uneven token coverage: some tokens get several experts, some get none.
-Soft gating avoids the discrete choice altogether. Soft MoE merges tokens into per-expert slots; SMEAR and Lory average the experts' weights with the router's probabilities and run the merged expert. Fully differentiable, and the survey notes merging tokens does not fit an autoregressive decoder because the average needs future tokens. Lory fixes that by merging per text segment, with a relayed 13.9 percent perplexity gain over a matched dense model.
-Our check on expert choice: it chooses among a batch of tokens, so a token's route can depend on tokens after it. The survey notes only that Komatsuzaki et al. use expert choice in an encoder and keep token choice in the decoder, and does not say why. That is a gap, and our reading of it.
-
----
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1, Table 1, Eq. 6 to 8 · Choice 2 of 6, balance · What and who</p>
-
-## Which losses keep the experts evenly used?
-
-<div class="cols">
-<div class="text">
-
-<table class="rules" style="font-size:20px">
-  <tr><td>loss</td><td>from</td><td>weight</td></tr>
-  <tr><td>importance + load</td><td>Shazeer 2017</td><td>0.1, 0.1</td></tr>
-  <tr><td>balance loss</td><td>GShard, Switch</td><td>0.01</td></tr>
-  <tr><td>balance + z-loss</td><td>ST-MoE</td><td>0.01, 0.001</td></tr>
-  <tr><td>mutual information</td><td>Mod-Squad</td><td>0.001</td></tr>
-</table>
-
+<div class="rows">
+<div class="eq">$$\mathcal{G}(\mathbf{x}; \mathbf{\Theta})_i = \operatorname{softmax}\big(\operatorname{TopK}(g(\mathbf{x}; \mathbf{\Theta}) + \mathcal{R}_{\mathrm{noise}}, k)\big)_i$$</div>
+<dl class="where">
+<dt>$g(\mathbf{x}; \mathbf{\Theta})$</dt><dd>the gating value (score) for each expert, before the softmax</dd>
+<dt>$\mathcal{R}_{\mathrm{noise}}$</dt><dd>a noise term that encourages exploration among experts</dd>
+<dt>$\operatorname{TopK}$, $k$</dt><dd>keep the $k$ largest entries and set the rest to $-\infty$, so their softmax weight is about 0</dd>
+</dl>
+<p class="plain">Common choices: $k=1$ (Switch Transformer) or $k=2$ (GLaM, ST-MoE, Mixtral, Skywork-MoE).</p>
 </div>
-<div class="text">
 
-<div class="eq">$$\mathcal{L} = N\sum_{i=1}^{N}\mathcal{D}_i\,\mathcal{P}_i$$</div>
+<p class="footnote">Cai et al. 2024 · §2.2 Eq. 3 to 5. Switch Transformer, GLaM, ST-MoE: Google sparse models; Skywork-MoE: Kunlun's 146B model</p>
 
+Note:
+Shazeer and colleagues introduced the sparsely gated layer: compute only a weighted sum of the top k experts instead of all of them. Equation 3 changes the dense gate in two ways. First, TopK keeps the k largest scores and sets the others to minus infinity, so after the softmax they are zero; those experts need not be computed. Second, a noise term is added before choosing, which the survey says encourages exploration and stabilises training. The survey never says what the noise is (ours). The survey lists k equal to 1 for Switch Transformer and k equal to 2 for GLaM, ST-MoE, DeepSpeed-MoE, Mixtral and Skywork-MoE. One caution (ours): Equation 3 puts the softmax after TopK, as Mixtral does, but section 4.4.1 says later models take TopK after the softmax. The upcycling sub-slide shows both forms.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §2.2 · Eq. 6</p>
+
+## What does the load-balancing loss ask for?
+
+<div class="rows">
+<div class="eq">$$\mathcal{L}_{\operatorname{load-balancing}} = N\sum_{i=1}^{N}\mathcal{D}_i\mathcal{P}_i$$</div>
 <dl class="where">
 <dt>$N$</dt><dd>the number of experts</dd>
-<dt>$\mathcal{D}_i$</dt><dd>the share of tokens whose top choice is expert $i$</dd>
-<dt>$\mathcal{P}_i$</dt><dd>the mean gate probability of expert $i$</dd>
+<dt>$\mathcal{D}_i$</dt><dd>the proportion of the batch's tokens sent to expert $i$ (by its top choice)</dd>
+<dt>$\mathcal{P}_i$</dt><dd>the proportion of the gating probability assigned to expert $i$</dd>
 </dl>
-
-<p class="plain">In words: the loss is 1 when every expert gets $1/N$ of the tokens; $N$ if one gets all.</p>
-
-</div>
+<p class="plain">The minimum is 1, reached when every expert gets $1/N$ of the tokens and of the probability.</p>
 </div>
 
-<p class="footnote">Cai et al. 2024 · Table 1, §2.2 Eq. 6 to 8. Weight: the coefficient on the loss. ST-MoE: Google's stable sparse model; Mod-Squad: a multi-task vision mixture of experts. Check (ours): same form as GShard's loss times $N^2$</p>
+<p class="footnote">Cai et al. 2024 · §2.2 Eq. 6 to 8. The survey adds this auxiliary loss to the training loss so no expert is starved or overloaded</p>
 
 Note:
-Choice 2, balance. If the router favours a few experts, the others never learn. The survey's Table 1 lists four families of loss with their usual weights. Shazeer 2017: an importance loss, the squared coefficient of variation of each expert's summed gate values, plus a load loss that smoothly estimates the number of examples each expert gets; both weighted 0.1. The GShard and Switch balance loss, weight 0.01 (Switch uses 0.01; GShard itself prints no value), which most models since have copied, and which the survey says remains the predominant choice in industry. ST-MoE adds a z-loss on top, weights 0.01 and 0.001; the next slide. Mod-Squad uses mutual information between experts and tasks, because forcing balance across conflicting tasks can hurt a multi-task model; weight 0.001.
-The one equation the survey writes out is Equations 6 to 8. D_i is the fraction of tokens whose top-1 choice is expert i; P_i is the average gate probability for expert i; the loss is N times the sum of their products. At the balanced point each is 1 over N, so the sum is N times N times 1 over N squared, which is 1. The survey calls that the minimum; it is not quite (ours). D counts only top choices, so a router can dip below 1: with two experts, three quarters of tokens leaning barely toward expert 1 and the rest firmly on expert 2 give 7/8. Read 1 as the balanced value to aim for.
-A scale warning, ours. With N experts the survey's form is N squared times GShard's original loss, which averages over experts with a factor 1 over E (GShard writes E for the number of experts). So GShard's loss has balanced value 1 over N squared, the survey's has 1. A coefficient of 0.01 in one paper's form is not the same strength as 0.01 in another's.
+The sparse gate raises a problem: some experts get consulted often and others rarely. The survey's answer is an auxiliary loss, Equation 6, added during training. D sub i is the fraction of the batch's tokens whose top choice is expert i, and P sub i is the average gating probability for expert i. If both are 1 over N for every expert, the sum is N times N times 1 over N squared, which is 1; the survey calls this the minimum. A caution (ours): D counts only top choices, so the loss can dip a little below 1; read 1 as the balanced value to aim for. A second caution (ours): different papers scale this loss differently, so the same coefficient does not mean the same strength in two papers.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1, Eq. 11 · Choice 2 of 6, balance · Costs</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §3 · Fig. 3</p>
 
-## What are the z-loss, and the dropped tokens?
+## How does the survey organise the field?
 
-<div class="cols">
+<div class="rows">
+<div class="fig"><a href="img/week-07-cai-fig3-taxonomy.png" target="_blank"><img src="img/week-07-cai-fig3-taxonomy.png" alt="Cai et al. Figure 3, the taxonomy of mixture of experts: algorithm design (gating function, experts, training and inference scheme, derivatives), system design (computation, communication, storage) and application (NLP, vision, recommendation, multimodal), each leaf listing the papers"></a></div>
+</div>
+
+<p class="plain">Three views: algorithm design, system design, application.</p>
+
+<p class="footnote">Cai et al. 2024 · §3, Fig. 3. NLP: natural language processing; CV: computer vision; RecSys: recommender systems. Click the figure to open it full size</p>
+
+Note:
+The survey's own map, Figure 3, with every paper placed in a leaf. You do not need to read it; look at its shape. Three views: algorithm design, system design and application. The algorithm branch is the largest: gating function (dense, sparse, soft), experts (network types, hyperparameters, activation function, shared expert, parameter-efficient), training and inference scheme, and derivatives. The system branch has three leaves: computation, communication, storage. Application has four: language, vision, recommender systems and multimodal. We follow this tree in this order, skipping derivatives. Many papers appear in several leaves because one method changes more than one thing (ours). The survey says the taxonomy covers models from three perspectives, with representative studies.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1 · Fig. 4</p>
+
+## Which gating functions does the survey show?
+
+<div class="cols wide-fig">
 <div class="text">
 
-<div class="eq">$$\mathcal{L}_z = \frac{1}{T}\sum_{\mathbf{x}\in\mathcal{B}}\Big(\log\sum_{i=1}^{N} e^{\ell_i}\Big)^2$$</div>
+- **Token choice**: each token picks its own top $k$ experts; the predominant paradigm.
+- (a) Switch: top-1. M6-t: groups of experts, top-1 in each group.
+- (b) BASE layers: assignment with equal load per expert.
+- (d) Expert choice: each expert picks its tokens.
 
+</div>
+<div class="fig"><img src="img/week-07-cai-fig4-gating.png" alt="Cai et al. Figure 4: six gating functions, (a) sparse top-1 as in Switch, (b) BASE layers, (c) grouped domain mapping plus random gating, (d) expert choice, (e) an attention router, (f) soft merging of experts"></div>
+</div>
+
+<p class="footnote">Cai et al. 2024 · §4.1.1, Fig. 4. BASE: balanced assignment of sparse experts. M6-t: expert prototyping, k groups of experts with top-1 gating inside each</p>
+
+Note:
+Figure 4 shows six gating functions. The text first describes token choice: Shazeer and colleagues argued for top k with k above 1, since consulting several experts lets the network weigh their contributions. The survey says later work largely affirmed that more experts per token helps, though Switch showed top-1 is competitive. Hold that sentence loosely (ours): it has no citation, and the one result the survey gives next is not monotone in k. M6-t's expert prototyping, four groups each with top-1, beat one top-4 gate, which beat top-16, which beat plain top-1, in training and downstream perplexity of a 16-layer model. Panel b, BASE, treats routing as a linear assignment with equal load per expert; S-BASE uses optimal transport. Panel c, PanGu-Sigma, maps tokens to a domain group then picks randomly inside it. Panel e is Yuan 2.0-M32's attention router. Panel d and f follow on later slides.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1 · Table 1</p>
+
+## Which auxiliary losses do models use, and with what weight?
+
+<table class="rules" style="font-size:20px">
+  <tr><td>loss</td><td>models</td><td>coefficient</td></tr>
+  <tr><td>importance + load</td><td>Shazeer et al., V-MoE</td><td>0.1 and 0.1</td></tr>
+  <tr><td>balance loss</td><td>Switch, GLaM, Mixtral, DBRX, Jamba, DeepSeekMoE, DeepSeek-V2, Skywork-MoE</td><td>0.01</td></tr>
+  <tr><td>balance + z-loss</td><td>ST-MoE, OpenMoE, MoA, JetMoE</td><td>0.01 and 0.001</td></tr>
+  <tr><td>mutual information</td><td>Mod-Squad, ModuleFormer, DS-MoE</td><td>0.001</td></tr>
+</table>
+
+<p class="plain">The survey says the methods behind the balance loss "remain the predominant choice in industry".</p>
+
+<p class="footnote">Cai et al. 2024 · Table 1 (first column trimmed to the first named models). Mod-Squad: a multi-task vision mixture of experts; MoA: mixture of attention heads; z-loss: next, optional</p>
+
+Note:
+Table 1 as the survey prints it, with the first column shortened. Four families of loss. The first, from Shazeer: an importance loss, the squared coefficient of variation of each expert's summed gate values, plus a load loss that smoothly estimates how many examples each expert gets; both weighted 0.1. The second, the balance loss of the last slide, weight 0.01, used by most models since. The third adds ST-MoE's z-loss, weight 0.001. The fourth, Mod-Squad, maximises mutual information between experts and tasks, because forcing balance across conflicting tasks can hurt a multi-task model. A check against the DeepSeekMoE paper (ours): 0.01 is DeepSeekMoE's coefficient for its 2B runs only; its 16B model uses 0.001 and its 145B model 0.003, and Mixtral's paper states no value. So treat this table as typical values, not exact ones.
+
+--
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1 · Eq. 11 · optional</p>
+
+## What is the router z-loss?
+
+<div class="rows">
+<div class="eq">$$\mathcal{L}_{z} = \frac{1}{T}\sum_{x \in \mathcal{B}} \Big(\log \sum_{i=1}^{N} e^{x_i}\Big)^2$$</div>
 <dl class="where">
-<dt>$\mathbf{x}$, $\mathcal{B}$, $T$</dt><dd>a token, the batch, the number of tokens in it</dd>
-<dt>$\ell_i$</dt><dd>the router logit (raw score) of the token for expert $i$</dd>
+<dt>$x$, $\mathcal{B}$, $T$</dt><dd>a token, the batch, and the number of tokens in it</dd>
+<dt>$x_i$</dt><dd>the gating logit (raw score) for expert $i$; the survey reuses the letter $x$ (reading ours)</dd>
 <dt>$N$</dt><dd>the number of experts</dd>
 </dl>
-
-<p class="plain">In words: penalise large router scores, so the exponentials stay small and round-off errors stay small.</p>
-
-</div>
-<div class="text">
-
-- The **router z-loss** (ST-MoE) is for stability; it adds to the balance loss.
-- **Dropped tokens**: an expert at capacity skips the extra tokens it was sent.
-- OpenMoE: later tokens in a sequence are dropped more; worse for instruction data.
-- The survey admits balance losses "can still lead to training instability".
-
-</div>
+<p class="plain">It penalises large logits entering the gate, which reduces round-off errors in the exponentials.</p>
 </div>
 
-<p class="footnote">Cai et al. 2024 · §4.1.1 Eq. 11 (survey writes $x_i$ for the logit; reading ours), §7 challenge 1. ST-MoE: Google's stable sparse model; OpenMoE: an open mixture of experts model family. Capacity: tokens an expert accepts per batch</p>
+<p class="footnote">Cai et al. 2024 · §4.1.1 Eq. 11. ST-MoE: Google's stable sparse mixture of experts; round-off: rounding error in floating-point arithmetic</p>
 
 Note:
-The z-loss comes from ST-MoE. Take the router's raw scores for a token, take the log of the sum of their exponentials, square it, and average over tokens. It penalises large logits. Big numbers inside an exponential cause round-off errors, so keeping the logits small makes the router numerically safer. ST-MoE found the plain balance loss unreliable at larger scales and added this for stability without hurting quality. A notation point, ours: the survey writes the logit as x sub i while also using x for the token; the formula only makes sense with logits.
-Dropped tokens. Each expert has a capacity, a limit on how many tokens it will take in a batch; GShard introduced this. Tokens sent to a full expert overflow and are skipped by that expert. OpenMoE reports "Drop-towards-the-End": tokens later in a sequence are dropped more often, and it is worse in instruction-tuning data. It also reports that routing by token identity is learned early in pretraining and then stays fixed.
-The survey's own challenge number one in its closing section: auxiliary losses "can still lead to training instability" and often neglect how important different tokens are. What is missing is DeepSeek-V3's balancing without any auxiliary loss, which we meet in the next reading, even though V3 is in the survey's own model table.
+Optional. ST-MoE found the plain balance loss gave unreliable training at larger scales. To improve stability without hurting quality they added the z-loss: take the log of the sum of the exponentials of the router's raw scores for a token, square it, and average over tokens. Large scores inside an exponential cause large round-off errors, so keeping the logits small makes the router numerically safer. A notation point (ours): the survey writes the logit as x sub i while also using x for the token; the formula only makes sense with logits. The survey also notes the balance loss, even with this, can still lead to training instability, and it lists that as its first open challenge.
 
----
+--
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.1, §4.2.2, Table 2 · Choice 3 of 6, experts · What and who</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1 · expert capacity · optional</p>
 
-## What kind of experts, how many, and how big?
+## What happens when an expert is full?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- Kind: almost always a feed-forward network (FFN), copied from the dense block.
-- Count: thousands early, then "no more than 64"; its own table has 257.
+- An expert has a **capacity**: a threshold on tokens it will process; the excess overflows and is not processed by it.
+- OpenMoE: tokens late in a sequence are dropped more ("Drop-towards-the-End"), worse in instruction-tuning data.
 
 </div>
 <div class="text">
 
-- Size: GLaM grows each expert; DeepSeekMoE, Qwen1.5-MoE and DBRX cut them finer.
-- One matched test: 4 of 16 experts of width 688 slightly beat 2 of 8 of width 1376.
+- OpenMoE: routing follows token identity, set early in pretraining and then fixed.
+- Remedy: Batch Prioritized Routing ranks tokens by gate score, not by position.
 
 </div>
 </div>
+</div>
 
-<table class="rules" style="font-size:18px">
-  <tr><td>model</td><td>experts active / total</td><td>expert width</td><td>MoE layers</td><td>shared</td></tr>
-  <tr><td>GShard 600B</td><td>2 / 2048</td><td>FFN width</td><td>every 2nd</td><td>0</td></tr>
-  <tr><td>Switch 1571B</td><td>1 / 2048</td><td>FFN width</td><td>every</td><td>0</td></tr>
-  <tr><td>GLaM 1.2T</td><td>2 / 64</td><td>FFN width</td><td>every 2nd</td><td>0</td></tr>
-  <tr><td>Mixtral 13B / 47B</td><td>2 / 8</td><td>FFN width</td><td>every</td><td>0</td></tr>
-  <tr><td>DeepSeekMoE 16B</td><td>8 / 66</td><td>1408</td><td>all but first</td><td>2</td></tr>
-  <tr><td>Qwen1.5-MoE</td><td>8 / 64</td><td>1408</td><td>every</td><td>4</td></tr>
-  <tr><td>DBRX</td><td>4 / 16</td><td>FFN width</td><td>every</td><td>0</td></tr>
-  <tr><td>DeepSeek-V3</td><td>9 / 257</td><td>2048</td><td>all but first 3</td><td>1</td></tr>
+<p class="footnote">Cai et al. 2024 · §4.1.1. OpenMoE: an open mixture of experts model family; instruction tuning: fine-tuning on instruction and answer pairs</p>
+
+Note:
+Optional. Alongside the balance loss, token-choice models cap how many tokens each expert accepts per batch. The cost is token overflow: tokens sent to a full expert are not processed by it. OpenMoE's analysis names three effects. Drop-towards-the-End: later tokens in a sequence are at greater risk of being dropped, and this is worse in instruction-tuning data. Context-independent Specialization: routing follows the token's identity. Early Routing Learning: that identity routing is set early in pretraining and stays largely fixed. For vision, Riquelme and colleagues proposed Batch Prioritized Routing, which gives priority by gate score instead of position; Zoph and colleagues showed it works for language models too. Kim and colleagues randomise token priority to reduce bias toward early positions.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.1.1, §4.1.3 · Fig. 4</p>
+
+## What else could do the choosing?
+
+<table class="rules" style="font-size:20px">
+  <tr><td>family</td><td>who chooses</td><td>the survey's claim</td></tr>
+  <tr><td><b>non-trainable</b> (Hash Layer)</td><td>a fixed hash of the token</td><td>no gate parameters; load balancing by the choice of hash</td></tr>
+  <tr><td><b>expert choice</b> (Zhou et al.)</td><td>each expert picks its top tokens</td><td>no balance loss, even load; but some tokens get several experts or none</td></tr>
+  <tr><td><b>soft: token merging</b> (Soft MoE)</td><td>experts get weighted averages of tokens</td><td>stable and balanced; needs future tokens, which complicates autoregressive decoders</td></tr>
+  <tr><td><b>soft: expert merging</b> (SMEAR, Lory)</td><td>one merged expert per input</td><td>fully differentiable; Lory gains 13.9% perplexity over a matched dense model</td></tr>
+</table>
+
+<p class="footnote">Cai et al. 2024 · §4.1.1 (non-trainable, expert choice), §4.1.3 (soft), Fig. 4c, 4d, 4f. SMEAR: averages experts' weights with the router's probabilities; Lory: SMEAR merged per text segment, for language-model pretraining</p>
+
+Note:
+Three alternatives to learned token choice. Non-trainable: Hash Layer routes by hashing the token, with competitive results and no gate to train. A wording check (ours): the survey says full load balancing, but the hash is chosen in advance to spread batches; that is not an enforced guarantee. Expert choice inverts the direction: every expert takes its top tokens, so load is even without a balance loss, and the model can spend more computation on some tokens. The survey notes that Komatsuzaki and colleagues use it in an encoder and keep token choice in the T5 decoder; our reading (ours) is that expert choice compares tokens within a batch, so a token's route can depend on later tokens, which a decoder cannot see. Soft methods avoid the discrete choice altogether. Soft MoE merges tokens, SMEAR and Lory merge expert weights. Lory's 13.9 percent perplexity gain over parameter-matched dense models, and 1.5 to 11.1 percent on downstream tasks, is relayed from its paper.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.1, §4.2.4 · Fig. 5</p>
+
+## Which network types can be experts, and what is a shared expert?
+
+<div class="rows">
+<div class="fig"><a href="img/week-07-cai-fig5-shared.png" target="_blank"><img src="img/week-07-cai-fig5-shared.png" alt="Cai et al. Figure 5: (a) mixture of attention heads, where each expert has its own query and output projections and keys and values are shared; (b) a shared expert, a fixed FFN beside gated FFN experts"></a></div>
+<p class="plain">Almost always a feed-forward expert; attention experts are rare. A shared expert is a fixed FFN every token uses.</p>
+</div>
+
+<p class="footnote">Cai et al. 2024 · §4.2.1, §4.2.4, Fig. 5. MoA: mixture of attention heads (Zhang et al.), followed by JetMoE and ModuleFormer. FFN: feed-forward network</p>
+
+Note:
+Figure 5. Experts replace the feed-forward layer and each copies its architecture. The survey's reason is a hypothesis: self-attention layers are less sparse and less domain-specific than feed-forward layers. As support it relays DS-MoE's finding that only 20 percent of feed-forward experts engage against 80 percent in attention. Panel a, Mixture of Attention Heads: experts differ only in query and output projections, while key and value weights are shared. JetMoE, ModuleFormer and DS-MoE follow it. Panel b, the shared expert, from DeepSpeed-MoE's Residual-MoE: each token goes through one fixed feed-forward network plus one chosen by the gate, the chosen one acting as an error-correcting add-on. DeepSeekMoE, OpenMoE and Qwen1.5-MoE adopted it and the survey calls it a mainstream configuration.
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.2 to §4.2.4 · Table 2</p>
+
+## How many experts, how big, and how often?
+
+<div class="rows">
+<table class="rules tight" style="font-size:19px">
+  <tr><td>model (active / total parameters)</td><td>experts active / total</td><td>expert width</td><td>MoE layers</td><td>activation</td><td>shared experts</td></tr>
+  <tr><td>Switch 1571B</td><td>1 / 2048</td><td>FFN width</td><td>every layer</td><td>ReLU</td><td>0</td></tr>
+  <tr><td>GLaM 64B / 1.2T</td><td>2 / 64</td><td>FFN width</td><td>every 2nd</td><td>GeGLU</td><td>0</td></tr>
+  <tr><td>Mixtral 13B / 47B</td><td>2 / 8</td><td>FFN width</td><td>every layer</td><td>SwiGLU</td><td>0</td></tr>
+  <tr><td>LLaMA-MoE 3.0B / 6.7B</td><td>2 / 16</td><td>688</td><td>every layer</td><td>SwiGLU</td><td>0</td></tr>
+  <tr><td>LLaMA-MoE 3.5B / 6.7B</td><td>4 / 16</td><td>688</td><td>every layer</td><td>SwiGLU</td><td>0</td></tr>
+  <tr><td>LLaMA-MoE 3.5B / 6.7B</td><td>2 / 8</td><td>1376</td><td>every layer</td><td>SwiGLU</td><td>0</td></tr>
+  <tr><td>DeepSeekMoE 2.8B / 16.4B</td><td>8 / 66</td><td>1408</td><td>all but 1st</td><td>SwiGLU</td><td>2</td></tr>
+  <tr><td>Qwen1.5-MoE 2.7B / 14.3B</td><td>8 / 64</td><td>1408</td><td>every layer</td><td>SwiGLU</td><td>4</td></tr>
+  <tr><td>DBRX 36B / 132B</td><td>4 / 16</td><td>FFN width</td><td>every layer</td><td>SwiGLU</td><td>0</td></tr>
+  <tr><td>DeepSeek-V3 37B / 671B</td><td>9 / 257</td><td>2048</td><td>all but first 3</td><td>SwiGLU</td><td>1</td></tr>
 </table>
 </div>
 
-<p class="footnote">Cai et al. 2024 · Table 2 (8 of 36 rows); counts include shared. GLaM: Google's 1.2T model; Qwen1.5-MoE: Alibaba's 14.3B; DBRX: Databricks' 132B; LLaMA-MoE: LLaMA's FFNs split into experts. "FFN width": as wide as the dense FFN</p>
+<p class="footnote">Cai et al. 2024 · Table 2 (10 of its rows). Counts include shared experts. FFN width: as wide as the dense network's feed-forward layer. GeGLU, SwiGLU: gated activation functions</p>
 
 Note:
-Choice 3, the experts themselves. This is the survey's Table 2, eight of its 36 rows. Columns: active and total experts, counting shared ones; expert width; how often a layer is a mixture of experts layer; and how many experts are shared.
-Kind: nearly always a feed-forward network. The reason offered is a hypothesis: attention layers are less sparse and less domain-specific than feed-forward layers, with a relayed figure that only 20 percent of feed-forward experts engage against 80 percent in attention. Attention experts exist (next sub-slide) but are rare.
-Count: the survey writes that recent models "commonly utilize no more than 64 experts", and its own Table 2 has two clear exceptions: DeepSeekMoE 145B has 132 and DeepSeek-V3 has 257 (the models it cites for the claim do stay at 64 or fewer). Size: GLaM widened each expert at 64 of them; the DeepSeek line, Qwen1.5-MoE and DBRX went the other way, finer. One wobble: the survey also lists DBRX among the larger-expert models, and its Table 2 gives DBRX full-width experts, 4 of 16. The one controlled comparison the survey reports is LLaMA-MoE: splitting an 11,008-wide feed-forward network into 16 pieces of 688 and using 4, against 8 pieces of 1,376 and using 2. Both activate 2,752 neurons, and the first "marginally outperforms" the second. Our check of that arithmetic holds. No numbers, no error bars.
-Notice what the table shows (ours): the count first fell, from GShard's 2,048 full-width experts to Mixtral's 8; then, from DeepSeekMoE on, experts got narrower and more numerous, up to 9 of 257. From Mixtral on, every layer is a mixture of experts layer.
+The survey's Table 2, ten of its rows, with columns trimmed. Count: thousands of experts early, then the survey says recent models commonly use no more than 64. Its own table has exceptions: DeepSeekMoE with 66 and 132, DeepSeek-V3 with 257 (ours). Size: GLaM widened each expert; DeepSeekMoE, Qwen1.5-MoE and DBRX split experts finer, though its table gives DBRX full-width experts. The one controlled comparison is LLaMA-MoE: activating 4 of 16 experts of width 688 marginally beats 2 of 8 of width 1376, with no numbers given. Frequency: every other layer, every fourth, or every layer since Mixtral. DeepSeekMoE keeps its first layer dense because load balance converges slowly there. Activation: from ReLU toward SwiGLU, following dense models. Shared experts: 1, 2 or 4 in DeepSeekMoE, Qwen1.5-MoE and DeepSeek-V3.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.2 to §4.2.4, Table 3 · Choice 3 of 6, experts · How often, and shared</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.2 · Table 3</p>
 
-## How often is a layer a mixture, and should one expert be shared?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Every other layer (GShard, GLaM), every fourth (ST-MoE, OpenMoE), every layer from Mixtral on.
-- DeepSeekMoE keeps its first layer dense: that layer's balance converges slowly.
-- A **shared expert** is an FFN every token uses, on top of the routed ones.
-- Called "mainstream" at the survey's cut-off; Week 4's Qwen3 and gpt-oss have none.
-
-</div>
-<div class="fig"><img src="img/week-07-cai-active-share.png" alt="Illustration: active share of total parameters for the 13 models in the survey's Table 3; Mixtral and DBRX near 27 percent, Qwen1.5-MoE 21.4, DeepSeek-V2 8.9, DeepSeek-V3 5.5, Arctic 3.5 percent"></div>
-</div>
-
-<p class="footnote">Cai et al. 2024 · §4.2.2, §4.2.4, Table 3; chart ours (active ÷ total parameters, 13 models). GLaM: Google's 1.2T MoE; ST-MoE: Google's stable MoE; OpenMoE: an open MoE family; Qwen1.5-MoE: Alibaba's 14.3B</p>
-
-Note:
-Two more parts of choice 3. Frequency: which layers are mixture layers. GShard and GLaM replace every other feed-forward network, ST-MoE and OpenMoE every fourth, and since Mixtral the trend is every layer. DeepSeekMoE replaces all but the first, because the load balance in that first layer converges especially slowly; DeepSeek-V3 keeps three dense layers; the survey gives no reason for that.
-Shared experts. DeepSpeed-MoE's Residual-MoE gave every token one fixed expert plus one routed expert, the routed one acting as an error-correcting add-on. DeepSeekMoE, Qwen1.5-MoE and OpenMoE followed, and the survey calls it a "mainstream configuration". Be careful with that: it is a statement about 2024. Week 4 showed Qwen3 dropping the shared expert and gpt-oss using none. The survey also says shared experts reduce communication, but of the papers it cites only DeepSpeed-MoE argues that directly (Arctic argues overlap, not less traffic); DeepSeekMoE's own reason is redundancy of common knowledge. The survey gives no experiment for or against shared experts.
-The chart is ours, from the survey's Table 3: active parameters divided by total for its 13 models. The 2023 and 2024 models with 8 or 16 big experts, Mixtral at 27.7 percent, Grok-1 27.4, DBRX 27.3, sit near 27. Qwen1.5-MoE is 21.4. DeepSeek-V2 (8.9) and DeepSeek-V3 (5.5) sit near the bottom; Arctic, Snowflake's 480-billion-parameter model (128 large experts plus a dense part, 17 billion active), is lowest at 3.5. The sub-slide shows the survey's Figure 5.
-
---
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.2.1, §4.2.4 · Choice 3 of 6, experts · What (sub-slide) · Fig. 5</p>
-
-## What do attention experts and the shared expert look like?
+## Which open models did the survey list?
 
 <div class="rows">
-<div class="fig"><img src="img/week-07-cai-fig5-shared.png" alt="Cai et al. Figure 5: (a) mixture of attention heads, where each expert has its own query and output projections and keys and values are shared; (b) a shared expert, a fixed FFN beside gated FFN experts"></div>
+<table class="rules tight" style="font-size:15px">
+  <tr><td>name</td><td>time</td><td>affiliation</td><td>active</td><td>total</td><td>MMLU</td><td>GSM8K</td><td>MATH</td><td>HumanEval</td></tr>
+  <tr><td>Mixtral-8x7B-v0.1</td><td>2023.12</td><td>Mistral</td><td>13B</td><td>47B</td><td>70.6</td><td>58.4, 74.4 (8-shot)</td><td>28.4</td><td>40.2</td></tr>
+  <tr><td>DeepSeekMoE-16B-Base</td><td>2024.1</td><td>DeepSeek</td><td>3B</td><td>16B</td><td>45.0</td><td>18.8 (8-shot)</td><td>4.3</td><td>26.8</td></tr>
+  <tr><td>Grok-1</td><td>2024.3</td><td>xAI</td><td>86B</td><td>314B</td><td>73.0</td><td>62.9</td><td>23.9</td><td>63.2</td></tr>
+  <tr><td>Qwen1.5-MoE-A2.7B</td><td>2024.3</td><td>Alibaba</td><td>3B</td><td>14B</td><td>62.5</td><td>61.5 (8-shot)</td><td>-</td><td>34.2</td></tr>
+  <tr><td>DBRX Instruct</td><td>2024.3</td><td>Databricks</td><td>36B</td><td>132B</td><td>73.7</td><td>72.8</td><td>-</td><td>70.1</td></tr>
+  <tr><td>Jamba-v0.1</td><td>2024.3</td><td>AI21 Labs</td><td>12B</td><td>52B</td><td>67.4</td><td>59.9 (3-shot)</td><td>-</td><td>29.3</td></tr>
+  <tr><td>Mistral-8x22B-v0.1</td><td>2024.4</td><td>Mistral</td><td>39B</td><td>141B</td><td>77.8</td><td>78.6, 88.4 (8-shot)</td><td>41.8</td><td>45.1</td></tr>
+  <tr><td>Arctic Instruct</td><td>2024.4</td><td>Snowflake</td><td>17B</td><td>480B</td><td>67.3</td><td>74.2</td><td>-</td><td>-</td></tr>
+  <tr><td>DeepSeek-V2</td><td>2024.5</td><td>DeepSeek</td><td>21B</td><td>236B</td><td>78.5</td><td>79.2 (8-shot)</td><td>43.6</td><td>48.8</td></tr>
+  <tr><td>DeepSeek-V2-Chat (RL)</td><td>2024.5</td><td>DeepSeek</td><td>21B</td><td>236B</td><td>77.8</td><td>92.2 (8-shot)</td><td>53.9</td><td>81.1</td></tr>
+  <tr><td>Yuan 2.0-M32</td><td>2024.5</td><td>IEIT</td><td>4B</td><td>40B</td><td>72.2</td><td>92.7 (8-shot)</td><td>55.9 (8-shot)</td><td>74.4</td></tr>
+  <tr><td>Skywork-MoE-Base</td><td>2024.6</td><td>Kunlun</td><td>22B</td><td>146B</td><td>77.4</td><td>76.1</td><td>31.9</td><td>43.9</td></tr>
+  <tr><td>OLMoE-0924-Base</td><td>2024.9</td><td>Ai2</td><td>1.3B</td><td>6.9B</td><td>54.1</td><td>3.0 (8-shot)</td><td>-</td><td>22.4</td></tr>
+  <tr><td>DeepSeek-V3-Base</td><td>2024.12</td><td>DeepSeek</td><td>37B</td><td>671B</td><td>87.1</td><td>89.3 (8-shot)</td><td>61.6</td><td>65.2</td></tr>
+</table>
 </div>
 
-<p class="footnote">Cai et al. 2024 · Fig. 5, §4.2.1, §4.2.4. FFN: feed-forward network. MoA: mixture of attention heads (Zhang et al.), followed by JetMoE and ModuleFormer</p>
+<p class="footnote">Cai et al. 2024 · Table 3 (14 rows; links dropped). MMLU: multiple-choice exam questions; GSM8K: grade-school math problems; MATH: competition math; HumanEval: write Python functions. n-shot: n worked examples in the prompt</p>
 
 Note:
-Optional. Figure 5, two panels. Panel a: a mixture of attention heads. Each expert has its own query and output projection; the keys and values are shared across experts to save computation; one gate picks the same expert indices for both. Panel b: a shared expert: a fixed feed-forward network that every token goes through, next to the gated feed-forward experts, with the outputs added.
-Attention experts are rare: JetMoE, ModuleFormer and DS-MoE (dense training, sparse inference) followed the first one, but most models keep attention dense. Panel b is the shared expert we just discussed; the survey's Table 2 gives shared counts of 1, 2 and 4 for DeepSeekMoE's three sizes, 4 for Qwen1.5-MoE and 1 for DeepSeek-V3.
+The survey's Table 3: recent open-source models with active and total parameters and four benchmark scores, MMLU with 5 shots, GSM8K with 5, MATH with 4 and HumanEval with 0 unless a cell says otherwise. Notice the sweep from Mixtral in December 2023 to DeepSeek-V3 in December 2024: active parameters stay far below total, for instance 37B of 671B for DeepSeek-V3. Cautions (ours): the survey runs no experiments, so these scores are relayed. Rows mix base, instruct and chat models, some GSM8K cells use 8 or 3 shots and two cells give two numbers, so the rows do not compare cleanly. The table ends at the end of 2024; Week 4's 2025 models come after it. Use it as a list of models, not a leaderboard.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.3, Fig. 6 · Choice 4 of 6, PEFT experts · What and who</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.3 · Fig. 6</p>
 
 ## Can the experts be small adapters instead?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- **PEFT**: train a few weights on a frozen model; **LoRA** adds a small low-rank update.
-- Each expert is one adapter; a router mixes them.
-- Placed in attention, in the FFN, in the whole block, or per layer.
-- Claim: multi-task gains at adapter cost; dense mixing works because adapters are cheap.
+- **PEFT**: update a small set of weights, leave the base model untouched. **LoRA**: two low-rank matrices take the update.
+- **MoPE**: each expert is built with PEFT; a gate mixes them.
+- (a) attention, (b) FFN, (c) Transformer block, (d) every layer.
 
 </div>
 <div class="fig"><img src="img/week-07-cai-fig6-mope.png" alt="Cai et al. Figure 6: mixtures of parameter-efficient experts by placement, (a) in attention, (b) in the feed-forward network, (c) in the whole Transformer block with two expert groups, (d) every layer treated as one expert"></div>
 </div>
 
-<p class="footnote">Cai et al. 2024 · §4.3, Fig. 6, Eq. 12 to 18; qualitative claims only, no numbers. LoRAMoE: two adapter groups, against forgetting; MixLoRA: adapters beside the shared FFN; MoLE: only the router trains, over existing adapters</p>
+<p class="footnote">Cai et al. 2024 · §4.3, Fig. 6. PEFT: parameter-efficient fine-tuning; MoPE: mixture of parameter-efficient experts; FFN: feed-forward network</p>
 
 Note:
-Choice 4. A different reading of "expert": not a slice of the pretrained network but a small adapter on top of a frozen one. PEFT, parameter-efficient fine-tuning, trains a small set of weights and leaves the base model untouched, as in Week 2; LoRA is the common example, a low-rank update added to a weight matrix. The survey's problem statement is that a single adapter generalises poorly across several tasks and can cause catastrophic forgetting. The remedy is a mixture of adapters with a router.
-Figure 6 sorts methods by where they sit. Attention: adapters on keys and values, or queries and outputs (MoELoRA, MoCLE, SiRA). Feed-forward: LoRAMoE, which keeps two adapter groups, one for downstream tasks and one for keeping pretrained world knowledge aligned with instructions, against forgetting; AdaMix, MixDA, LLaVA-MoLE, MixLoRA. Whole block: MoV, MoLoRA, UniPELT, Omni-SMoLA, MoLA and others. Every layer: MoLE, which treats each trained LoRA layer as an expert and trains only the router to compose them.
-The claim is better multi-task behaviour at adapter-sized cost. Only qualitative claims are given here. On the earlier gating slide we saw that dense mixing is acceptable because adapters are cheap to run. The costs the survey names, in its closing challenges: these methods may hurt performance or complicate existing parallel strategies for pretraining and inference.
+Section 4.3. Full fine-tuning updates every weight, which is expensive. PEFT updates a small set and keeps the base model untouched; LoRA is the example, with two low-rank matrices receiving the update. The survey's problem statement: PEFT often struggles to generalise across several tasks and can forget. The remedy is a mixture of parameter-efficient experts: the gate and multi-expert structure of a mixture of experts, with each expert built with PEFT. The survey says this combines task versatility with resource efficiency. Figure 6 sorts methods by placement: (a) attention, as in MoELoRA, MoCLE and SiRA; (b) the feed-forward network, as in LoRAMoE, AdaMix and MixLoRA; (c) the whole block, with two expert groups each with its own gate, as in MoV and MoLoRA; (d) every layer as one expert, MoLE. Only qualitative claims are given here.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.4, Fig. 7 · Choice 5 of 6, schemes · What, who and costs</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.4 · Fig. 7</p>
 
 ## Where does a mixture of experts come from?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- **Upcycling**: copy a trained dense FFN into every expert, add a random router, keep training.
-- Skywork-MoE: from scratch beats upcycled; more similar experts predict a worse model.
-- **Distillation**: train a small dense model to copy the mixture; Switch keeps about 30% of the gain at about 5% of the parameters.
-- **Merging**: Branch-Train-MiX trains domain models apart, then joins their FFNs as experts.
+- (a) Original: train as a mixture from scratch.
+- (b) Merge separately trained expert models (Branch-Train-MiX).
+- (c) Dense to sparse: **upcycling** copies a trained dense FFN into every expert.
+- (d) Sparse to dense: distil the mixture into a dense model.
 
 </div>
 <div class="fig"><img src="img/week-07-cai-fig7-schemes.png" alt="Cai et al. Figure 7: four training and inference schemes, (a) original, trained as a mixture from the start, (b) merging separate expert models, (c) dense to sparse, (d) sparse to dense"></div>
 </div>
 
-<p class="footnote">Cai et al. 2024 · §4.4, Fig. 7; the Switch figure is relayed. Skywork-MoE: Kunlun's 146B model; Branch-Train-MiX: separate domain models merged into one mixture. Check (ours): Mixtral has Mistral 7B's exact shape; the paper does not say if it was upcycled</p>
+<p class="footnote">Cai et al. 2024 · §4.4, Fig. 7. Distil: train a small model to copy a large one. Branch-Train-MiX: separate domain models merged into one mixture</p>
 
 Note:
-Choice 5: not how to build the layer, but where the model comes from. Figure 7 has four panels. The original scheme trains from scratch. Dense to sparse is upcycling, Komatsuzaki et al. 2022: take a trained dense checkpoint, copy every feed-forward network into all the experts, initialise a random router and keep training. The cost is an initial quality drop from the surgery. Skywork-MoE reports that models trained from scratch beat upcycled ones, that you should decide by what dense checkpoints and training budget you have, and that more similar experts predict a worse model; no magnitudes are given.
-Sparse to dense: distil the mixture into a small dense model for cheap serving. The survey relays from Switch that the distilled model keeps about 30 percent of the sparse model's quality gain with about 5 percent of the parameters; and from another paper, 61.7 percent on ImageNet and 88.2 percent on language tasks. So some of the gain is lost.
-Merging: Branch-Train-Merge trains a set of domain language models separately; Branch-Train-MiX joins their feed-forward networks as experts, averages the attention layers, and fine-tunes the mixture on all the data together.
-Our check: Mixtral has exactly Mistral 7B's shape with 8 feed-forward networks per layer, which looks like upcycling, but its paper does not say whether it was.
+Figure 7 shows four schemes. (a) The original: build the mixture and train from scratch. (c) Dense to sparse, upcycling, from Komatsuzaki and colleagues: copy a trained dense checkpoint's feed-forward network into every expert, initialise the gate at random and keep training. Skywork-MoE reports that models trained from scratch consistently beat upcycled ones, so the choice depends on the dense checkpoint and the training budget, and more similar experts predict a worse model; no magnitudes. (d) Sparse to dense: Switch's distillation keeps about 30 percent of the sparse model's quality gain with about 5 percent of the parameters, a relayed figure; OneS keeps 61.7 percent on ImageNet and 88.2 percent on language tasks. (b) Merging: Branch-Train-Merge trains domain models separately; Branch-Train-MiX joins their feed-forward networks as experts, averages attention, and fine-tunes on all data together. One check (ours): Mixtral has Mistral 7B's exact shape, but its paper does not say whether it was upcycled.
+
+--
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §4.4.1 · optional</p>
+
+## Does the order of softmax and TopK matter?
+
+<div class="rows">
+<div class="eq">$$\operatorname{softmax}(\operatorname{TopK}(g(\mathbf{x}; \mathbf{\Theta}), k)) \quad\text{versus}\quad \operatorname{TopK}(\operatorname{softmax}(g(\mathbf{x}; \mathbf{\Theta})), k)$$</div>
+<dl class="where">
+<dt>left</dt><dd>Shazeer et al.: the kept scores are normalised to sum to 1</dd>
+<dt>right</dt><dd>later models (Switch, OpenMoE): softmax over all experts first, then keep the top $k$</dd>
+</dl>
+<p class="plain">Upcycling work: normalising the combined gate scores to 1 helped upcycled vision models and hurt upcycled language models.</p>
+</div>
+
+<p class="footnote">Cai et al. 2024 · §4.4.1 (Komatsuzaki et al.). Symbols as in Eq. 3: $g$ the gating value, $\mathbf{x}$ the token, $\mathbf{\Theta}$ the gate weights, $k$ the number of experts kept</p>
+
+Note:
+Optional. Inside the upcycling discussion, the survey gives the one evidence it has on a detail that matters. Komatsuzaki and colleagues normalised the gating scores for each token to 1, to limit the initial performance drop after upcycling, since in the dense model each token went through a single feed-forward network. That helped upcycled vision models and hurt upcycled language models. The survey then points out that Shazeer's original form takes the softmax after TopK, which normalises to 1, while later language models such as Switch and OpenMoE take the softmax over all experts first and then TopK. This also shows its own Equation 3 is the first form while most later models use the second (ours). A reason from our own reading, not the survey's: with k equal to 1, renormalising a single kept weight gives exactly 1, so the router would get no gradient through it.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §5, Fig. 8 · Choice 6 of 6, systems · What, who and costs</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §5 · Fig. 8</p>
 
 ## What does the hardware have to do?
 
 <div class="rows">
-<div class="points">
-<div class="text">
-
-- **Expert parallelism**: each expert lives on its own GPU; the other layers are copied.
-- Flow: route, group tokens by expert, **all-to-all** dispatch, compute, all-to-all combine.
-
-</div>
-<div class="text">
-
-- Four all-to-alls per layer per step: often the main bottleneck.
-- Fixes: topology-aware routing, overlap with compute, offload idle experts to CPU or SSD.
-
-</div>
-</div>
-<div class="fig"><img src="img/week-07-cai-fig8-parallel.png" alt="Cai et al. Figure 8: expert parallelism across four GPUs, with all-to-all dispatch before and all-to-all combine after expert computation, shown as (a) data plus expert, (b) with tensor, (c) with pipeline, (d) expert plus tensor parallelism"></div>
+<div class="fig"><a href="img/week-07-cai-fig8-parallel.png" target="_blank"><img src="img/week-07-cai-fig8-parallel.png" alt="Cai et al. Figure 8: expert parallelism across four GPUs, with all-to-all dispatch before and all-to-all combine after expert computation, shown as (a) data plus expert, (b) with tensor, (c) with pipeline, (d) expert plus tensor parallelism"></a></div>
+<p class="plain">Flow in (a): gate routing, input encode, All-to-All dispatch, expert computation, All-to-All combine, output decode.</p>
 </div>
 
-<p class="footnote">Cai et al. 2024 · §5, Fig. 8a (flow), §5 storage. All-to-all: every device sends a piece to every other device. All claims qualitative; the survey gives no speed numbers. Every expert has to be stored somewhere</p>
+<p class="footnote">Cai et al. 2024 · §5, Fig. 8. Expert parallelism: each expert on its own device, other layers copied. All-to-All: every device sends a piece to every other device. GEMM: a matrix multiplication</p>
 
 Note:
-Choice 6. Mixtures of experts are as much a systems problem as a modelling one. Expert parallelism, introduced by GShard, puts each expert on a different device while the non-expert layers are copied on every device, like data parallelism with the experts split. Figure 8a gives the flow: the gate routes; tokens for the same expert are grouped into one contiguous block, so the matrix multiply is big enough to keep the device busy; an all-to-all sends each group to the device holding its expert; the experts compute; a second all-to-all brings results home; the outputs are put back in order. Panels b to d add tensor and pipeline parallelism.
-The survey says the four all-to-alls per mixture layer, two forward and two backward, are often the main bottleneck. Fixes: hierarchical and topology-aware routing that keeps traffic inside a node, DeepSeek-V3's node limit being one we meet in the next reading; overlapping communication with computation; and, for memory, offloading idle experts to CPU memory or SSD with prefetching. A dense-expert hybrid in the shared-expert style helps overlap.
-The survey's own statement of the memory problem is worth keeping: every expert has to be stored somewhere. That matches Week 4: a mixture cuts arithmetic per token, not the weights that must be held. And note there are no throughput numbers anywhere in its system section; every claim is attributed and qualitative.
+Section 5, system design. Expert parallelism puts each expert on a different device while non-expert layers are duplicated, an augmentation of data parallelism. Figure 8a gives the flow: gate routing; input encode, which gathers the tokens for one expert into contiguous memory so the matrix multiply is large enough to use the device well; All-to-All dispatch to the devices holding the experts; expert computation; All-to-All combine; output decode, which restores the original layout. Panels b to d combine expert parallelism with tensor and pipeline parallelism. The survey says the choice of strategy trades off computation, communication and memory, and depends on the hardware. It says the quadruple All-to-All per mixture layer, in forward and backward, is a significant overhead and often the main constraint. It gives no speed numbers; all claims are attributed and qualitative (ours).
+
+--
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §5 · Table 4 · optional</p>
+
+## Which open frameworks optimise which part?
+
+<div class="rows">
+<table class="rules tight" style="font-size:19px">
+  <tr><td>framework</td><td>affiliation</td><td>computation</td><td>communication</td><td>storage</td><td>GitHub stars</td></tr>
+  <tr><td>OpenMoE (Colossal-AI)</td><td>Colossal-AI</td><td>&#10003;</td><td>&#10003;</td><td></td><td>38K</td></tr>
+  <tr><td>ScatterMoE</td><td>Mila Quebec</td><td>&#10003;</td><td></td><td></td><td>140</td></tr>
+  <tr><td>Megablocks</td><td>Stanford University</td><td>&#10003;</td><td></td><td></td><td>1.1K</td></tr>
+  <tr><td>Tutel</td><td>Microsoft</td><td>&#10003;</td><td>&#10003;</td><td></td><td>672</td></tr>
+  <tr><td>SE-MoE</td><td>Baidu</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>21K</td></tr>
+  <tr><td>HetuMoE</td><td>Peking University</td><td>&#10003;</td><td>&#10003;</td><td></td><td>236</td></tr>
+  <tr><td>Deepspeed-MoE</td><td>Microsoft</td><td>&#10003;</td><td>&#10003;</td><td></td><td>33K</td></tr>
+  <tr><td>FastMoE</td><td>Tsinghua University</td><td>&#10003;</td><td>&#10003;</td><td></td><td>1.4K</td></tr>
+  <tr><td>Fairseq</td><td>Meta</td><td></td><td></td><td></td><td>29K</td></tr>
+  <tr><td>Mesh-TensorFlow</td><td>Google</td><td></td><td></td><td></td><td>1.6K</td></tr>
+</table>
+</div>
+
+<p class="footnote">Cai et al. 2024 · §5, framework table (arranged newest to oldest in the survey; stars as of June 2024). Computation: kernels and expert placement; communication: All-to-All; storage: offloading</p>
+
+Note:
+Optional. The survey's overview of open-source frameworks and which of three optimisations each covers. Computation: load imbalance across devices, handled by dynamic expert placement in SE-MoE, Tutel, FlexMoE and SmartMoE, and by FasterMoE's shadowed experts; and the gate, encode and decode operations, handled by tailored GPU kernels, with MegaBlocks reformulating the computation as block-sparse operations. Communication: hierarchical All-to-All, topology-aware routing, and overlapping communication with computation, including by restructuring the architecture as ScMoE and Arctic do. Storage: keep non-expert parameters and active experts in GPU memory, offload the rest to CPU memory or SSD, and prefetch by predicting the next experts. The survey's statement of the memory problem (ours, in short): every expert has to be stored somewhere.
 
 ---
 
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §7 · Open questions</p>
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §6 · applications</p>
+
+## Where has mixture of experts been applied?
+
+<table class="rules" style="font-size:20px">
+  <tr><td>domain</td><td>examples in the survey</td></tr>
+  <tr><td><b>natural language</b></td><td>translation, open-domain question answering, code generation, maths; MoGU balances a usable and a safe model</td></tr>
+  <tr><td><b>computer vision</b></td><td>V-MoE, SwinV2-MoE (Tutel), ADVMOE, pMoE</td></tr>
+  <tr><td><b>recommender systems</b></td><td>MMoE (one gate per task), PLE, AdaMCT, M3oE</td></tr>
+  <tr><td><b>multimodal</b></td><td>LIMoE, MoCLE, LLaVA-MoLE, MoE-LLaVA, Uni-MoE</td></tr>
+</table>
+
+<p class="footnote">Cai et al. 2024 · §6. V-MoE: sparse mixture inside a vision Transformer; MMoE: multi-gate mixture of experts; PLE here: Progressive Layered Extraction, not per-layer embeddings; LIMoE: image and text mixture of experts</p>
+
+Note:
+Section 6 is a catalogue, so keep it short. Natural language: machine translation, open-domain question answering, code generation and maths, plus MoGU, which uses dynamic routing to balance a usable model and a safe one. Vision: V-MoE puts a sparse mixture of MLPs into selected ViT blocks and rivals state-of-the-art networks with much less inference compute; Tutel is demonstrated with SwinV2-MoE; ADVMOE studies adversarial robustness; pMoE routes image patches. Recommender systems: multi-task settings, where MMoE shares expert submodels across tasks with one gate per task, and PLE separates shared and task-specific parts to counter the seesaw effect. Multimodal: LIMoE trains on images and text with an entropy-based regulariser against load imbalance; MoCLE and LLaVA-MoLE use LoRA experts. The survey also repeats a rumour that GPT-4 uses a mixture of experts (ours: unconfirmed).
+
+---
+
+<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §7 · challenges</p>
 
 ## What does the survey say is still open?
 
 <table class="rules" style="font-size:19px">
-  <tr><td>challenge</td><td>in the survey's words</td></tr>
-  <tr><td>stability and balance</td><td>balance losses "can still lead to training instability"</td></tr>
-  <tr><td>communication</td><td>a "significant bottleneck" in distributed training</td></tr>
-  <tr><td>specialisation and collaboration</td><td>a weighted sum of the top experts can overlook relations among them</td></tr>
-  <tr><td>sparse compute on hardware</td><td>sparse operations are "non-uniform" for accelerators</td></tr>
-  <tr><td>generalisation</td><td>sparse models tend to overfit specific tasks</td></tr>
-  <tr><td>interpretability</td><td>hard to explain which expert does what</td></tr>
-  <tr><td>best expert architecture</td><td>how many experts, in which layers</td></tr>
-  <tr><td>plugging into existing models</td><td>adapt a model without training from scratch</td></tr>
+  <tr><td>challenge</td><td>in the survey</td></tr>
+  <tr><td>stability and load balancing</td><td>losses "can still lead to training instability"</td></tr>
+  <tr><td>scalability and communication</td><td>a "significant bottleneck" in distributed training</td></tr>
+  <tr><td>expert specialization and collaboration</td><td>a weighted sum of top-k experts "can overlook" relations across experts</td></tr>
+  <tr><td>sparse activation and efficiency</td><td>sparse operations are non-uniform for hardware accelerators</td></tr>
+  <tr><td>generalization and robustness</td><td>sparse models tend to overfit specific tasks</td></tr>
+  <tr><td>interpretability and transparency</td><td>methods to visualize and explain each expert</td></tr>
+  <tr><td>optimal expert architecture</td><td>network types, number of experts per layer, architecture search</td></tr>
+  <tr><td>integration with existing frameworks</td><td>adapt a model to MoE without training from scratch</td></tr>
 </table>
 
-<p class="footnote">Cai et al. 2024 · §7, eight challenges as listed there, in its order; the quotes are its words, the other cells short paraphrases (ours)</p>
+<p class="footnote">Cai et al. 2024 · §7, eight challenges in its order; quoted words are its own, other cells short paraphrases (ours)</p>
 
 Note:
-The survey ends with eight open challenges, in this order. One: stability and balance; losses help but "can still lead to training instability". Two: communication overhead, which the survey says is a significant bottleneck, and it suggests shared experts might reduce data movement. Three: specialisation and collaboration; shared experts are the prevailing strategy, but a sparse weighted sum of a few experts can overlook relations across the whole set. Four: making sparse computation fast, since sparse operations are non-uniform for accelerators. Five: generalisation; sparse models tend to overfit specific tasks, with dropout, token dropping and multi-task instruction tuning offered as remedies. Six: interpretability. Seven: the best expert architecture, which network type and how many experts per layer, including the idea of different counts in different layers and automated architecture search. Eight: integration with existing models, adapting a trained model without training from scratch.
-The first row of the table is its header, so there are eight challenges.
-
----
-
-<p class="eyebrow"><span class="paper">Cai et al. 2024</span> · §3, §4, Tables 1 to 3 · Critique</p>
-
-## As a reviewer, what is missing or wrong?
-
-<div class="cols">
-<div class="text">
-
-1. No experiments; Table 3 mixes protocols (base, instruct and chat models; 5- and 8-shot), so its rows do not compare.
-2. Errors: DeepSeekMoE 16B needs "40% less computation", but the paper says about 40% of the computation.
-3. Table 1's 0.01 fits DeepSeekMoE's 2B runs, not its 16B (0.001) or 145B (0.003); GShard and Mixtral print none.
-4. Missing: balancing without an auxiliary loss, and sigmoid gating, though V3 is in its Table 2.
-
-</div>
-<div class="text">
-
-<p class="plain">The survey also states "increasing $k$ enhances performance" with no citation, next to a result that is not monotone in $k$ (ours).</p>
-<p class="plain">Does it sink the survey? No. It is a good map: use it to find papers, not numbers.</p>
-
-</div>
-</div>
-
-<p class="footnote">Cai et al. 2024 · §3, §4.1.1, Tables 1 to 3, checked against the DeepSeekMoE paper. GSM8K: grade-school maths word problems; n-shot: n worked examples in the prompt; instruct, chat: tuned to follow instructions</p>
-
-Note:
-A reviewer's pass, with the survey checked against the papers we have read. First, no experiments of its own, so every number is relayed. Its Table 3 lists 13 models with MMLU, GSM8K, MATH and HumanEval scores under a header saying 5-shot, 5-shot, 4-shot and 0-shot "unless specified otherwise", but some GSM8K cells are 8-shot or 3-shot, two cells give two numbers, and rows mix base, instruct and chat models. Rows are not comparable.
-Second, errors we could check. It says DeepSeekMoE 16B needs "40% less computation" than Llama 2 7B; the DeepSeekMoE paper says about 40 percent of the computation, which is about 60 percent less. Third, Table 1 gives one coefficient, 0.01, for DeepSeekMoE and DeepSeek-V2. DeepSeekMoE uses 0.01 only for its 2B validation runs, 0.001 for 16B and 0.003 for 145B; DeepSeek-V2 uses three losses with 0.003, 0.05 and 0.02. GShard prints no value for its multiplier and Mixtral's paper states none. Also, "top-16" for DeepSeekMoE 145B is 4 shared plus 12 routed.
-Fourth, what is missing: auxiliary-loss-free balancing and sigmoid gating, though DeepSeek-V3 is in its model table. The survey also states without citation that "increasing the value of k enhances performance", just above the one result it gives, where top-16 beat top-1 but lost to plain top-4, and four grouped top-1 gates beat them all (ours).
-Does it sink the survey? No. A map with a few wrong labels is still a map. Use it to find papers and see lineage, and then go to the paper for the number.
+The survey ends with eight challenges and opportunities, in this order. One: training stability and load balancing; losses help but can still lead to instability and neglect token importance. Two: scalability and communication overhead; it says shared experts hold promise for reducing the data sent between devices. Three: specialisation and collaboration; shared experts are the prevailing strategy but a sparse weighted sum can overlook relations across experts. Four: sparse activation and computational efficiency on hardware. Five: generalisation and robustness; sparse models overfit, with dropout, token dropping and multi-task instruction tuning as remedies. Six: interpretability. Seven: optimal expert architecture, including different numbers of experts per layer and automated architecture search. Eight: integration with existing frameworks, where PEFT-plus-mixture methods may compromise performance or complicate parallel strategies. A closing note (ours): the survey lists DeepSeek-V3 in its tables but not the auxiliary-loss-free balancing it introduced, which we meet in the next reading.
 
 
 ---
@@ -982,190 +970,259 @@ Reading 3 of 3, in key results only. Two papers from the same group. DeepSeekMoE
 
 ---
 
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · the equation</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §2 · Eq. 3 to 5</p>
 
-## What were fine-grained and shared experts again?
+## How does an ordinary MoE layer compute its output?
 
 <div class="cols">
 <div class="text">
 
-- **Shared experts** are always on and have no gate. Each token uses all of them.
-- **Routed experts** are the ordinary kind: the router picks the top few per token.
-- The 2B model has 1 shared and 7 of 63 routed experts, each a quarter-size FFN.
-- Why: with 8 or 16 big experts, one expert's tokens "cover diverse knowledge".
+<div class="eq">$$\begin{aligned} \mathbf{h}_t^l &= \sum_{i=1}^{N} g_{i,t}\,\mathrm{FFN}_i(\mathbf{u}_t^l) + \mathbf{u}_t^l \\ g_{i,t} &= \begin{cases} s_{i,t}, & s_{i,t} \in \mathrm{Topk}(\{s_{j,t} \mid 1 \le j \le N\}, K) \\ 0, & \text{otherwise} \end{cases} \\ s_{i,t} &= \mathrm{Softmax}_i\big({\mathbf{u}_t^l}^{\top} \mathbf{e}_i^l\big) \end{aligned}$$</div>
 
 </div>
 <div class="text">
-
-<div class="eq">$$h_t = u_t + \sum_{i=1}^{K_s} \mathrm{FFN}_i(u_t) + \sum_{i=K_s+1}^{mN} g_{i,t}\,\mathrm{FFN}_i(u_t)$$</div>
 
 <dl class="where">
-<dt>$h_t$, $u_t$</dt><dd>layer output and input for token $t$ (the hidden state after attention)</dd>
-<dt>$\mathrm{FFN}_i$</dt><dd>the $i$-th expert, a feed-forward network (FFN)</dd>
-<dt>$K_s$</dt><dd>number of shared experts</dd>
-<dt>$N$, $m$</dt><dd>experts before splitting, and how many pieces each is split into</dd>
-<dt>$g_{i,t}$</dt><dd>gate: the router's softmax score if expert $i$ is in the top $mK - K_s$, else 0 ($K$ = number chosen before splitting)</dd>
+<dt>$\mathbf{u}_t^l$, $\mathbf{h}_t^l$</dt><dd>token $t$'s hidden state after attention, and after the layer</dd>
+<dt>$N$, $K$</dt><dd>number of experts, and how many are used per token</dd>
+<dt>$\mathrm{FFN}_i$</dt><dd>the $i$-th expert, a feed-forward network</dd>
+<dt>$g_{i,t}$, $s_{i,t}$</dt><dd>gate value and token-to-expert affinity</dd>
+<dt>$\mathbf{e}_i^l$</dt><dd>the centroid vector of expert $i$</dd>
 </dl>
 
-<p class="plain">In words: a few always-on experts hold common knowledge, and the router picks many small specialists on top.</p>
+<p class="plain">Only $K$ of the $N$ gates are nonzero.</p>
 
 </div>
 </div>
 
-<p class="footnote">Dai et al. 2024 (DeepSeekMoE), arXiv:2401.06066 · Eq. 9 to 11, §3.2; Fig. 2 was shown in Week 4. FLOPs (floating-point operations): arithmetic count per forward pass</p>
+<p class="footnote">Dai et al. 2024 (DeepSeekMoE), arXiv:2401.06066 · §2, Eq. 3 to 5; layer normalisation omitted, as in the paper</p>
 
 Note:
-Week 4 showed the picture, DeepSeekMoE Figure 2: top-2 of N experts, then each expert split into smaller ones with more chosen, then one expert made shared. This is the same idea as an equation. The gate is zero for all but the top mK minus K_s routed experts, so the arithmetic stays equal to the unsplit design: split every expert into m pieces, choose m times as many, and take K_s of those choices away because the shared experts already run.
-The numbers: at 2B, N is 16, m is 4, K is 2 and K_s is 1, so 64 experts, one shared and 63 routed, 7 routed chosen. The paper's reason: "Knowledge Hybridity", with only 8 or 16 experts the tokens sent to one expert cover diverse knowledge, and "Knowledge Redundancy", different experts each relearn common knowledge. The headline count of combinations (120 for top-2 of 16, against 4.4 billion for 8 of 64) uses the pre-shared design; with the shared expert it is 7 of 63, 553 million (ours). The paper says the surge in combinations "enhances the potential" for more targeted knowledge, but never tests the combination count by itself.
-One oddity: at 16B the model has 2 shared and 64 routed, and at 145B 4 shared and 128 routed. Those counts do not map onto an integer N in the formal notation, and the paper does not reconcile it.
+The paper starts from a generic MoE layer. A standard Transformer block has attention and then one feed-forward network. In an MoE layer that feed-forward network is replaced by N experts, each the same shape as the ordinary one. The router scores every expert with a softmax of the token's hidden state against that expert's centroid vector, keeps the K highest scores, and sets all other gates to zero. The output is the weighted sum of the chosen experts plus the residual input. Because only K gates are nonzero, each token is computed in only K experts, which is where the saving comes from. Everything that follows changes how the experts are cut up and how many of them are always on.
 
 ---
 
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · Experiment 1, same size as GShard · Table 1</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §3 · Fig. 2</p>
 
-## Does it beat GShard at matched size?
+## What does DeepSeekMoE change in the layer?
 
 <div class="rows">
-<div class="points">
-<div class="text">
-
-- Same as GShard: 2.0B total and 0.3B active parameters, 4.3T FLOPs per 2K tokens, 100B training tokens.
-- Pile loss falls from 1.867 to 1.808, and DeepSeekMoE is best on all 11 rows.
-
-</div>
-<div class="text">
-
-- Switch (top-1) and Hash are cheaper context, at 0.2B active.
-- One number per model, no error bars.
-
-</div>
+<div class="fig"><img src="img/week-07-dsmoe-fig2-arch.png" alt="DeepSeekMoE Figure 2: (a) conventional top-2 routing over N experts, (b) the same with each expert split into smaller ones and more chosen, (c) one expert made shared and always on, which is the full DeepSeekMoE layer"></div>
+<p class="plain">Same expert parameters and same computation in all three; two changes: split the experts, and keep some always on.</p>
 </div>
 
-<table class="rules">
-  <tr><td>2B models, 100B tokens</td><td>active</td><td>FLOPs</td><td>Pile loss</td><td>HellaSwag</td><td>TriviaQA</td></tr>
-  <tr><td>Dense</td><td>0.2B</td><td>2.9T</td><td>2.060</td><td>38.8</td><td>4.9</td></tr>
-  <tr><td>Hash Layer</td><td>0.2B</td><td>2.9T</td><td>1.932</td><td>46.2</td><td>6.5</td></tr>
-  <tr><td>Switch</td><td>0.2B</td><td>2.9T</td><td>1.881</td><td>49.1</td><td>8.9</td></tr>
-  <tr><td>GShard</td><td>0.3B</td><td>4.3T</td><td>1.867</td><td>50.5</td><td>10.2</td></tr>
-  <tr class="total"><td>DeepSeekMoE</td><td>0.3B</td><td>4.3T</td><td><b>1.808</b></td><td><b>54.8</b></td><td><b>16.6</b></td></tr>
-</table>
-</div>
-
-<p class="footnote">Dai et al. 2024 · §4.2, Table 1. Pile: a large mixed English text corpus, test loss (lower is better). HellaSwag: choose a story's sensible ending, accuracy. TriviaQA: closed-book trivia, exact match. Hash: fixed hash routing; Switch: top-1 learned</p>
+<p class="footnote">Dai et al. 2024 · §3, Fig. 2. Routed expert: chosen by the router. Shared expert: used by every token</p>
 
 Note:
-This is the one comparison that isolates the architecture, because GShard and DeepSeekMoE have the same total parameters, the same active parameters, the same FLOPs and the same data. Only the layer design differs: top-2 of 16 big experts against 1 shared plus 7 of 63 quarter-size ones.
-Pile loss goes from 1.867 to 1.808, a drop of 0.059, and DeepSeekMoE is best on all 11 rows: for example HellaSwag 50.5 to 54.8, TriviaQA 10.2 to 16.6, NaturalQuestions 3.2 to 5.7 (ours: differences). The dense 0.2B model is at 2.060, so the whole sparse family beats it at equal active parameters. Caveats: single runs per model, no seeds or error bars anywhere in the paper, and the code rows (HumanEval 3.7 to 4.9, MBPP 0.2 to 2.2) are close to zero so they carry little signal. The claim is limited to this scale: about 2B total and 100B tokens.
+Figure 2 is the paper's summary. Panel (a) is the conventional layer: top-2 of N experts. Panel (b) is fine-grained expert segmentation: each expert is cut into smaller ones and more of them are chosen, so the cost stays the same. Panel (c) isolates one expert as shared, in green: it skips the router and every token uses it, and the number of routed experts chosen goes down by one to compensate. The caption says the number of expert parameters and the computational cost stay constant across all three. The next two slides give each change as an equation.
 
 ---
 
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · Experiment 2, the capacity bound · Table 2</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §3.1 · Eq. 6 to 8</p>
 
-## How close is it to every expert always on?
+## What does fine-grained expert segmentation do?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\begin{aligned} \mathbf{h}_t^l &= \sum_{i=1}^{mN} g_{i,t}\,\mathrm{FFN}_i(\mathbf{u}_t^l) + \mathbf{u}_t^l \\ g_{i,t} &= \begin{cases} s_{i,t}, & s_{i,t} \in \mathrm{Topk}(\{s_{j,t} \mid 1 \le j \le mN\}, mK) \\ 0, & \text{otherwise} \end{cases} \end{aligned}$$</div>
+
+</div>
+<div class="text">
+
+<dl class="where">
+<dt>$m$</dt><dd>pieces each expert is split into; each has $1/m$ of the hidden width</dd>
+<dt>$mN$, $mK$</dt><dd>experts in total, and experts used per token</dd>
+<dt>$\mathbf{u}$, $\mathbf{h}$, $\mathrm{FFN}_i$, $g_{i,t}$, $s_{i,t}$</dt><dd>as on the previous slide</dd>
+</dl>
+
+<p class="plain">Same parameters and cost, more ways to combine experts: 120 choices become 4,426,165,368.</p>
+
+</div>
+</div>
+
+<p class="footnote">Dai et al. 2024 · §3.1, Eq. 6 to 8. The two counts are the paper's example: top-2 of 16 experts, against top-8 of 64 after splitting each into 4</p>
+
+Note:
+Fine-grained segmentation. Take each expert feed-forward network and cut it into m smaller experts by reducing its hidden width to one over m. To keep the arithmetic the same, choose m times as many. The total expert parameters are still N times one ordinary feed-forward network, but there are now mN experts and mK nonzero gates. The paper's reason: with few experts, the tokens sent to one expert cover very different kinds of knowledge, which is hard for one expert to hold. If a token can reach more experts, the knowledge can be spread over them and each stays focused. The combinatorial example in the text: with N equal to 16, top-2 gives 120 combinations, while splitting each expert into 4 and choosing 8 gives about 4.4 billion. The paper says this enhances the potential for more targeted knowledge acquisition and does not test the count by itself.
+
+---
+
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §3.2 · Eq. 9 to 11</p>
+
+## What does shared expert isolation do?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\begin{aligned} \mathbf{h}_t^l &= \sum_{i=1}^{K_s} \mathrm{FFN}_i(\mathbf{u}_t^l) + \sum_{i=K_s+1}^{mN} g_{i,t}\,\mathrm{FFN}_i(\mathbf{u}_t^l) + \mathbf{u}_t^l \\ g_{i,t} &= \begin{cases} s_{i,t}, & s_{i,t} \in \mathrm{Topk}(\{s_{j,t} \mid K_s+1 \le j \le mN\}, mK-K_s) \\ 0, & \text{otherwise} \end{cases} \end{aligned}$$</div>
+
+</div>
+<div class="text">
+
+<dl class="where">
+<dt>$K_s$</dt><dd>number of shared experts, always used, no gate</dd>
+<dt>$mN-K_s$</dt><dd>number of routed experts</dd>
+<dt>$mK-K_s$</dt><dd>number of nonzero gates, so cost stays constant</dd>
+</dl>
+
+<p class="plain">Shared experts hold common knowledge; the routed ones can specialise.</p>
+
+</div>
+</div>
+
+<p class="footnote">Dai et al. 2024 · §3.2, Eq. 9 to 11; other symbols as before. The paper credits the prototype to DeepSpeed-MoE, which came from an engineering view</p>
+
+Note:
+Shared expert isolation. Out of the mN experts, K_s are isolated as shared. Every token goes through them regardless of the router, and they have no gate, so the first sum has no g. The router chooses among the remaining mN minus K_s experts, and picks mK minus K_s of them, so the total number of experts running per token is unchanged. The paper's reason: tokens sent to different experts often need common knowledge, so several experts end up relearning it, which wastes parameters. Dedicated shared experts take that job, so the routed experts are less redundant and can be more specialised. The paper credits the prototype to DeepSpeed-MoE, and says the difference is that they derive it from an engineering view and DeepSeekMoE from an algorithmic one.
+
+---
+
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §3.3 · Eq. 12 to 14</p>
+
+## How is the load kept balanced?
 
 <div class="rows">
-<div class="points">
-<div class="text">
-
-- **Dense x16** uses all 16 FFN-widths for every token; the paper calls it the "upper bound".
-- DeepSeekMoE needs 4.3T FLOPs, Dense x16 needs 24.6T: 5.7 times more (ours).
-
-</div>
-<div class="text">
-
-- GShard x1.5 has 1.5 times the expert size and 5.8T FLOPs (1.35 times, ours).
-- The reading-comprehension rows trail both by 0.7 to 2.4 points.
-
-</div>
+<div class="eq">$$\mathcal{L}_{\mathrm{ExpBal}} = \alpha_1 \sum_{i=1}^{N'} f_i P_i,\quad f_i = \frac{N'}{K'T} \sum_{t=1}^{T} \mathbb{1}(\text{Token } t \text{ selects Expert } i),\quad P_i = \frac{1}{T} \sum_{t=1}^{T} s_{i,t}$$</div>
+<dl class="where">
+<dt>$\alpha_1$, $N'$, $K'$</dt><dd>balance weight; $mN-K_s$ routed experts, $mK-K_s$ used per token</dd>
+<dt>$T$, $s_{i,t}$</dt><dd>number of tokens, and token $t$'s router score for expert $i$ (Eq. 5)</dd>
+<dt>$f_i$, $P_i$</dt><dd>scaled fraction of tokens selecting expert $i$, and its mean router score</dd>
+</dl>
+<p class="plain">Without it the router may use only a few experts: routing collapse.</p>
 </div>
 
-<table class="rules">
-  <tr><td>2B models, 100B tokens</td><td>GShard x1.5</td><td>Dense x16</td><td>DeepSeekMoE</td></tr>
-  <tr><td>activated expert parameters</td><td>0.35B</td><td>1.89B</td><td>0.24B</td></tr>
-  <tr><td>FLOPs per 2K tokens</td><td>5.8T</td><td>24.6T</td><td>4.3T</td></tr>
-  <tr><td>Pile loss</td><td>1.808</td><td>1.806</td><td>1.808</td></tr>
-  <tr class="total"><td>RACE-middle</td><td>46.4</td><td>46.3</td><td>44.0</td></tr>
-</table>
-</div>
-
-<p class="footnote">Dai et al. 2024 · §4.3, Table 2. "Upper bound" is the authors' word, not a theorem; they claim it only "at least at the scale of about 2B parameters and 100B training tokens". RACE-middle: reading comprehension from school exams, accuracy</p>
+<p class="footnote">Dai et al. 2024 · §3.3, Eq. 12 to 14. $\mathbb{1}(\cdot)$ is 1 if the statement is true and 0 otherwise</p>
 
 Note:
-Dense x16 is a model whose 16 experts are all shared, so every parameter is used for every token. The paper treats it as the capacity ceiling: in its view no routing choice can do better with the same parameters. DeepSeekMoE reaches 1.808 against its 1.806 at less than a fifth of the arithmetic (4.3T against 24.6T FLOPs, 5.7 times, ours). That answers the week's opening question: at this size and data, stored sparse capacity is worth almost what dense capacity is.
-Read the claims carefully. "Upper bound" is the paper's framing. The abstract says GShard x1.5 has 1.5 times the computation, but the table's FLOPs ratio is 5.8 over 4.3, 1.35 (ours); the 1.5 is the expert-size ratio. The match is on Pile loss and most tasks; the RACE reading-comprehension rows are 0.7 to 2.4 points below both comparators and the paper does not discuss it. Another detail: DeepSeekMoE has 0.3B active parameters in Table 1 but 0.24B in Table 2, because Table 2 counts expert weights only; GShard x1.5's 0.35B is a bigger model than Table 1's GShard.
-
----
-
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · Experiment 3, specialisation · Fig. 4</p>
-
-## Are the experts more specialised?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Test: switch off each token's top-scoring routed experts, then pick from the rest.
-- DeepSeekMoE's Pile loss climbs faster than GShard x1.5's, so each expert is harder to replace.
-- Switching off the shared expert and adding one routed: 1.808 rises to 2.414.
-- These tests damage a trained model. They show dependence, not a better design (ours).
-
-</div>
-<div class="fig"><img src="img/week-07-dsmoe-fig4-redundancy.png" alt="Line chart of Pile loss against the ratio of disabled top routed experts, 0 to 4/16: DeepSeekMoE rises faster than GShard x1.5, both starting near 1.8"></div>
-</div>
-
-<p class="footnote">Dai et al. 2024 · §4.5, Fig. 4; shared-expert test in the same section. Both curves leave the 1.8 range once experts are masked (about 5 to 9), so the figure shows how fast, not a usable setting (ours)</p>
-
-Note:
-The paper's evidence for "specialisation", in three tests. The one in this figure: for each token, mask a share of the routed experts with the highest routing score and pick the top K from what is left. GShard x1.5 is the comparator because it has the same Pile loss, 1.808, with nothing disabled. DeepSeekMoE gets worse faster, which the authors read as lower redundancy: each routed expert is harder to replace. Reading caveat (ours): once the top experts are masked both models sit at loss 5 to 9, so both are broken, and the share is relative to 16 for both models, so the number of masked experts differs per model; the text does not say how the fractions map to counts.
-The shared expert test: disable it and add one more routed expert, and Pile loss rises from 1.808 to 2.414, worse than the dense 0.2B model in Table 1 (2.060, ours). Next slide's depth: the test that retrains. "Specialisation" itself, meaning non-overlapping, focused knowledge, is inferred, never measured per expert. V3 later does show per-domain load.
+Two defects of a learned router, in the paper's words: a risk of routing collapse, where the model always picks the same few experts and the others never train, and, when experts sit on different devices, load imbalance that creates computation bottlenecks. The expert-level balance loss addresses the first. For each expert, multiply the fraction of tokens that chose it by its average router score, and sum. This is smallest when both are even across experts. The coefficient alpha one is a weight. Values used: 0.01 in the 2B validation experiments, 0.001 at 16B, 0.003 at 145B. At 16B the authors say a higher value did not improve efficiency under their parallelism and only hurt the model. Next slide: the device-level version.
 
 --
 
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · Experiment 3, specialisation · Fig. 5 and Fig. 6</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §3.3 · Eq. 15 to 17 · optional</p>
 
-## What if it activates fewer experts?
+## And across devices?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\mathcal{L}_{\mathrm{DevBal}} = \alpha_2 \sum_{i=1}^{D} f'_i P'_i,\quad f'_i = \frac{1}{|\mathcal{E}_i|} \sum_{j \in \mathcal{E}_i} f_j,\quad P'_i = \sum_{j \in \mathcal{E}_i} P_j$$</div>
+
+</div>
+<div class="text">
+
+<dl class="where">
+<dt>$\mathcal{E}_1, \ldots, \mathcal{E}_D$</dt><dd>the $D$ groups of routed experts, one group per device</dd>
+<dt>$\alpha_2$</dt><dd>device-level balance factor, a weight</dd>
+<dt>$f'_i$, $P'_i$</dt><dd>group-level versions of $f$ and $P$</dd>
+</dl>
+
+<p class="plain">Strict balance per expert is not needed, only per device.</p>
+
+</div>
+</div>
+
+<p class="footnote">Dai et al. 2024 · §3.3, Eq. 15 to 17. Used only at 145B, with $\alpha_2 = 0.05$ and experts on 4 devices</p>
+
+Note:
+When the aim is only to avoid computation bottlenecks, the paper says strict balance at the expert level is unnecessary, because too much constraint on load balance hurts the model. So the experts are split into D groups, one group per device, and the same product of load and score is computed per group. In practice they use a small expert-level factor against collapse and a larger device-level factor for balanced computation. At 145B the device factor is 0.05 against 0.003 for the expert level, with routed experts spread over 4 devices. The smaller models keep all experts on one device, drop no tokens and use no device-level loss.
+
+---
+
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §4.1 to §4.2 · Table 1</p>
+
+## Does it beat the other MoE designs at the same size?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- Fig. 5 (left): with only 4 routed experts on, DeepSeekMoE already matches GShard's Pile loss.
+- Setup: 9 layers, every FFN an MoE layer, 2B parameters in total and 0.3B active, trained on 100B tokens.
+- DeepSeekMoE: 1 shared and 63 routed experts, each a quarter of an FFN, 7 routed used.
 
 </div>
 <div class="text">
 
-- Fig. 6 (right) retrains with 1 shared and 3 of 63 routed: half GShard's active expert parameters.
+- Best on every benchmark row of the paper's table; the dense model has 0.2B active against 0.3B.
 
 </div>
 </div>
-<div class="fig"><img style="max-width:40%" src="img/week-07-dsmoe-fig5-activated.png" alt="Pile loss against the number of activated routed experts, 3 to 7, for DeepSeekMoE, with GShard's loss as a dashed horizontal line"><img style="max-width:58%" src="img/week-07-dsmoe-fig6-half.png" alt="Bars on six benchmarks: GShard with 2 of 16 experts against DeepSeekMoE with 1 shared and 3 of 63 routed, half the active expert parameters"></div>
+
+<table class="rules tight" style="font-size:19px">
+  <tr><td>2B models, 100B tokens</td><td>Dense</td><td>Hash Layer</td><td>Switch</td><td>DeepSeekMoE</td></tr>
+  <tr><td>activated parameters</td><td>0.2B</td><td>0.2B</td><td>0.2B</td><td>0.3B</td></tr>
+  <tr><td>FLOPs per 2K tokens</td><td>2.9T</td><td>2.9T</td><td>2.9T</td><td>4.3T</td></tr>
+  <tr><td>Pile (loss)</td><td>2.060</td><td>1.932</td><td>1.881</td><td><b>1.808</b></td></tr>
+  <tr><td>HellaSwag</td><td>38.8</td><td>46.2</td><td>49.1</td><td><b>54.8</b></td></tr>
+  <tr><td>ARC-easy</td><td>41.0</td><td>45.3</td><td>45.9</td><td><b>49.4</b></td></tr>
+  <tr><td>TriviaQA</td><td>4.9</td><td>6.5</td><td>8.9</td><td><b>16.6</b></td></tr>
+  <tr class="total"><td>NaturalQuestions</td><td>1.4</td><td>1.4</td><td>2.5</td><td><b>5.7</b></td></tr>
+</table>
 </div>
 
-<p class="footnote">Dai et al. 2024 · §4.5, Fig. 5 and Fig. 6. ARC-easy: grade-school science questions. NaturalQuestions: real search questions answered closed-book, exact match</p>
+<p class="footnote">Dai et al. 2024 · §4, Table 1 (7 of its 15 rows shown). Pile: mixed English text, test loss. HellaSwag: pick a story's ending. ARC-easy: grade-school science. TriviaQA, NaturalQuestions: closed-book questions. Hash: fixed hash routing; Switch: top-1 learned routing</p>
 
 Note:
-Fig. 5 varies how many routed experts a trained DeepSeekMoE model uses, from 3 to 7. Pile loss is roughly 1.96 at 3, 1.87 at 4, 1.83 at 5, 1.81 at 6 and 1.808 at 7 (ours, read off the figure), and GShard's 1.867 is the dashed line. So 4 routed plus the shared expert, 1.25 FFN-widths of compute against GShard's 2.0, matches GShard.
-Fig. 6 is the only one of the three tests that retrains from scratch: one shared expert and 3 of 63 routed, so four quarter-size experts, one FFN-width, half of GShard's. It still beats GShard on all six benchmarks plotted. Approximate reads of the bars (ours): HellaSwag 52 against 50.5, ARC-easy 48 against 44, TriviaQA 16 against 10, NaturalQuestions 5.3 against 3.2.
+The first experiment. The models share the corpus and the hyper-parameters, and the MoE models share 2.0 billion total parameters. The paper has one more baseline column that the slide leaves out. Setup from the paper: 100 billion tokens of a multilingual corpus, mostly English and Chinese, 9 Transformer layers of width 1280, an expert-level balance factor of 0.01, no token dropping. The dense model has 0.2B parameters. Hash Layer and Switch use top-1 routing, fixed hash and learned, with 0.2B active. DeepSeekMoE has one shared and 63 routed experts, 7 routed used, 0.3B active. Pile loss falls from 2.060 for dense through 1.932 and 1.881 to 1.808, and DeepSeekMoE is best on all 11 rows of the full table, for example TriviaQA 16.6 against 8.9 for Switch. Caveats (ours): one run per model, no error bars in the paper, and the code rows are near zero for every model. Note DeepSeekMoE also has 0.3B active against 0.2B for Hash and Switch, so it is not at equal active parameters with them.
 
---
+---
 
-<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · Part 6, many small experts · Scale-up to 16B · Table 3</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §4.3 · Table 2</p>
+
+## How close is it to a model with every expert on?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- Dense x16: 16 shared experts of full FFN size, so all 16 FFN-widths of parameters are used for every token.
+- The paper calls it the upper bound for MoE models, at about 2B parameters and 100B tokens.
+
+</div>
+<div class="text">
+
+- DeepSeekMoE matches its Pile loss with 4.3T FLOPs against 24.6T.
+
+</div>
+</div>
+
+<table class="rules" style="font-size:20px">
+  <tr><td>2B models, 100B tokens</td><td>Dense x16</td><td>DeepSeekMoE</td></tr>
+  <tr><td>activated expert parameters</td><td>1.89B</td><td>0.24B</td></tr>
+  <tr><td>FLOPs per 2K tokens</td><td>24.6T</td><td>4.3T</td></tr>
+  <tr><td>Pile (loss)</td><td>1.806</td><td>1.808</td></tr>
+  <tr><td>HellaSwag</td><td>55.1</td><td>54.8</td></tr>
+  <tr><td>TriviaQA</td><td>16.5</td><td>16.6</td></tr>
+  <tr class="total"><td>RACE-middle</td><td>46.3</td><td>44.0</td></tr>
+</table>
+</div>
+
+<p class="footnote">Dai et al. 2024 · §4.3, Table 2 (6 of its rows shown). RACE-middle: reading comprehension from school exams, accuracy. "Upper bound" is the authors' word</p>
+
+Note:
+To see how much is left to gain, the paper compares against a dense model with 16 times the standard FFN parameters. It builds it as 16 shared experts, each the size of a standard FFN, so every parameter is used for every token. The authors call this the strict upper bound of MoE models in terms of capacity, and claim DeepSeekMoE aligns closely with it, at least at the scale of about 2B parameters and 100B tokens. The numbers: Pile loss 1.806 against 1.808, HellaSwag 55.1 against 54.8, TriviaQA 16.5 against 16.6. The cost is very different: 24.6T FLOPs against 4.3T, 5.7 times more (ours). One row does not follow: RACE-middle is 46.3 against 44.0, and the paper does not discuss it.
+
+---
+
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §5 · Table 3</p>
 
 ## Does 16B at 40% of the compute match a dense 7B?
 
 <div class="cols wide-text">
 <div class="text">
 
-- Both train on the same 2T-token corpus; DeepSeekMoE 16B has 2.8B active, dense 7B has 6.9B.
-- It uses 40.5% of the FLOPs and scores higher on 12 of 20 rows, lower on 8.
-- Authors' explanation of the losses: small attention, 0.5B parameters against 2.5B.
+- Both train on the same 2T tokens; DeepSeekMoE 16B has 2.8B active, the dense 7B has 6.9B.
+- About 40% of the computations, and comparable overall.
+- Ahead on language modelling and knowledge, behind on multiple choice; the authors point to its small attention: 0.5B against 2.5B parameters.
 
 </div>
 <div class="fig">
-<table class="rules">
+<table class="rules" style="font-size:19px">
   <tr><td>16B vs dense 7B</td><td>dense 7B</td><td>MoE 16B</td></tr>
   <tr><td>FLOPs per 4K tokens</td><td>183.5T</td><td>74.4T</td></tr>
   <tr><td>Pile (BPB)</td><td>0.75</td><td>0.74</td></tr>
   <tr><td>TriviaQA</td><td>59.7</td><td>64.8</td></tr>
+  <tr><td>GSM8K</td><td>17.4</td><td>18.8</td></tr>
   <tr><td>MMLU</td><td>48.2</td><td>45.0</td></tr>
   <tr><td>CEval</td><td>45.0</td><td>40.6</td></tr>
   <tr class="total"><td>CMMLU</td><td>47.2</td><td>42.5</td></tr>
@@ -1173,238 +1230,321 @@ Fig. 6 is the only one of the three tests that retrains from scratch: one shared
 </div>
 </div>
 
-<p class="footnote">Dai et al. 2024 · §5.2, Table 3; row counts are ours. BPB: bits per byte, lower is better. MMLU: 57-subject exam. CEval, CMMLU: Chinese multi-subject exams like MMLU. Attention: the part of each layer that mixes tokens</p>
+<p class="footnote">Dai et al. 2024 · §5.2, Table 3 (7 of its 24 rows shown). BPB: bits per byte, lower is better. GSM8K: grade-school maths, exact match. MMLU: 57-subject exam. CEval, CMMLU: Chinese exams like MMLU. Attention: the part of a layer that mixes tokens</p>
 
 Note:
-Optional depth. At scale the authors train a 16.4B-parameter DeepSeekMoE with 2.8B active on 2 trillion tokens and set it beside a dense 7B model on the same corpus, with 40.5% of the FLOPs. Their summary is "comparable". The strict count (ours) is higher on 12 of 20 rows and lower on 8. The wins are on knowledge and language modelling: TriviaQA plus 5.1, NaturalQuestions plus 3.3. The losses are on multiple choice: MMLU minus 3.2, CEval minus 4.4, CMMLU minus 4.7. The authors attribute these to the small attention, about 0.5B parameters against 2.5B, and say FFNs hold memorised knowledge. Against LLaMA2 7B the model is higher on 16 of 20 rows, but the code and Chinese gaps are attributed to the corpus mix, not the architecture. The 16B model fits one 40 GB GPU without quantization (about 33 GB in 16-bit, ours), a reminder that every expert must be resident.
+At scale the authors train a 16.4B-parameter DeepSeekMoE with 2.8B active on 2 trillion tokens, with 28 layers and, from the second layer on, MoE layers of 2 shared and 64 routed experts, 6 routed used. The first layer stays dense because load balance converges more slowly there. Against DeepSeek 7B, a dense 6.9B model on the same corpus, it needs 40.5% of the computation. The authors' summary is comparable performance. Strengths: Pile, HellaSwag, TriviaQA, NaturalQuestions, which they link to FFNs storing knowledge. Weakness: multiple choice such as MMLU, 45.0 against 48.2, which they link to the small attention. Strict count (ours): MoE higher on 12 of the 20 rows, lower on 8. The paper also says the model fits on one 40 GB GPU and is nearly 2.5 times faster than a dense 7B.
 
----
+--
 
-<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · Part 6, DeepSeek-V3 · §2.1, Fig. 2 · the router</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §5.3 · Table 4 · optional</p>
 
-## What is new in DeepSeek-V3's router?
+## And against LLaMA 2 7B?
 
-<div class="cols wide-fig">
+<div class="cols wide-text">
 <div class="text">
 
-- 58 of its 61 layers are MoE: all but the first three. Each has 1 shared and 256 routed experts.
-- The score is a sigmoid, so the 8 kept scores are rescaled to sum to 1.
-- **Node limit**: each token goes to at most 4 nodes (a node is one server of 8 GPUs).
-
-<div class="eq">$$g_{i,t} = \frac{g'_{i,t}}{\sum_{j} g'_{j,t}},\qquad s_{i,t} = \mathrm{Sigmoid}(u_t^\top e_i)$$</div>
-
-<dl class="where">
-<dt>$s_{i,t}$</dt><dd>token $t$'s affinity to routed expert $i$</dd>
-<dt>$u_t$, $e_i$</dt><dd>the token's hidden state, and expert $i$'s learned centroid vector</dd>
-<dt>$g'_{i,t}$</dt><dd>$s_{i,t}$ if expert $i$ is among the top 8, else 0</dd>
-<dt>$g_{i,t}$</dt><dd>the gate actually used, kept scores summing to 1</dd>
-</dl>
+- Same 2T training tokens; DeepSeekMoE 16B needs 39.6% of the computations.
+- It is ahead on most benchmarks; the authors credit the maths, code and Chinese gaps to its corpus.
 
 </div>
-<div class="fig"><img src="img/week-07-v3-fig2-arch.png" alt="DeepSeek-V3 Figure 2: a Transformer block with an expanded DeepSeekMoE layer, shared experts 1 to N_s and routed experts 1 to N_r with a router and top-K_r choice, and the MLA attention block below"></div>
+<div class="fig">
+<table class="rules" style="font-size:19px">
+  <tr><td>16B vs LLaMA 2 7B</td><td>LLaMA 2 7B</td><td>MoE 16B</td></tr>
+  <tr><td>FLOPs per 4K tokens</td><td>187.9T</td><td>74.4T</td></tr>
+  <tr><td>Pile (BPB)</td><td>0.76</td><td>0.74</td></tr>
+  <tr><td>HellaSwag</td><td>75.6</td><td>77.1</td></tr>
+  <tr><td>HumanEval</td><td>14.6</td><td>26.8</td></tr>
+  <tr><td>MBPP</td><td>21.8</td><td>39.2</td></tr>
+  <tr><td>MMLU</td><td>45.8</td><td>45.0</td></tr>
+  <tr class="total"><td>CMMLU</td><td>32.6</td><td>42.5</td></tr>
+</table>
+</div>
 </div>
 
-<p class="footnote">DeepSeek-AI 2024 (DeepSeek-V3), arXiv:2412.19437 · §2.1.2, Eq. 13 to 15, Fig. 2. GPU: graphics processor. No reason or ablation for the sigmoid is given. MLA: its attention variant</p>
+<p class="footnote">Dai et al. 2024 · §5.3, Table 4 (7 of its 24 rows shown). HumanEval, MBPP: Python coding problems, pass rate on one try. CMMLU: Chinese multi-subject exam</p>
 
 Note:
-Week 4 had the counts, one shared plus 8 of 256, and the sigmoid. New here: 58 of 61 layers are MoE, the first three are dense (no reason is given in V3; DeepSeekMoE's reason for a dense first layer was that balance converges slowly there). The affinity is a sigmoid of a dot product with a learned expert vector, Equation 15, where DeepSeekMoE used a softmax. Because sigmoid scores do not sum to 1, the kept top 8 are divided by their sum, Equation 13. The paper gives no reason for the sigmoid and keeps it fixed in its ablations, so it is a control, not a tested choice.
-The node limit is new. Each token may go to at most M equals 4 nodes, chosen by the sum of the top K_r over M, that is 2, scores on each node. Why: links between servers (InfiniBand, 50 GB/s) are 3.2 times slower than links inside a server (NVLink, 160 GB/s), so the cap keeps the all-to-all exchange overlapped with computation. The paper notes a token could then use up to about 13 experts at the same communication cost, though it uses 8.
+LLaMA 2 7B has 6.7B parameters and was also trained on 2T tokens. DeepSeekMoE 16B has 245% of its total parameters but 39.6% of its computations, 74.4T against 187.9T FLOPs. The authors report it outperforms LLaMA 2 7B on the majority of the benchmarks. Maths and code are much stronger, HumanEval 26.8 against 14.6, which they attribute to the enriched maths and code text in their corpus. Chinese benchmarks are far ahead, as expected from the bilingual corpus. On English understanding and knowledge it is comparable or better, with MMLU a little lower at 45.0 against 45.8. Because the training corpora differ, the comparison does not isolate the architecture (ours); Table 3 is the cleaner test.
 
----
+--
 
-<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · Part 6, DeepSeek-V3 · §2.1.2 · balance without an auxiliary loss</p>
+<p class="eyebrow"><span class="paper">Dai et al. 2024</span> · §7 · Table 6 · optional</p>
 
-## How can you balance without an auxiliary loss?
-
-<div class="cols">
-<div class="text">
-
-- Each expert gets a bias $b_i$ that only affects which experts are chosen.
-- After each step, $b_i$ goes down by $\gamma$ if the expert was overloaded, up if underloaded.
-- $\gamma$ is 0.001, then 0 for the last 500B of 14.8T tokens. No tokens are dropped.
-- A tiny sequence-wise loss remains, with weight 0.0001.
-
-</div>
-<div class="text">
-
-<div class="eq">$$g'_{i,t} = \begin{cases} s_{i,t} & s_{i,t} + b_i \in \mathrm{Topk}(\{s_{j,t} + b_j\}, K_r)\\ 0 & \text{otherwise} \end{cases}$$</div>
-
-<dl class="where">
-<dt>$s_{i,t}$</dt><dd>token $t$'s affinity to routed expert $i$</dd>
-<dt>$b_i$</dt><dd>the bias of expert $i$, set by a controller, not by a gradient</dd>
-<dt>$K_r$</dt><dd>routed experts kept per token (8)</dd>
-<dt>$g'_{i,t}$</dt><dd>the score kept for expert $i$, before rescaling</dd>
-</dl>
-
-<p class="plain">In words: the bias changes who is asked, never how much their answer counts.</p>
-
-</div>
-</div>
-
-<p class="footnote">DeepSeek-AI 2024 · §2.1.2, Eq. 16 and Eq. 17 to 20, §4.2. Method credited to Wang et al. 2024, arXiv:2408.15664 (same group). Auxiliary loss: a penalty added to training that pushes load to be even</p>
-
-Note:
-The old fix for uneven expert load was an auxiliary loss, but a big one hurts the model. V3 instead adds a bias to each expert's score only when choosing the top 8. The value that multiplies the expert's output is still the original score s, with no bias. Check: if the bias were added to the weight too, balancing would change what the layer outputs, which is what the auxiliary loss did; here the bias only changes who is asked.
-The update is a controller, not a gradient: after each step, look at each expert's load over the whole batch, lower its bias by gamma if overloaded and raise it if underloaded. The paper gives no threshold for "overloaded" (presumably above the mean, ours). Gamma is 0.001 for the first 14.3T tokens and 0 for the last 0.5T, so the bias freezes. A small sequence-wise balance loss with weight 0.0001 remains, 10 to 100 times below DeepSeekMoE's 0.01, 0.001 and 0.003 coefficients (ours), just to avoid extreme imbalance inside one sequence. No tokens are dropped in training or inference. Credit: the method comes from Wang et al. 2024, same group; V3's contribution is using it at scale.
-
----
-
-<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · Part 6, DeepSeek-V3 · §4.5, Table 5 · ablation</p>
-
-## Does the bias beat the auxiliary loss, and why?
+## Does it hold at 145B?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- The bias wins 9 of 10 rows at 15.7B and 8 of 10 at 228.7B.
-- Control: a batch-wise auxiliary loss ties the bias (validation loss 2.253 at 1B, 2.080 at 3B, for both).
-- Sequence-wise: 2.258 and 2.085. So scope, not the bias, may do the work.
+- A preliminary run on only 245B tokens; 4 shared and 128 routed experts, 12 routed used.
+- With 28.5% of the computations, comparable to a dense 67B; the half-activated version uses 18.2%.
+
+</div>
+</div>
+
+<table class="rules tight" style="font-size:19px">
+  <tr><td>245B tokens</td><td>dense 67B</td><td>DeepSeekMoE 145B</td><td>142B, half activated</td></tr>
+  <tr><td>activated parameters</td><td>67.4B</td><td>22.2B</td><td>12.2B</td></tr>
+  <tr><td>FLOPs per 4K tokens</td><td>2057.5T</td><td>585.6T</td><td>374.6T</td></tr>
+  <tr><td>Pile (loss)</td><td>1.905</td><td><b>1.876</b></td><td>1.888</td></tr>
+  <tr><td>HellaSwag</td><td>74.8</td><td><b>75.8</b></td><td>74.9</td></tr>
+  <tr><td>TriviaQA</td><td>57.2</td><td><b>61.1</b></td><td>59.8</td></tr>
+  <tr><td>GSM8K</td><td>11.8</td><td>12.2</td><td>13.8</td></tr>
+  <tr class="total"><td>MMLU</td><td>45.1</td><td>39.4</td><td>37.5</td></tr>
+</table>
+</div>
+
+<p class="footnote">Dai et al. 2024 · §7, Table 6 (7 of its 27 rows shown). The paper calls this "ongoing", not a final model. Half activated: 2 shared and 6 of 128 routed used</p>
+
+Note:
+The last section is a preliminary run, marked ongoing by the authors: 62 layers, 144.6B total and 22.2B active parameters, trained on only 245 billion tokens. Compared with a dense 67B model, the paper says that with 28.5% of the computations DeepSeekMoE 145B achieves comparable performance: better on Pile loss, 1.876 against 1.905, and on knowledge such as TriviaQA, worse on MMLU, 39.4 against 45.1. The half-activated variant, 2 shared and 6 of 128 routed, uses 18.2% of the computation and still matches the dense model on much of the table, though MMLU falls to 37.5. The paper repeats the pattern from 16B: strong on language modelling and knowledge, weak on multiple choice. A short training run with a constant learning rate, so treat it as a first look (ours).
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §1 · Table 1</p>
+
+## What did DeepSeek-V3 cost to train?
+
+<div class="rows">
+<table class="rules">
+  <tr><td>training costs</td><td>pre-training</td><td>context extension</td><td>post-training</td><td>total</td></tr>
+  <tr><td>H800 GPU hours</td><td>2664K</td><td>119K</td><td>5K</td><td>2788K</td></tr>
+  <tr class="total"><td>USD</td><td>5.328M</td><td>0.238M</td><td>0.01M</td><td>5.576M</td></tr>
+</table>
+<p class="plain">14.8T tokens of pre-training at 180K GPU hours per trillion tokens; USD at a rental price of 2 USD per GPU hour.</p>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 (DeepSeek-V3), arXiv:2412.19437 · §1, Table 1. H800: an Nvidia datacentre GPU. Context extension: further training on longer inputs</p>
+
+Note:
+Now DeepSeek-V3, only its mixture-of-experts parts. The introduction's cost table. Pre-training took 2664K H800 GPU hours, context extension 119K and post-training 5K, 2788K in all, which is 5.576 million USD at an assumed 2 USD per GPU hour. The text gives 180K GPU hours per trillion tokens, which is 3.7 days on their cluster of 2048 GPUs, so pre-training finished in under two months. The paper says this is the result of co-design of algorithms, frameworks and hardware. Read it as a rental price for the official run, not a bill: the paper says the costs exclude prior research and ablation experiments on architectures, algorithms or data. The MoE choices in this section are part of that co-design.
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §2 · Fig. 2</p>
+
+## Where do the experts sit in DeepSeek-V3?
+
+<div class="rows">
+<div class="fig"><img src="img/week-07-v3-fig2-arch.png" alt="DeepSeek-V3 Figure 2: a Transformer block with a DeepSeekMoE layer, shared experts 1 to N_s and routed experts 1 to N_r with a router and top-K_r choice, below a multi-head latent attention block"></div>
+<p class="plain">Each feed-forward layer is a DeepSeekMoE layer: shared experts, plus routed experts chosen by a router.</p>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 · §2, Fig. 2. MLA (multi-head latent attention): its attention variant, not covered here</p>
+
+Note:
+Figure 2 is V3's architecture: a Transformer with multi-head latent attention, which compresses keys and values to shrink the cache, and DeepSeekMoE feed-forward layers. The expanded layer shows shared experts one to N_s on the left, always on, and routed experts one to N_r on the right, with a router that picks the top K_r. The paper says both were thoroughly validated in DeepSeek-V2, and that the exception is a new auxiliary-loss-free load balancing strategy. Counts from the text elsewhere: 61 layers, the first three dense, and in the others one shared and 256 routed experts with 8 routed used. The next slides give the equations and the new balancing.
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §2.1.2 · Eq. 12 to 15</p>
+
+## What is the DeepSeekMoE layer in V3?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$\begin{aligned} \mathbf{h}'_t &= \mathbf{u}_t + \sum_{i=1}^{N_s} \mathrm{FFN}^{(s)}_i(\mathbf{u}_t) + \sum_{i=1}^{N_r} g_{i,t}\,\mathrm{FFN}^{(r)}_i(\mathbf{u}_t) \\ g_{i,t} &= \frac{g'_{i,t}}{\sum_{j=1}^{N_r} g'_{j,t}} \\ g'_{i,t} &= \begin{cases} s_{i,t}, & s_{i,t} \in \mathrm{Topk}(\{s_{j,t} \mid 1 \le j \le N_r\}, K_r) \\ 0, & \text{otherwise} \end{cases} \\ s_{i,t} &= \mathrm{Sigmoid}(\mathbf{u}_t^{\top} \mathbf{e}_i) \end{aligned}$$</div>
 
 </div>
 <div class="text">
 
-- Single runs; the control only at 1B and 3B.
+<dl class="where">
+<dt>$\mathbf{u}_t$, $\mathbf{h}'_t$</dt><dd>layer input and output for token $t$</dd>
+<dt>$N_s$, $N_r$, $K_r$</dt><dd>shared and routed experts, and routed used per token; $\mathrm{FFN}^{(s)}_i$, $\mathrm{FFN}^{(r)}_i$ are the $i$-th of each</dd>
+<dt>$s_{i,t}$, $\mathbf{e}_i$</dt><dd>affinity, and the centroid vector of routed expert $i$</dd>
+<dt>$g'_{i,t}$, $g_{i,t}$</dt><dd>gate before and after normalising the selected ones</dd>
+</dl>
+
+<p class="plain">Differs from DeepSeekMoE: sigmoid scores, normalised over the chosen experts.</p>
 
 </div>
 </div>
 
-<table class="rules">
-  <tr><td>aux loss vs bias</td><td>15.7B aux</td><td>15.7B bias</td><td>228.7B aux</td><td>228.7B bias</td></tr>
-  <tr><td>Pile (BPB)</td><td>0.727</td><td><b>0.724</b></td><td>0.656</td><td><b>0.652</b></td></tr>
-  <tr><td>MMLU</td><td>51.0</td><td><b>51.8</b></td><td><b>68.3</b></td><td>67.2</td></tr>
-  <tr><td>HumanEval</td><td>22.0</td><td><b>22.6</b></td><td>40.2</td><td><b>46.3</b></td></tr>
-  <tr class="total"><td>GSM8K</td><td>27.1</td><td><b>29.6</b></td><td>70.7</td><td><b>74.5</b></td></tr>
-</table>
-</div>
-
-<p class="footnote">DeepSeek-AI 2024 · §4.5, Table 5; control in the text after Fig. 9 (counts are ours). BPB: bits per byte, lower is better. HumanEval: 164 Python problems, Pass@1. GSM8K: grade-school math word problems, exact match</p>
+<p class="footnote">DeepSeek-AI 2024 · §2.1.2, Eq. 12 to 15. Sigmoid: squashes a score into 0 to 1; unlike softmax, the scores need not sum to 1</p>
 
 Note:
-The ablation: two baselines, 15.7B total on 1.33T tokens and 228.7B on 578B tokens, trained only with auxiliary losses, then the same models with the losses replaced by the bias. The bias is better on 9 of 10 benchmarks at the small size and 8 of 10 at the large one. Pile bits per byte improves by only 0.003 and 0.004, about half a percent. At 228.7B several rows move by a point or more: HumanEval plus 6.1 (ten problems out of 164, ours), GSM8K plus 3.8, MATH plus 2.4; MMLU goes down 1.1. The auxiliary-loss coefficients are given only by reference to DeepSeek-V2.
-A correction to a Week 4 note: it said the gain was mostly under a point; that is true at 15.7B but at 228.7B seven of nine non-Pile rows gain a point or more for the bias (MMLU loses 1.1).
-The control is the important part. A batch-wise auxiliary loss, balancing over a batch rather than each sequence, matches the bias at 1B and 3B: validation loss 2.253 and 2.253, 2.080 and 2.080, against 2.258 and 2.085 for the sequence-wise loss. So the gain is consistent with batch-wise scope rather than the bias itself, shown at two small sizes with no seeds. The cost of batch-wise balance: imbalance inside a sequence, and under domain shift at inference; V3 answers with large batches and 32 redundant copies of busy experts when serving (in prefilling; decoding keeps 64 of 320 GPUs for redundant and shared experts).
+The same structure as DeepSeekMoE: the input plus all shared experts plus the gated routed experts. The paper says compared with traditional designs, DeepSeekMoE uses finer-grained experts and isolates some as shared. The difference from the earlier paper is slight: V3 computes the affinity with a sigmoid rather than a softmax, and then normalises among the selected affinity scores to give the gating values, so the chosen ones sum to one. The paper states this is slightly different from DeepSeek-V2 and gives no reason or ablation for the sigmoid. All of its ablations keep it fixed, so it acts as a control, not a tested choice (ours).
 
 ---
 
-<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · Part 6, DeepSeek-V3 · §4.5, Fig. 9 · expert load</p>
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §2.1.2 · auxiliary-loss-free balancing</p>
 
-## Do V3's experts specialise by domain?
+## How can load be balanced without an auxiliary loss?
+
+<div class="cols">
+<div class="text">
+
+<div class="eq">$$g'_{i,t} = \begin{cases} s_{i,t}, & s_{i,t} + b_i \in \mathrm{Topk}(\{s_{j,t} + b_j \mid 1 \le j \le N_r\}, K_r) \\ 0, & \text{otherwise} \end{cases}$$</div>
+
+</div>
+<div class="text">
+
+<dl class="where">
+<dt>$b_i$</dt><dd>a bias for routed expert $i$, used only to choose experts</dd>
+<dt>$s_{i,t}$</dt><dd>the original affinity, still the value that multiplies the output</dd>
+<dt>$g'_{i,t}$, $N_r$, $K_r$</dt><dd>gate before normalising; routed experts, and how many are used per token</dd>
+</dl>
+
+<p class="plain">After each step, lower $b_i$ by $\gamma$ if expert $i$ was overloaded, raise it by $\gamma$ if underloaded.</p>
+
+</div>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 · §2.1.2, Eq. 16, and §4.2. $\gamma$ is the bias update speed: 0.001 for the first 14.3T tokens, then 0. Auxiliary loss: a penalty added to training that pushes load to be even</p>
+
+Note:
+Conventional solutions use an auxiliary loss to avoid unbalanced load, but the paper says too large an auxiliary loss impairs model performance. Instead, each routed expert gets a bias that is added to its affinity only when picking the top K_r. The bias is only used for routing: the gate value that multiplies the expert's output is still derived from the original affinity. During training, the load of each expert is monitored over the whole batch of each step, and at the end of the step the bias is decreased by gamma for an overloaded expert and increased by gamma for an underloaded one. Gamma, the bias update speed, is 0.001 for the first 14.3T tokens and 0 for the remaining 500B. The method is credited to a companion paper from the same group. The paper gives no threshold for overloaded (ours).
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §2.1.2 · Eq. 17 to 20</p>
+
+## Is there still a balance loss?
+
+<div class="rows">
+<div class="eq">$$\begin{aligned} \mathcal{L}_{\mathrm{Bal}} &= \alpha \sum_{i=1}^{N_r} f_i P_i, \qquad f_i = \frac{N_r}{K_r T} \sum_{t=1}^{T} \mathbb{1}\big(s_{i,t} \in \mathrm{Topk}(\{s_{j,t} | 1 \leq j \leq N_r\}, K_r)\big), \\ s'_{i,t} &= \frac{s_{i,t}}{\sum_{j=1}^{N_r} s_{j,t}}, \qquad P_i = \frac{1}{T} \sum_{t=1}^{T} s'_{i,t} \end{aligned}$$</div>
+<dl class="where">
+<dt>$\alpha$</dt><dd>balance factor, 0.0001</dd>
+<dt>$N_r$, $K_r$, $T$</dt><dd>routed experts, used per token, tokens in the sequence</dd>
+<dt>$s_{i,t}$, $s'_{i,t}$</dt><dd>router score of expert $i$ for token $t$, and the scores normalised to sum to one</dd>
+<dt>$f_i$, $P_i$</dt><dd>load fraction and mean normalised score of expert $i$</dd>
+</dl>
+<p class="plain">A tiny loss that balances inside each sequence.</p>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 · §2.1.2, Eq. 17 to 20, and §4.2. $\mathbb{1}(\cdot)$ is 1 if the statement is true and 0 otherwise</p>
+
+Note:
+V3 mainly relies on the bias, but adds a complementary sequence-wise balance loss to prevent extreme imbalance within any single sequence. It has the same form as the expert-level loss in DeepSeekMoE: load fraction times mean score, summed over the routed experts, but computed per sequence, with the scores normalised to sum to one. The paper says the balance factor alpha is an extremely small value, and in the hyper-parameters section it is 0.0001, just to avoid extreme imbalance within any single sequence. The earlier paper used 0.01, 0.001 and 0.003 for its expert-level factor, so this is 10 to 100 times smaller (ours). The contrast the paper draws later: this loss balances per sequence, while the bias balances over a whole batch.
+
+--
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §2.1.2 · node-limited routing · optional</p>
+
+## How is the communication kept cheap?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- **Node-limited routing**: each token goes to at most $M$ nodes, chosen by the sum of the highest $K_r / M$ affinities of the experts on each node. $M = 4$.
+- Routed experts sit on 64 GPUs in 8 nodes. This gives nearly full overlap of computation and communication.
+
+</div>
+<div class="text">
+
+- **No token dropping**, in training or in inference, because the load balance is good enough.
+
+</div>
+</div>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 · §2.1.2 and §4.2. Node: one server holding several GPUs. Token dropping: discarding tokens sent to an expert that is already full</p>
+
+Note:
+Two more MoE details from the architecture section. Like the device-limited routing in DeepSeek-V2, V3 limits communication cost in training: each token is sent to at most M nodes, chosen according to the sum of the highest K_r over M affinity scores of the experts on each node. With this constraint the training framework can nearly achieve full computation-communication overlap. In the hyper-parameters, the routed experts of each layer are spread uniformly over 64 GPUs on 8 nodes, and M is 4. And because the load balancing is effective, no tokens are dropped during training; the paper adds that specific deployment strategies keep inference balanced, so nothing is dropped there either.
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §4.5 · Table 5</p>
+
+## Does the bias beat the auxiliary loss?
+
+<div class="rows">
+<div class="points">
+<div class="text">
+
+- Small: 15.7B on 1.33T tokens; large: 228.7B on 578B. Only the balancing differs.
+
+</div>
+<div class="text">
+
+- Control: a batch-wise auxiliary loss ties the bias at 1B and 3B.
+
+</div>
+</div>
+
+<table class="rules tight" style="font-size:14px">
+  <tr><td>benchmark (metric)</td><td>small, aux loss</td><td>small, bias</td><td>large, aux loss</td><td>large, bias</td></tr>
+  <tr><td>Pile-test (BPB)</td><td>0.727</td><td><b>0.724</b></td><td>0.656</td><td><b>0.652</b></td></tr>
+  <tr><td>BBH (EM)</td><td>37.3</td><td><b>39.3</b></td><td>66.7</td><td><b>67.9</b></td></tr>
+  <tr><td>MMLU (EM)</td><td>51.0</td><td><b>51.8</b></td><td><b>68.3</b></td><td>67.2</td></tr>
+  <tr><td>DROP (F1)</td><td>38.1</td><td><b>39.0</b></td><td><b>67.1</b></td><td><b>67.1</b></td></tr>
+  <tr><td>TriviaQA (EM)</td><td><b>58.3</b></td><td><b>58.5</b></td><td>66.7</td><td><b>67.7</b></td></tr>
+  <tr><td>NaturalQuestions (EM)</td><td><b>23.2</b></td><td><b>23.4</b></td><td>27.1</td><td><b>28.1</b></td></tr>
+  <tr><td>HumanEval (Pass@1)</td><td>22.0</td><td><b>22.6</b></td><td>40.2</td><td><b>46.3</b></td></tr>
+  <tr><td>MBPP (Pass@1)</td><td><b>36.6</b></td><td>35.8</td><td>59.2</td><td><b>61.2</b></td></tr>
+  <tr><td>GSM8K (EM)</td><td>27.1</td><td><b>29.6</b></td><td>70.7</td><td><b>74.5</b></td></tr>
+  <tr class="total"><td>MATH (EM)</td><td><b>10.9</b></td><td><b>11.1</b></td><td>37.2</td><td><b>39.6</b></td></tr>
+</table>
+</div>
+
+<p class="footnote">DeepSeek-AI 2024 · §4.5, Table 5 and the text after it. BBH: hard multi-step reasoning tasks. DROP: reading comprehension with arithmetic. MATH: competition maths. HumanEval, MBPP: Python problems</p>
+
+Note:
+The ablation validates the bias on two baselines that use only auxiliary losses and sigmoid gating with normalisation, with the same data and architecture, so only the balancing method changes. The paper's reading: the bias consistently achieves better performance on most benchmarks. The size of the effect (ours): Pile bits per byte improves by 0.003 and 0.004, while at the large size HumanEval gains 6.1 points and GSM8K 3.8, and MMLU loses 1.1. Single runs, no error bars. The text after the figure adds the control: a batch-wise auxiliary loss reaches the same validation loss as the bias, 2.253 at 1B and 2.080 at 3B, against 2.258 and 2.085 for the sequence-wise loss. So the gain is consistent with balancing over a batch rather than over each sequence (ours), shown only at two small sizes.
+
+---
+
+<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · §4.5 · Fig. 9</p>
+
+## Do the experts specialise by domain?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- **Relative expert load**: an expert's actual load divided by the perfectly balanced load.
-- Auxiliary-loss model: load is even for Wikipedia, GitHub and DM Mathematics.
-- Bias model: some experts run hot for one domain, many others sit near zero.
-- A picture, no number. These domains differ in token types too (code, digits).
+- Relative expert load: actual load divided by the perfectly balanced load.
+- Auxiliary-loss model: even on all three domains.
+- Bias model: some experts run hot for one domain, many sit near zero.
 
 </div>
 <div class="fig"><img src="img/week-07-v3-fig9-load.png" alt="Heat maps of relative expert load for 64 experts on three Pile domains in layers 9 and 18, for an auxiliary-loss model (even, pale) and the auxiliary-loss-free model (a few hot columns per domain)"></div>
 </div>
 
-<p class="footnote">DeepSeek-AI 2024 · §4.5, Fig. 9 (two layers of 16B models, Pile test set; appendix has all layers). Wikipedia: encyclopedia text. GitHub: code. DM Mathematics: generated school maths questions. Confounds are ours</p>
+<p class="footnote">DeepSeek-AI 2024 · §4.5, Fig. 9 (two layers of 16B models, Pile test set). Wikipedia: encyclopedia text. GitHub: code. DM Mathematics: generated school maths questions. A picture, no number (ours)</p>
 
 Note:
-The authors' claim: balancing per batch is more flexible than per sequence, so experts can specialise by domain. They record the load of a 16B auxiliary-loss model and a 16B bias model on three domains of the Pile test set. In the auxiliary-loss panels every domain uses every expert about evenly. In the bias panels there are hot cells, for example one expert near the top of the colour scale (about 10 times balanced load) for DM Mathematics in layer 9, and several for GitHub, and many pale cells.
-What it does not show: it is visual, with no number; the comparison changes both the balancing scope and the method; no load map for the batch-wise auxiliary loss is given; and the domains differ in token types, so some of this may be token-type routing, not topic routing. Contrast with Mixtral, where the routing analysis found no clear topic experts: per-sequence balance may hide domain experts, though Mixtral's own balancing method is not stated.
-
---
-
-<p class="eyebrow"><span class="paper">DeepSeek-AI 2024</span> · Part 6, DeepSeek-V3 · Table 1 · cost</p>
-
-## What did V3 cost to train?
-
-<div class="cols wide-text">
-<div class="text">
-
-- 2.788M H800 GPU hours, about 5.576M USD at an assumed 2 USD per hour.
-- About 180K GPU hours per trillion tokens, for 14.8T tokens.
-- The figure leaves out "prior research and ablation experiments".
-
-</div>
-<div class="fig">
-<table class="rules">
-  <tr><td>stage</td><td>GPU hours</td><td>USD at 2 per hour</td></tr>
-  <tr><td>pre-training</td><td>2,664K</td><td>5.328M</td></tr>
-  <tr><td>context extension</td><td>119K</td><td>0.238M</td></tr>
-  <tr><td>post-training</td><td>5K</td><td>0.01M</td></tr>
-  <tr class="total"><td>total</td><td>2,788K</td><td>5.576M</td></tr>
-</table>
-</div>
-</div>
-
-<p class="footnote">DeepSeek-AI 2024 · §1, Table 1. H800: an Nvidia datacentre GPU. Dollars are a rental-price conversion, not a bill (ours). DualPipe (overlapping compute and expert all-to-all) and multi-token prediction (§2.2) are pointers only</p>
-
-Note:
-Optional. The headline cost: 2,664K H800 hours for pre-training, 119K for context extension, 5K for post-training, 2,788K in all, converted at an assumed 2 USD per hour to 5.576 million USD. The arithmetic checks (ours): 2,664K over 14.8T tokens is 180K per trillion, 3.7 days on 2,048 GPUs. The paper's own caveat: this includes only the official training run, not the research and ablations that led to it, and the dollar figure is a rental price. The MoE-relevant point is the claim that co-design lets them use fine-grained experts across nodes with near-zero all-to-all overhead. Two pointers only: DualPipe overlaps forward and backward computation with the expert all-to-all, and multi-token prediction trains the model to predict one extra token ahead.
+The paper's argument: batch-wise balancing is a more flexible constraint than per-sequence balancing, because it does not enforce balance within each sequence, so experts can specialise by domain. To test it, they record the load of a 16B auxiliary-loss model and a 16B bias model on three domains of the Pile test set. The relative expert load is the actual load over the balanced load. In the auxiliary-loss panels each domain uses the experts about evenly; in the bias panels the paper reports greater specialisation patterns, with hot columns for some domains. Caveats (ours): it is visual with no number, the comparison changes the method as well as the scope, and the domains also differ in token types, such as code and digits. The paper notes that batch-wise balance risks imbalance inside a sequence and under domain shift at inference, and answers with large batches and redundant experts when serving.
 
 
 ---
 
 
-<p class="eyebrow"><span class="paper">Per-layer embeddings</span> · Part 7 · another way to store more than you use</p>
+<p class="eyebrow"><span class="paper">Gemma 4 report</span> · §2 · Dense and MoE</p>
 
-## What is a per-layer embedding, and why can it leave the GPU?
+## What does the Gemma 4 report say about per-layer embeddings?
 
-<div class="cols wide-fig">
-<div class="text">
-
-- A second table, read by **token id**: one 256-number vector per token for every layer.
-- Nothing is routed. Google's stated purpose: keep the table off the accelerator, in CPU memory or fast storage.
-- Why it can leave (ours): rows are known from token ids before the forward pass; experts only after the router runs.
-
-<div class="eq">$$h \leftarrow h + \mathrm{RMSNorm}\big(W_{\rm up}\,(\mathrm{GELU}(W_{\rm gate}\,h) \odot p_{t,j})\big)$$</div>
-
-<dl class="where">
-<dt>$h$</dt><dd>the hidden state of width $d$</dd>
-<dt>$W_{\rm gate}$, $W_{\rm up}$</dt><dd>matrices from $d$ down to 256 and back</dd>
-<dt>$p_{t,j}$</dt><dd>token $t$'s 256-number vector for layer $j$, built from the table row</dd>
-<dt>GELU, RMSNorm, $\odot$</dt><dd>a smooth activation, a normalisation, an elementwise product</dd>
-</dl>
-
-</div>
-<div class="fig"><img src="img/week-07-ple-params.png" alt="Stacked bars of parameters for Gemma 4 E2B (5.07B total, 2.27B effective) and E4B (7.88B total, 4.61B effective), split into transformer weights, main embedding, per-layer table and audio and vision encoders"></div>
+<div class="rows">
+<div class="fig"><img src="img/week-07-gemma4-sec2-dense-moe.png" alt="The Dense and MoE paragraph of the Gemma 4 report: E2B and E4B use per-layer embeddings as in Gemma 3n, making them 2.3B and 4.5B effective out of 5B and 8B total parameters"></div>
+<p class="plain">Two small models, 2.3B and 4.5B effective, stored as 5B and 8B in total.</p>
 </div>
 
-<p class="footnote">Gemma 4 report, arXiv:2607.02770, parameter table; Gemma 3n documentation. Table size $262{,}144 \times (L \cdot 256)$, $L$ layers. <b>Effective</b> parameters: those that must sit on the accelerator. Bars: ours</p>
+<p class="footnote">Gemma Team, "Gemma 4 Technical Report", arXiv:2607.02770, §2. <b>Effective</b> parameters: Google's term (Gemma 3n documentation) for the reduced set of parameters the model runs with in memory. The report has no figure of its own on this</p>
 
 Note:
-Per-layer embeddings (PLE) come from Gemma 3n and are used in the Gemma 4 E2B and E4B models. It is not a mixture of experts, but it answers the same question: how to store more parameters than you use per token. The table has one row per vocabulary item, 262,144 rows, and each row packs a 256-number vector for every layer side by side, so its width is the number of layers times 256. The vector is mixed with a projection of the ordinary embedding and scaled by one over root two. In each layer of Gemma 4 a small gated add-on uses it: the hidden state goes down to 256 numbers through W_gate, through GELU, is multiplied by the layer's vector, goes back up through W_up, is normalised and added to the hidden state. Gemma 3n adds it to its extra residual streams instead.
-Why it can leave the accelerator: the rows a batch needs are known from the token ids before the forward pass, so they can be fetched from CPU memory or fast storage ahead of time. An expert is known only once that layer's router has run, so experts must sit in fast memory, or be fetched late, which is why expert offloading leans on locality. This is Google's stated purpose; the open-source reference code itself does not offload. So there is a third count beside total and active parameters: effective parameters, the ones that must sit on the accelerator. In the picture, E2B is 5.07B total and 2.27B effective, E4B 7.88B total and 4.61B effective (report table, helper drafter excluded, effective sum ours).
+This is everything the Gemma 4 report says about per-layer embeddings in its text: one sentence. The small models, E2B and E4B, use per-layer embeddings as in Gemma 3n, which makes them 2.3 billion and 4.5 billion effective parameters out of 5 billion and 8 billion in total. The report does not explain the mechanism and has no figure for it; it points to the Gemma 3n release. The Gemma 3n documentation says the E prefix means the model can run with a reduced set of effective parameters, and that the per-layer embedding parameters can be generated outside the model's operating memory, cached in fast storage, and added as each layer runs. The documentation's stated purpose: keep them out of the model's memory space. (ours) It is not a mixture of experts: nothing is routed, a table is read by token. (ours) We found no comparison with and without the table in the report, the documentation or the blog, so the quality benefit is Google's claim here, not something we can check.
 
 --
 
-<p class="eyebrow"><span class="paper">Per-layer embeddings</span> · Part 7 · how big, and what is the evidence?</p>
+<p class="eyebrow"><span class="paper">Gemma 4 report</span> · Table 1 · optional</p>
 
-## How big are the tables, and does PLE improve quality?
+## How many parameters sit in the per-layer tables?
 
-<div class="cols wide-text">
-<div class="text">
-
-- The per-layer table is 46% of E2B's total parameters and 36% of E4B's (ours).
-- The report says 2.3B and 4.5B effective; its own table gives 2.27B and 4.61B.
-- Gemma 3n E2B: 5.44B loaded normally, 1.91B with PLE cached and vision and audio encoders skipped.
-- No source ablates PLE: "dramatically improves model quality" is Google's claim.
-
-</div>
-<div class="fig">
-<table class="rules">
-  <tr><td>Gemma 4 (millions)</td><td>E2B</td><td>E4B</td></tr>
-  <tr><td>per-layer table</td><td>2,340</td><td>2,820</td></tr>
-  <tr><td>total</td><td>5,065</td><td>7,885</td></tr>
-  <tr><td>share of total</td><td>46%</td><td>36%</td></tr>
-  <tr><td>stated effective</td><td>2.3B</td><td>4.5B</td></tr>
-  <tr class="total"><td>transformer + main embedding</td><td>2,270</td><td>4,610</td></tr>
+<div class="rows">
+<table class="rules tight" style="font-size:20px">
+  <tr><td>Model</td><td>Audio encoder</td><td>Vision encoder</td><td>Embedder</td><td>Einsums</td><td>Drafter</td></tr>
+  <tr><td><b>E2B</b></td><td>305M</td><td>150M</td><td>400M + 2,340M</td><td>1,870M</td><td>76M</td></tr>
+  <tr><td><b>E4B</b></td><td>305M</td><td>150M</td><td>670M + 2,820M</td><td>3,940M</td><td>77M</td></tr>
 </table>
-</div>
+<p class="plain">The extra embedder parameters in E2B and E4B are per-layer embeddings.</p>
 </div>
 
-<p class="footnote">Gemma 4 report, parameter table (drafter excluded); Gemma 3n documentation, Fig. 1. Sums and shares are ours. Ablation: the same model trained with and without one component, to isolate its effect</p>
+<p class="footnote">Gemma 4 report, Table 1 (rows for E2B and E4B). The vocabulary has 262k entries. The report does not define "Einsums"; the drafter is a small helper model</p>
 
 Note:
-The numbers. In the Gemma 4 report's table the per-layer tables are 2,340M for E2B and 2,820M for E4B. Adding the audio encoder, vision encoder, main embedder, per-layer table and transformer matrices gives 5,065M and 7,885M, so the per-layer tables are 46% and 36% (ours). Effective is the transformer matrices plus the main embedding: 1,870 plus 400 is 2,270M for E2B, which matches the stated 2.3B; for E4B, 3,940 plus 670 is 4,610M, which does not round to the stated 4.5B (ours). The report's memory table also seems to count effective parameters only: 4.6 GB for E2B in 16-bit is 2.3B parameters.
-For Gemma 3n E2B the documentation figure shows 5.44B loaded in standard execution against 1.91B with PLE caching and with the vision and audio encoders skipped; PLE alone is 2.55B of the difference (that figure likely also includes the ordinary token embedding, ours). One popular annotation says this compares against "Gemma 3 4B"; the documentation names it E2B, so that annotation is wrong. On quality: none of the sources, report, documentation or blog, shows a model with and without PLE, so the quality claim is untested here.
+These are the E2B and E4B rows of the report's parameter table. The embedder column has two numbers: the first is the ordinary embedding, the second, the one the caption calls per-layer embeddings. For E2B that is 400 million plus 2,340 million, for E4B 670 million plus 2,820 million. (ours) Adding all columns except the drafter gives 5,065 million and 7,885 million, matching the stated 5B and 8B, so the per-layer tables are 46 percent and 36 percent of the total. (ours) Einsums plus the ordinary embedder gives 2,270 million for E2B, matching the stated 2.3B, but 4,610 million for E4B, which does not round to the stated 4.5B. The report does not define Einsums; we read it as the transformer matrices. (ours) The report's memory table also looks like it counts effective parameters only: 4.6 GB in 16-bit for E2B is 2.3 billion parameters.
 
 
 ---
@@ -1439,7 +1579,7 @@ One table across the readings. Reading across: the number of experts per layer r
   <tr><td>claim</td><td>source</td><td>status today</td></tr>
   <tr><td>13B active matches 70B</td><td>Mixtral</td><td>holds on most of their benchmarks, cause untested</td></tr>
   <tr><td>no topic experts</td><td>Mixtral</td><td>challenged by V3 Fig. 9, not settled</td></tr>
-  <tr><td>fine-grained plus shared beats GShard at matched size</td><td>DeepSeekMoE Table 1</td><td>holds at 2B, single runs</td></tr>
+  <tr><td>fine-grained plus shared beats a conventional top-2 MoE at matched size</td><td>DeepSeekMoE Table 1</td><td>holds at 2B, single runs</td></tr>
   <tr><td>bias balancing beats the auxiliary loss</td><td>V3 Table 5</td><td>holds in two ablations; a small control points to batch-wise scope</td></tr>
   <tr class="total"><td>PLE improves quality</td><td>Google</td><td>untested: no ablation in the sources</td></tr>
 </table>
@@ -1447,7 +1587,7 @@ One table across the readings. Reading across: the number of experts per layer r
 <p class="footnote">Mixtral: Jiang et al. 2024. DeepSeekMoE: Dai et al. 2024, Table 1. V3: DeepSeek-AI 2024, Table 5, Fig. 9. PLE: Gemma 3n documentation and developer blog. Verdicts are ours</p>
 
 Note:
-The verdicts in one table. Mixtral's headline, that 13B active parameters match a 70B dense model, holds on most of the benchmarks they ran (ahead on 9 of 12 in their main table, ours), but no matched dense run isolates the cause. Its claim that routing shows no topic experts is challenged by V3's Figure 9, which shows domain-hot experts, but with confounds (token types, method and scope changed together), so it is not settled. DeepSeekMoE's win over GShard holds at 2B and 100B tokens in single runs. V3's bias beats the auxiliary loss in two ablations, but a control shows a batch-wise auxiliary loss ties it at 1B and 3B, which points to the balancing scope. "PLE improves quality" is Google's claim with no ablation in any source we read, so it is open.
+The verdicts in one table. Mixtral's headline, that 13B active parameters match a 70B dense model, holds on most of the benchmarks they ran (ahead on 9 of 12 in their main table, ours), but no matched dense run isolates the cause. Its claim that routing shows no topic experts is challenged by V3's Figure 9, which shows domain-hot experts, but with confounds (token types, method and scope changed together), so it is not settled. DeepSeekMoE's win over a conventional top-2 MoE of the same size holds at 2B and 100B tokens in single runs. V3's bias beats the auxiliary loss in two ablations, but a control shows a batch-wise auxiliary loss ties it at 1B and 3B, which points to the balancing scope. "PLE improves quality" is Google's claim with no ablation in any source we read, so it is open.
 
 ---
 
@@ -1485,7 +1625,7 @@ In their own words, as far as they say them. Mixtral admits that all experts mus
 <p class="footnote">The first question is the week's opening one (does stored capacity count like dense capacity?). Batch size 1: one request at a time, as on a phone or laptop</p>
 
 Note:
-Four directions the readings point to. First, the week's opening question: does stored sparse capacity count like dense capacity? DeepSeekMoE answers at 2B and 100B tokens, and against a dense 7B on the same 2T tokens; Mixtral has no matched dense model. Second, why routers specialise: Mixtral saw syntax-like patterns, V3 saw domain-hot experts, and neither tests a cause. Third, granularity: only DeepSeekMoE varies it (16, 32 and 64 experts at 2B, its ablation figure); Mixtral's 8 and V3's 257 are not ablated. Fourth, cost at batch size 1: with one request, few experts are used but all must be in memory, which is where per-layer embeddings, fetched by token id, offer a different trade.
+Four directions the readings point to. First, the week's opening question: does stored sparse capacity count like dense capacity? DeepSeekMoE answers at 2B and 100B tokens, and against a dense 7B on the same 2T tokens; Mixtral has no matched dense model. Second, why routers specialise: Mixtral saw syntax-like patterns, V3 saw domain-hot experts, and neither tests a cause. Third, granularity: only DeepSeekMoE varies it (16, 32 and 64 experts at 2B, in its ablation); Mixtral's 8 and V3's 257 are not ablated. Fourth, cost at batch size 1: with one request, few experts are used but all must be in memory, which is where per-layer embeddings, fetched by token id, offer a different trade.
 
 ---
 
