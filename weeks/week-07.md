@@ -4,7 +4,7 @@
 <p class="subtitle">Mixture of Experts and Sparse Models</p>
 
 Note:
-Mixture of experts: how to store far more parameters than each token uses. First the layer built step by step, then three readings: Mixtral, the Cai et al. survey, and the DeepSeek line, and a last slide on per-layer embeddings.
+Mixture of experts: how to store far more parameters than each token uses. Three readings, Mixtral, the Cai et al. survey and the DeepSeek line, each in its own order, and a last look at per-layer embeddings.
 
 
 ---
@@ -18,7 +18,6 @@ Mixture of experts: how to store far more parameters than each token uses. First
 
 <table class="rules">
   <tr><td>reading</td><td>the question it asks</td></tr>
-  <tr><td>GShard 2021 (background)</td><td>how do you send a token to an expert?</td></tr>
   <tr><td>Mixtral 2024</td><td>can 13B parameters per token match 70B?</td></tr>
   <tr><td>Cai et al. 2024 (survey)</td><td>what would you have to decide to build one?</td></tr>
   <tr><td>DeepSeekMoE and V3 2024</td><td>what changes when experts are many and small?</td></tr>
@@ -30,699 +29,14 @@ Mixture of experts: how to store far more parameters than each token uses. First
 
 - A **mixture of experts** (MoE) stores many feed-forward networks and sends each token to only a few.
 - A **feed-forward network** (FFN) is the two-layer block that follows attention in every Transformer layer.
-- Week 6 said loss falls with parameters and cost grows with parameters; a mixture of experts splits the two.
 
 </div>
 </div>
 
-<p class="footnote">arXiv IDs: GShard 2006.16668, Mixtral 2401.04088, Cai et al. 2407.06204, DeepSeekMoE 2401.06066, DeepSeek-V3 2412.19437</p>
+<p class="footnote">arXiv IDs: Mixtral 2401.04088, Cai et al. 2407.06204, DeepSeekMoE 2401.06066, DeepSeek-V3 2412.19437</p>
 
 Note:
-Week 6 ended with a clean rule: loss falls as a power law in the number of parameters N, and every token costs about 2N multiply-adds. In a dense model those are the same number, so a model that knows more costs more on every token, forever, at serving time. A mixture of experts breaks that link. It stores many feed-forward networks, the experts, and lets a small router send each token to only a few of them. Mixtral holds 47 billion parameters and uses 13 billion per token; DeepSeek-V3 holds 671 billion and uses 37 billion. The question for the week is whether a parameter that is stored but unused on most tokens is worth as much as a dense one. Week 6's laws were fitted on dense models.
-The historical twist: the idea is older than the Transformer (Jacobs et al. 1991; Shazeer et al. 2017 at scale). GShard made it work for Transformers at 600 billion parameters for translation. Mixtral then showed an open sparse language model matching a dense model with five times its active parameters, and the DeepSeek line showed that many small experts, a few always-on shared experts, and a router balanced without an extra loss work better than GShard's recipe. The table lists the five readings and the question each one asks. We read GShard first only for its mechanism, since Mixtral builds on it.
-
----
-
-<p class="eyebrow"><span class="paper">Week 7</span> · overview · roadmap</p>
-
-## How is the hour laid out?
-
-<div class="cols wide-text">
-<div class="text">
-
-<table class="rules">
-  <tr><td>part</td><td>the question it answers</td></tr>
-  <tr><td>1. Why sparse</td><td>does a parameter you rarely use count like one you always use?</td></tr>
-  <tr><td>2. The layer, step by step</td><td>how does a router turn one token into a weighted sum of experts?</td></tr>
-  <tr><td>3. Keeping experts busy</td><td>what goes wrong when the router is left alone?</td></tr>
-  <tr><td>4. Mixtral</td><td>can a 13B-active model match a 70B one?</td></tr>
-  <tr><td>5. The survey's map</td><td>what would you have to decide to build one?</td></tr>
-  <tr><td>6. The DeepSeek line</td><td>what changes with many small experts and no balancing loss?</td></tr>
-  <tr><td>7. Per-layer embeddings</td><td>how else can a model store more than it uses?</td></tr>
-  <tr><td>Synthesis</td><td>what is established, and what is still open?</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- Parts 1 to 3 build the mechanism from the bottom, with one worked example of four experts.
-- Parts 4 to 6 read the papers, each in its own order, with its experiments and limits.
-- Part 7 and the synthesis return to the opening question.
-
-</div>
-</div>
-
-<p class="footnote">The worked example (ours): four experts, top 2, router scores (2.0, 1.0, 0.5, -1.0). Experts are numbered 1 to 4 on every slide</p>
-
-Note:
-Parts 1 to 3 are the mechanism, built from the bottom the way we built RLHF in Week 4: one step per slide, each with a worked number, before any paper's results. Parts 4 to 6 then walk the papers: Mixtral in full, the survey as a map of the design choices, and the DeepSeek papers for their key results. Part 7 is a short closing look at per-layer embeddings, which Gemma 3n and Gemma 4 use to store more than they use in a different way. One running example carries Parts 2 and 3: four experts, a token whose router scores are 2.0, 1.0, 0.5 and minus 1.0, top 2. Part 3 follows a group of eight tokens through the same four experts. Mixtral's paper numbers experts from 0; we number them from 1 throughout so the slides agree.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 1, why sparse · recap</p>
-
-## What did Weeks 4 and 6 already tell us?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- A **dense** model uses every parameter on every token: stored equals used.
-- **Total parameters**: everything stored. They set memory. Mixtral calls this the "sparse" count.
-- **Active parameters**: those one token uses. They set compute per token.
-- Forward cost is about $2N$ FLOPs per token; Week 6's $6N$ adds the backward pass.
-
-<div class="eq">$$\text{forward cost per token} \approx 2N\ \text{FLOPs}$$</div>
-
-<dl class="where">
-<dt>$N$</dt><dd>the parameters a token uses: all of them in a dense model, the active ones in an MoE</dd>
-<dt>FLOPs</dt><dd>floating-point operations, here one multiply-add counted as 2</dd>
-</dl>
-
-</div>
-<div class="fig"><img src="img/week-04-raschka-moe.svg" alt="Illustration: percent of parameters used per token: GPT-3 175B 100 percent, Qwen3-235B-A22B 9.4 percent, DeepSeek V3 5.5 percent, gpt-oss-120b 4.4 percent, Llama 4 Maverick 4.2 percent, Kimi K2 3.2 percent"></div>
-</div>
-
-<p class="footnote">Mixtral §2.1 defines both counts. Right: Week 4's active shares. Check (ours): a dense 70B model costs about 140 GFLOPs per token; 13B active, about 26</p>
-
-Note:
-This is a recap, so keep it quick. In a dense model, parameters stored equal parameters used per token, and the forward cost is about 2N FLOPs: one multiply and one add per weight. Week 6's 6N for training is that forward 2N plus about 4N for the backward pass. The feed-forward block is the biggest block of weights; in GPT-3 it is about two thirds of them, as Week 4 showed.
-Week 4 gave two counts and we use them all week. Total parameters are everything stored; they set the memory you need. Active parameters are the ones one token touches; they set compute per token. Mixtral's paper calls the total the sparse count and the active count the active count. The picture is Week 4's table of active shares: 3 to 10 percent in 2025's largest open models. Check: a dense 70B model costs about 140 GFLOPs per token, Mixtral's 13B active parameters about 26.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 1, why sparse · the open question</p>
-
-## Does a parameter you store but rarely use count like one you always use?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Week 6's power laws were fitted on dense models, where total and active are the same $N$.
-- A sparse model has two $N$s, so the laws do not say which one to plug in.
-- If total counted fully, Mixtral would get a dense 47B model's loss at a 13B model's cost.
-- If only active counted, sparsity would buy nothing. The truth is in between, and the readings give partial answers.
-
-</div>
-<div class="text">
-
-<table class="rules">
-  <tr><td>reading</td><td>what it compares against</td></tr>
-  <tr><td>Mixtral</td><td>dense Llama 2 models; no matched run</td></tr>
-  <tr><td>DeepSeekMoE</td><td>a dense model with all experts always on (Part 6)</td></tr>
-  <tr><td>GShard</td><td>a 2.3B dense model that is not compute-matched</td></tr>
-</table>
-
-<p class="plain">We keep this question open and return to it in the synthesis.</p>
-
-</div>
-</div>
-
-<p class="footnote">Week 6: Kaplan et al. 2020 fitted loss against dense $N$. Active and total are Mixtral's terms (§2.1)</p>
-
-Note:
-Week 6's laws say loss falls as a power law in the parameter count N. They were fitted on dense models. A mixture of experts has two numbers where a dense model has one. If the total count were what mattered, Mixtral would reach the loss of a dense 47B model at the cost of a 13B model. If only the active count mattered, the extra experts would be dead weight and sparsity would buy nothing. Neither extreme is likely; the question is where in between.
-None of the readings answers it cleanly. Mixtral, whose training data is not described, compares against dense Llama 2 models, so there is no matched run. DeepSeekMoE compares against a dense model in which every expert is always on, an upper bound; we meet that in Part 6. GShard compared a 600B MoE against a 2.3B dense model that was not matched in compute. Keep the question in mind; the closing slides come back to it.
-
---
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 1, why sparse · GShard Fig. 1 · optional</p>
-
-## What did GShard buy with 600B parameters?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- The largest model reported has 600B parameters and trained on 2048 TPU cores in 4 days.
-- It scored 44.3 average BLEU, against 36.9 for a dense 2.3B model.
-- That dense model took about 235.5 TPU core-years; the MoE took 22.4.
-- The dense baseline is not compute-matched per token (ours), so this is a cost story, not a law.
-
-</div>
-<div class="fig"><img src="img/week-07-gshard-fig1-cost.png" alt="GShard Figure 1: translation quality against model size and training cost, comparing the mixture-of-experts models from 37.5B to 600B parameters with a dense 2.3B model and 100 bilingual baselines"></div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 (arXiv:2006.16668), Fig. 1, Table 3. BLEU: a 0 to 100 score of word-sequence overlap with a human translation. TPU core-year: cores times years</p>
-
-Note:
-Optional. GShard's headline: a 600B-parameter MoE translating 100 languages to English, trained in four days on 2048 TPU v3 cores, 22.4 core-years in all, for an average BLEU of 44.3. The dense 2.3B baseline trained with pipeline parallelism reached 36.9 and cost about 235.5 core-years, more than ten times as much. The caption says 37.5B to 600B is 16 times the size and 3.6 times the cost. Caveats: the paper reports no ablation against a dense model of the same compute per token, so the comparison is a cost comparison with one baseline. The experiments section also says it scaled beyond 1 trillion parameters; that run had numerical-stability problems and its results were left out, so 600B is the biggest reported.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · the idea</p>
-
-## Why replace the FFN, and not attention?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- The FFN holds most of the weights and works on each token alone.
-- So tokens can go to different FFNs without changing anything else.
-- Attention mixes tokens and stays shared by all of them.
-- An **MoE block**: attention, then $n$ experts shaped like the old FFN, plus a **router** that picks which ones see the token.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig1-layer.png" alt="Mixtral Figure 1: an input vector goes to a router that picks 2 of 8 feed-forward experts, and the layer's output is the weighted sum of the two chosen experts"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024, Mixtral (arXiv:2401.04088), Fig. 1. An <b>expert</b> is a standard FFN. The router is also called the gating network</p>
-
-Note:
-Why the FFN? It holds most of the weights, and it acts on each token independently: token five's FFN output does not depend on token six. That means we can give different tokens to different FFNs and nothing else in the model has to change. Attention is different: it mixes information across tokens, so it needs to be shared. In an MoE block, attention is unchanged. The single FFN is replaced by n copies of the same shape, called experts, and a small router decides which experts see each token. Figure 1 from the Mixtral paper shows exactly that: the router picks 2 of 8 experts and the output is the weighted sum of those two.
-The survey's stated reason for leaving attention alone, relayed from another paper, is the hypothesis that attention layers show lower sparsity and less domain specificity than FFN layers. The survey cites one paper (Pan et al., DS-MoE) as measuring more sparsity in FFN layers than in attention; we did not read it, so treat it as a hypothesis with one supporting report.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · Step 1, score</p>
-
-## How does the router score the experts?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\ell = x\,W_g$$</div>
-
-<dl class="where">
-<dt>$x$</dt><dd>the token's hidden state, a vector of length $d$ (4096 in Mixtral)</dd>
-<dt>$W_g$</dt><dd>the router's weights, a $d \times n$ matrix with one column per expert</dd>
-<dt>$\ell$</dt><dd>the <b>logits</b>: one raw score per expert, $n$ numbers</dd>
-</dl>
-
-- The router is one linear map, no hidden layer.
-- Our example: $\ell = (2.0,\ 1.0,\ 0.5,\ -1.0)$ for experts 1 to 4.
-
-<p class="plain">In words: each expert gets one score for this token; a higher score means a better match.</p>
-
-</div>
-<div class="fig"><img src="img/week-07-router.png" alt="Our router example in three panels: the four logits 2.0, 1.0, 0.5 and minus 1.0; the top 2 kept; and the softmax weights 0.731 for expert 1 and 0.269 for expert 2"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1. Logits and weights in the picture are our worked example (ours)</p>
-
-Note:
-The router is tiny: one matrix multiply. A token's hidden state x, a vector of length 4096 in Mixtral, is multiplied by W g, a 4096 by 8 matrix with one column per expert, giving 8 scores, called logits. In our four-expert example the scores are 2.0, 1.0, 0.5 and minus 1.0. That is about 4096 times 8, 32768 weights per layer, and about one million in all 32 layers (ours), against 45 billion in the experts. The picture's first panel shows these four scores; the next slides use panels 2 and 3.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · Step 2, keep the top $K$</p>
-
-## Why keep only the top $K$, and why $K = 2$?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\mathrm{TopK}(\ell)_i = \begin{cases}\ell_i & \text{if } \ell_i \text{ is among the } K \text{ largest}\\ -\infty & \text{otherwise}\end{cases}$$</div>
-
-<dl class="where">
-<dt>$\ell_i$</dt><dd>the router's score for expert $i$</dd>
-<dt>$K$</dt><dd>how many experts one token uses; Mixtral sets $K = 2$</dd>
-</dl>
-
-- With $K = 2$ our scores become $(2.0,\ 1.0,\ -\infty,\ -\infty)$.
-- Experts 3 and 4 never run for this token: that is where compute is saved.
-- $K$ sets compute per token; the number of experts $n$ sets the total.
-
-</div>
-<div class="fig"><img src="img/week-07-router.png" alt="Our router example in three panels; the second panel shows the top 2 of 4 scores kept and the other two set to minus infinity"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1. Why 2: Mixtral gives no reason; GShard uses 2, Switch Transformer uses 1. Survey §4.1 relays M6-t (a Chinese multimodal MoE), not monotone in $K$</p>
-
-Note:
-TopK keeps the K largest scores and sets the rest to minus infinity. For us, experts 1 and 2 survive, and experts 3 and 4 are masked. Those two experts do not run for this token at all, which is exactly where the saving comes from. K sets the compute per token; if you raise the number of experts n while holding K fixed, the parameter count grows and the cost per token stays about the same. That is the paper's own description of why it distinguishes total from active parameters.
-Why K equals 2? Mixtral gives no reason. GShard also uses 2, Switch uses 1. The survey relays one comparison, from M6-t, a Chinese multimodal mixture-of-experts model, where the order of perplexity was not monotone in K: four groups of top-1 gating beat one top-4, which beat one top-16, which beat one top-1. The survey says most work finds a larger K helps, so M6-t is one counterexample: there is no clean rule that more experts per token is always better. Use the router picture's second panel here.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · Step 3, weights</p>
-
-## How do the kept scores become weights?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$G(x) = \mathrm{Softmax}\big(\mathrm{TopK}(xW_g)\big)$$</div>
-
-<dl class="where">
-<dt>$G(x)_i$</dt><dd>the <b>gate</b>: the weight expert $i$ gets for token $x$</dd>
-<dt>Softmax</dt><dd>$\mathrm{Softmax}(v)_i = e^{v_i} / \sum_j e^{v_j}$ for a score vector $v$</dd>
-<dt>$e^{-\infty}$</dt><dd>equals 0, so masked experts get weight 0</dd>
-</dl>
-
-- Only the two kept scores share the weight, and the weights sum to 1.
-- Ours: $(e^{2},\ e^{1}) / (e^{2} + e^{1}) = (0.731,\ 0.269)$ for experts 1 and 2.
-
-<p class="plain">In words: the stronger kept expert gets the bigger share, and the rest get nothing.</p>
-
-</div>
-<div class="fig"><img src="img/week-07-router.png" alt="Our router example; the third panel shows the softmax weights 0.731 for expert 1, 0.269 for expert 2, and 0 for experts 3 and 4"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1: "the softmax over the Top-K logits". Arithmetic (ours): $e^2 = 7.389$, $e^1 = 2.718$, sum 10.107</p>
-
-Note:
-Softmax turns scores into weights that are positive and sum to 1. Because the masked scores are minus infinity, their exponentials are 0, so only the two kept experts share the weight. The arithmetic: e squared is 7.389, e to the one is 2.718, the sum is 10.107, so the weights are 0.731 and 0.269. Experts 3 and 4 get exactly 0. Notice that only the gap between the two kept scores matters: a gap of 1 gives 0.731 and 0.269, and adding 100 to both scores changes nothing. That fact comes back in Step 5 and in GShard's gate. The third panel of our picture shows these weights.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · Step 4, the output</p>
-
-## What does the layer output?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$y = \sum_{i=1}^{n} G(x)_i\, E_i(x) = 0.731\,E_1(x) + 0.269\,E_2(x)$$</div>
-
-<dl class="where">
-<dt>$x$, $y$</dt><dd>the token's input to the layer, and the layer's output for it</dd>
-<dt>$n$, $K$</dt><dd>the number of experts, 8 in Mixtral, and experts used per token, 2</dd>
-<dt>$E_i(x)$</dt><dd>expert $i$'s output; Mixtral's experts are SwiGLU FFNs</dd>
-<dt>$G(x)_i$</dt><dd>the gate from the last slide; the right-hand side is our example</dd>
-</dl>
-
-- The layer is applied independently per token: neighbours can use different experts.
-- Mixtral uses an MoE in every layer, 32 of them.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig1-layer.png" alt="Mixtral Figure 1: the router picks 2 of 8 feed-forward experts and the output is the weighted sum of their two outputs"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1. <b>SwiGLU</b>: Week 4's gated FFN; the paper names it but does not define it</p>
-
-Note:
-The layer's output is the weighted sum of the experts' outputs, with the gate as the weights. In our example it is 0.731 times expert 1's output plus 0.269 times expert 2's. Written for Mixtral, the paper's formula is y equals the sum over i of Softmax of Top2 of x W g, element i, times SwiGLU i of x, with n equal 8 and K equal 2. Each expert is a SwiGLU FFN, the gated FFN from Week 4. The paper names SwiGLU but never writes its form. The layer is applied independently per token, so two neighbouring tokens can use different experts. Since only two experts run, we skip the other six: that is the compute saving.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · Step 5, learning</p>
-
-## How does the router learn, if choosing is not differentiable?
-
-<div class="cols wide-text">
-<div class="text">
-
-<div class="eq">$$\frac{\partial \mathcal L}{\partial \ell_3} = \frac{\partial \mathcal L}{\partial \ell_4} = 0 \quad\text{for this token}$$</div>
-
-<dl class="where">
-<dt>$\mathcal L$</dt><dd>the training loss</dd>
-<dt>$\ell_3$, $\ell_4$</dt><dd>the router's scores for experts 3 and 4, masked by TopK</dd>
-</dl>
-
-- The top-$K$ choice itself has no gradient. Only the kept two weights, through the softmax, do.
-- Unchosen experts, and their router columns, get nothing from this token.
-- A rarely chosen expert is rarely trained, so it is chosen even less: the seed of **router collapse** (Part 3).
-
-</div>
-<div class="text">
-
-- With $K = 1$ and softmax after TopK, the one weight is always 1, so the router gets no gradient at all (ours).
-
-<p class="plain">The router learns only from the experts it picked, so it can never learn that an unpicked expert was better.</p>
-
-</div>
-</div>
-
-<p class="footnote">Survey §4.4.1 relays the two orders: TopK then softmax (Shazeer et al. 2017; also Mixtral §2.1), softmax then TopK (GShard, Switch). The $K = 1$ reasoning is ours</p>
-
-Note:
-The loss depends on y equal 0.731 E1 plus 0.269 E2. Gradients flow into the router scores for experts 1 and 2 through the softmax. Because softmax only depends on the gap between the two kept scores, in effect the router learns to widen or narrow that gap, and to change which experts are chosen only indirectly, through the other tokens. Experts 3 and 4 got masked to minus infinity, so the loss does not depend on their scores, and neither they nor their router columns receive any gradient from this token. Consequence: an expert that is rarely chosen is rarely trained, so it stays worse, so it is chosen even less. That is the start of Part 3.
-A subtlety, our reasoning: with K equal 1 and softmax after TopK, the single remaining score gets weight exactly 1 whatever its value, so the output does not depend on the router at all and no gradient reaches it. The survey (in its training-schemes section) notes the two orders: softmax then TopK for GShard, Switch and OpenMoE, and TopK then softmax for Shazeer et al.'s original gating; Mixtral's own formula, from its paper, is the second order. Our reading is that this is why Switch keeps the raw softmax probability of the chosen expert as its weight: the weight then varies with the router and gives it a gradient. The Switch paper's own reason was not read for this deck.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · GShard's gate</p>
-
-## Is GShard's gate the same as Mixtral's?
-
-<div class="cols wide-text">
-<div class="text">
-
-<div class="eq">$$y \approx 0.731\,E_1(x) + 0.538 \times 0.269\,E_2(x)$$</div>
-
-<dl class="where">
-<dt>$y$</dt><dd>GShard's expected output for our token</dd>
-<dt>$E_1(x)$, $E_2(x)$</dt><dd>the outputs of experts 1 and 2 for token $x$</dd>
-<dt>$0.731$, $0.269$</dt><dd>the two kept weights, renormalised by their sum</dd>
-<dt>$0.538$</dt><dd>the chance the second expert is used, $2g_2$, with $g_2 = 0.269$</dd>
-</dl>
-
-- GShard takes softmax over all experts first, then keeps the top 2 and renormalises them.
-
-</div>
-<div class="text">
-
-- GShard uses the second expert only with probability $2g_2$, to save buffer space.
-- It also puts MoE in every other layer, uses ReLU experts and caps each expert's load.
-- Mixtral calls GShard's second-expert gating "more elaborate".
-
-<p class="plain">The weights match because a ratio of two exponentials ignores the other experts.</p>
-
-</div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 §2.2, Algorithm 1; Jiang et al. 2024 §2.1. The expected-output line and softmax values are our arithmetic (ours)</p>
-
-Note:
-GShard's gate: softmax over all four scores first, giving 0.609, 0.224, 0.136 and 0.030 (ours); take the top two, 0.609 and 0.224; renormalise by their sum, 0.833: 0.731 and 0.269. Those are exactly Mixtral's weights, because the ratio e squared over e squared plus e is independent of the other scores. So the two designs give the same weights when both experts are used. Why GShard needs the full softmax: its balancing loss, next part, uses the mean probability of every expert.
-Where they differ. GShard sends a token to its second expert only with probability 2 g2, where g2 is the renormalised second weight; here 2 times 0.269 is 0.538. It does this to save expert capacity when the second expert's weight is small. When the second expert is skipped, the token keeps weight 0.731 alone; nothing renormalises it again, which is our reading of the algorithm. So the expected output is 0.731 E1 plus 0.538 times 0.269 E2 (ours; it is an expectation over the random choice, not an output the layer produces on any single run). GShard also uses ReLU experts, and MoE in every other layer, where Mixtral uses it in every layer. Mixtral's words: GShard "uses a more elaborate gating strategy for the second expert". The next slide shows GShard's Fig. 3.
-
---
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · GShard Fig. 3 · optional</p>
-
-## Where do the experts sit in GShard's Transformer?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Every other FFN in the encoder is replaced by an MoE layer.
-- The rest of the layers, attention included, are the same on every device.
-- Experts are sharded: each device holds some experts, and tokens travel to them.
-- Mixtral replaces every FFN, not every other one.
-
-</div>
-<div class="fig"><img src="img/week-07-gshard-fig3-encoder.png" alt="GShard Figure 3: a Transformer encoder with every other feed-forward layer replaced by a mixture-of-experts layer, and the experts spread across devices while all other layers are replicated"></div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 (arXiv:2006.16668), Fig. 3 and §2.1. <b>Sharded</b>: split across devices rather than copied to each</p>
-
-Note:
-Figure 3 of GShard: panel (a) is a standard Transformer encoder, attention and FFN alternating with residual connections and layer norm; (b) replaces every other FFN with an MoE layer; (c) shows what that means on many devices: the MoE layer is sharded across devices, while all other layers are replicated. In the paper's experiments the number of experts per MoE layer equals the number of devices. The decoder is modified the same way. Each expert has the same shape as an ordinary FFN: 1024 model dimension and 8192 hidden dimension.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · counting</p>
-
-## How many parameters does Mixtral have, total and active?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\text{one expert} = 3 \times 4096 \times 14336 = 176.2\text{M}$$</div>
-
-<dl class="where">
-<dt>3</dt><dd>the three weight matrices of a SwiGLU FFN (assumed; the paper does not say)</dd>
-<dt>4096</dt><dd>the model dimension, <code>dim</code> in Table 1</dd>
-<dt>14336</dt><dd>the expert's hidden size, <code>hidden_dim</code> in Table 1</dd>
-</dl>
-
-- Total: $8 \times 32 \times 176.2$M $= 45.1$B in experts, plus 1.34B attention and 0.26B embeddings: 46.7B.
-- Active: $2 \times 32 \times 176.2$M $= 11.3$B plus the shared parts: 12.9B.
-- "8x7B" is not 56B: only the FFNs are copied eight times.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-params.png" alt="Our stacked bars for Mixtral: 46.7B total parameters and 12.9B active parameters, split into experts, attention, embeddings and router"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 Table 1, abstract and §3 (47B, 13B). All counts are our arithmetic (ours), assuming SwiGLU with three matrices and untied embeddings</p>
-
-Note:
-The paper says 47B total and 13B active but never derives them. From Table 1, ours: one SwiGLU expert has three matrices of 4096 by 14336, 176.2 million parameters. All experts: 8 times 32 times 176.2 million, 45.1 billion. Attention is 1.34 billion, with 32 query heads and 8 key-value heads of dimension 128, the embeddings and output matrices 0.26 billion untied, the routers one million. Total 46.7 billion, which rounds to the paper's 47. Active: only 2 experts per layer, 2 times 32 times 176.2 million is 11.3 billion, plus 1.34, 0.26 and the router, 12.9 billion, which rounds to 13. Total over active is 3.6, and 70 over 13 is about 5.4, the paper's "5x".
-Why 8x7B is not 56B: attention and embeddings are shared, not copied. Memory point, once: serving needs all 46.7 billion in memory, so the memory cost is proportional to the total, 47B, which is still less than Llama 2 70B, as the paper notes. The paper's own caveat is that active-parameter comparisons ignore memory cost and hardware utilisation, and that MoE suits batched workloads. Its claim of faster inference has no speed measurement in the paper.
-
---
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 2, the layer · counting · optional</p>
-
-## What does the active count leave out?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Active parameters are proportional to compute per token, not to memory.
-- Memory needs all 46.7B stored, even though only 12.9B run for a token.
-- The router adds overhead, and loading several experts per device costs memory traffic.
-- The authors say MoE suits **batched** workloads, where many tokens share each expert load.
-
-</div>
-<div class="text">
-
-<table class="rules">
-  <tr><td>count</td><td>Mixtral</td><td>sets</td></tr>
-  <tr><td>total (sparse)</td><td>46.7B (ours)</td><td>memory</td></tr>
-  <tr><td>active</td><td>12.9B (ours)</td><td>compute per token</td></tr>
-  <tr><td>compute ratio vs Llama 2 70B</td><td>about 5.4x (ours)</td><td>paper says 5x</td></tr>
-</table>
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §3 (size and efficiency paragraph). The ratio 70 / 12.9 is our arithmetic (ours)</p>
-
-Note:
-The paper's own caveat: the efficiency analysis focuses on active parameter count, which is proportional to inference compute, but does not consider memory costs and hardware utilisation. The memory cost of serving Mixtral is proportional to the sparse count, 47B. The router adds overhead, and running more than one expert per device means more memory loads; MoE layers are more suitable for batched workloads where you can reach a good degree of arithmetic intensity. The introduction claims faster inference at low batch size and higher throughput at large batch size, but no speed or throughput measurement appears anywhere in the paper.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · the problem</p>
-
-## What goes wrong if the router is left alone?
-
-<div class="cols wide-text">
-<div class="text">
-
-- **Router collapse**: the router sends most tokens to a few experts and the others stay untrained.
-- It feeds itself: more tokens, more gradient, a better expert, so the router prefers it more.
-- GShard: most tokens go "to a small number of experts ... leaving other experts untrained".
-- DeepSeekMoE names a second cost: computation bottlenecks across devices.
-
-</div>
-<div class="text">
-
-<table class="rules nohead">
-  <tr><td>step 1</td><td>an expert gets slightly more tokens</td></tr>
-  <tr><td>step 2</td><td>it gets more gradient, so it trains faster</td></tr>
-  <tr><td>step 3</td><td>the router scores it higher</td></tr>
-  <tr><td>step 4</td><td>back to step 1, with a bigger lead</td></tr>
-</table>
-
-<p class="plain">From here on: a group of $S = 8$ tokens and the same four experts.</p>
-
-</div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 §2.2; Dai et al. 2024, DeepSeekMoE (arXiv:2401.06066) §3.3. The four-step loop is our summary of Step 5 (ours)</p>
-
-Note:
-From Step 5: an expert that is slightly ahead early in training gets more tokens, so more gradient, so it improves faster, so the router prefers it more. GShard describes it: without a balancing term, most tokens seen during training would be dispatched to a small number of experts, amassing a very large input buffer for only a few busy experts, and leaving other experts untrained. DeepSeekMoE names two costs: the risk of routing collapse, and, if experts sit on different devices, load imbalance that worsens computation bottlenecks. The next slide is about the second cost.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · time</p>
-
-## Why does imbalance cost time, not just quality?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- **Expert parallelism** (EP): experts live on different GPUs, and tokens travel to their expert's GPU and back.
-- The travel is an **all-to-all** exchange: every GPU sends to and receives from every other.
-- A layer finishes when its busiest GPU finishes.
-- Mixtral: EP "introduces challenges in load balancing".
-
-</div>
-<div class="fig"><img src="img/week-07-ep.png" alt="Our bars for expert parallelism on 4 GPUs: 16 token-expert pairs split 8, 4, 2 and 2 across the GPUs; the layer waits for the busiest GPU"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1. Example (ours): 8 tokens times 2 experts is 16 pairs on 4 GPUs. Balanced, each does 4; here the busiest does 8, so the layer takes 2 times as long</p>
-
-Note:
-Expert parallelism puts different experts on different GPUs. Tokens meant for a specific expert are routed to the corresponding GPU, and the expert's output is returned to the token's original place. That exchange is an all-to-all. The layer cannot finish until the slowest GPU does. In our picture, 8 tokens each choose 2 experts, 16 token-expert pairs on 4 GPUs: a balanced layer would give each GPU 4, but here the split is 8, 4, 2 and 2, so the layer waits for the GPU with 8, twice as long as balanced (ours). With one expert per GPU no GPU can get more than 8, since each token's two experts are different. The other three GPUs sit idle part of the time. Mixtral's paper says EP introduces challenges in load balancing, as it is essential to distribute the workload evenly across the GPUs.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · capacity</p>
-
-## Why would you ever drop a token?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$C = \frac{2S}{E}$$</div>
-
-<dl class="where">
-<dt>$C$</dt><dd>the <b>expert capacity</b>: the most tokens one expert accepts from a group</dd>
-<dt>$S$</dt><dd>the number of tokens in a group</dd>
-<dt>$E$</dt><dd>the number of experts</dd>
-</dl>
-
-- GShard's layer is a few fixed-shape tensor products, so each expert needs a fixed buffer.
-- Ours: $S = 8$, $E = 4$, so $C = 4$. If 6 tokens pick expert 1 first, 2 do not fit.
-
-</div>
-<div class="fig"><img src="img/week-07-capacity.png" alt="Our capacity example: 8 tokens, 4 experts, capacity 4 each; 6 first choices land on expert 1, so 2 are over capacity"></div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 §2.2 and Algorithm 2 (buffers shaped group by token by expert by capacity). Worked example (ours)</p>
-
-Note:
-Why a cap at all? GShard's layer is implemented as a few big tensor products with fixed shapes: buffers of shape groups by tokens by experts by capacity. So each expert needs a fixed buffer size. GShard sets it to 2 S over E tokens per group of S: two choices per token, spread over E experts. Our example: S is 8, E is 4, so C is 4. If 6 tokens choose expert 1 first, 4 fit and 2 do not. The two that do not fit can still reach their second expert. Only a token whose experts are both full is overflowed: its MoE output is zero, and the residual connection carries it on unchanged. In the algorithm, first choices have priority over second choices, because the second pass keeps counting on top of the first. A caveat: GShard reports no overflow rate and no ablation of the capacity.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · capacity</p>
-
-## What happens to an overflowed token, and how do later models avoid it?
-
-<div class="cols wide-text">
-<div class="text">
-
-- An **overflowed** token has both experts full: its MoE output is zero.
-- It is not lost: the **residual connection** carries its input to the next layer unchanged.
-- Megablocks writes the expert step as block-sparse products that take any number of tokens per expert.
-- DeepSeekMoE's small models keep all experts on one GPU and drop no tokens.
-
-</div>
-<div class="text">
-
-<table class="rules">
-  <tr><td>model</td><td>how it treats overflow</td></tr>
-  <tr><td>GShard</td><td>caps each expert at $2S/E$; overflow skips the layer</td></tr>
-  <tr><td>Mixtral</td><td>says nothing about training</td></tr>
-  <tr><td>DeepSeekMoE</td><td>drops none (2B, 16B)</td></tr>
-  <tr><td>DeepSeek-V3</td><td>drops none, in training or inference</td></tr>
-</table>
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 §2.1 (Megablocks, kernels released for vLLM); Dai et al. 2024 §4, 5; DeepSeek-V3 §2.1.2. A <b>residual connection</b> adds a layer's input to its output</p>
-
-Note:
-An overflowed token is not destroyed. The MoE sublayer outputs zero for it, and because every Transformer sublayer sits inside a residual connection, the token's representation passes to the next layer unchanged. It simply skipped this layer's expert computation. How later models avoid dropping: Megablocks, which Mixtral cites, casts the expert FFN as large block-sparse matrix multiplications, which naturally handle different experts getting a variable number of tokens, so there is no fixed buffer to overflow; Mixtral's authors released changes to vLLM that integrate those kernels. DeepSeekMoE puts all experts on one GPU for its 2B and 16B models and drops no tokens; the 145B model does not say; DeepSeek-V3 reports no token dropping in training or inference. Mixtral's paper says nothing about how it balanced experts in training or whether it dropped tokens.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · GShard's loss</p>
-
-## How do you push the router towards balance?
-
-<div class="cols wide-text">
-<div class="text">
-
-<div class="eq">$$\ell_{\rm aux} = \frac{1}{E}\sum_{e=1}^{E} \frac{c_e}{S}\, m_e,\qquad \mathcal L = \ell_{\rm nll} + k\,\ell_{\rm aux}$$</div>
-
-<dl class="where">
-<dt>$E$, $S$</dt><dd>the number of experts, and the tokens in a group</dd>
-<dt>$c_e$</dt><dd>how many tokens chose expert $e$ first; it has no gradient</dd>
-<dt>$m_e$</dt><dd>the mean router probability of expert $e$ over the group; it has a gradient</dd>
-<dt>$k$</dt><dd>the loss weight (never stated in the paper); $\ell_{\rm nll}$ is the usual language loss</dd>
-</dl>
-
-</div>
-<div class="text">
-
-- Goal: equal fractions $c_e/S$. They sum to 1, so $\sum_e (c_e/S)^2$ is smallest when equal.
-- Problem: $c_e$ is a count from a top-$K$ choice, so there is no gradient (Step 5).
-- Fix: replace one factor $c_e/S$ with the differentiable $m_e$.
-
-<p class="plain">In words: penalise giving a lot of tokens to an expert that the router also likes.</p>
-
-</div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 §2.2, Algorithm 1. $c_e$ counts first choices only. "nll": negative log-likelihood, the language-model loss</p>
-
-Note:
-What we want: the fractions c e over S of tokens whose first choice is expert e to be equal. They sum to 1, so their sum of squares is smallest when they are equal; so minimise the sum of squares. Problem: c e is a count from a top-K choice and has no gradient (2.6). GShard's fix, in its own words: replace the square of c e over S by m e times c e over S, where m e is the mean router probability of expert e over the group, which can be optimised by gradient descent. Algorithm 1 writes the loss as one over E times the sum of c e over S times m e, and adds it as k times that to the language loss. The paper never says what k is. A comment in the paper's LaTeX source says c e counts top-1 dispatches, and it is taken before the second-choice pass. The prose says c e is derived from the top-2 operation; the algorithm shows it is the top-1 count. The survey writes the same loss up to a constant factor, as N times the sum of D i P i, with D i the share of tokens and P i the share of probability.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · worked example</p>
-
-## What does the loss do on a balanced and a collapsed router?
-
-<div class="cols wide-fig">
-<div class="text">
-
-<div class="eq">$$\frac{\partial \ell_{\rm aux}}{\partial m_e} = \frac{c_e}{S\,E}$$</div>
-
-<dl class="where">
-<dt>$\ell_{\rm aux}$</dt><dd>GShard's auxiliary loss from the last slide</dd>
-<dt>$m_e$</dt><dd>the mean router probability of expert $e$</dd>
-<dt>$c_e$, $S$, $E$</dt><dd>the first-choice count of expert $e$, tokens in the group, number of experts</dd>
-</dl>
-
-- Balanced, $c/S = m = 0.25$ each: loss $\frac14 \cdot 4 \cdot 0.0625 = 0.0625$ (ours).
-- Collapsed, all 8 first choices on expert 1, $m = (0.7, 0.1, 0.1, 0.1)$: loss $\frac14 \cdot 0.7 = 0.175$ (ours).
-- The busiest expert's probability is pushed down hardest.
-
-</div>
-<div class="fig"><img src="img/week-07-auxloss.png" alt="Our bars for the auxiliary loss with 4 experts and 8 tokens: a balanced router gives 0.0625 and a collapsed router gives 0.175"></div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021, Algorithm 1. Both cases are our worked example with $E = 4$, $S = 8$ (ours)</p>
-
-Note:
-Ours, E equals 4, S equals 8. Balanced: every fraction and every mean probability is 0.25, the loss is one quarter times four times 0.0625, which is 0.0625, equal to one over E squared. Collapsed: all 8 first choices go to expert 1 and the mean probabilities are 0.7, 0.1, 0.1, 0.1, so the loss is one quarter times 1 times 0.7, which is 0.175. The gradient with respect to m e is c e over S E, largest for the busiest expert, so its probability is pushed down hardest; the idle experts get no direct push and rise only because the softmax must still sum to 1.
-Caveat for the notes: one over E squared is the value at an even spread, not a floor. With E equal 2 and S equal 3, two tokens at probabilities (0.51, 0.49) and one at (0, 1), the loss is 0.223, below the balanced 0.25 (ours), because the loss also rewards load that runs against mean probability. In practice it pushes towards balance, and the survey's statement that one is the minimum has the same caveat.
-
----
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · the trade-off</p>
-
-## Can you balance too hard?
-
-<div class="cols wide-text">
-<div class="text">
-
-- The balancing loss fights the language loss: forcing even use can send a token to a worse expert.
-- DeepSeekMoE: "excessive constraints on load balance will compromise model performance".
-- So the loss weight is kept small: 0.01 or less.
-- DeepSeek-V3 drops the loss in favour of a bias on the scores (Part 6).
-
-</div>
-<div class="text">
-
-<table class="rules">
-  <tr><td>model</td><td>loss weight</td></tr>
-  <tr><td>DeepSeekMoE 2B</td><td>0.01</td></tr>
-  <tr><td>DeepSeekMoE 16B</td><td>0.001</td></tr>
-  <tr><td>DeepSeekMoE 145B</td><td>0.003</td></tr>
-  <tr><td>DeepSeek-V3, per sequence</td><td>0.0001</td></tr>
-</table>
-
-</div>
-</div>
-
-<p class="footnote">Dai et al. 2024 §3.3, 4, 5, 7; DeepSeek-V3 §4.2 (expert-level weights; 145B also has a device-level weight 0.05)</p>
-
-Note:
-The auxiliary loss has a cost. It fights the language-model loss: forcing every expert to be used equally can send a token to a worse expert than the router wanted. DeepSeekMoE says excessive constraints on load balance will compromise model performance, and that under its parallelism a higher expert-level balance factor cannot improve computation efficiency but compromises performance. So the weights are small, though not monotone in size: 0.01 for the 2B model, 0.001 for 16B, 0.003 for 145B, where there is also a device-level weight of 0.05 because experts sit on four devices. V3 sets a balance loss weight of 0.0001 only to avoid extreme imbalance within a single sequence, and does the main balancing with a bias, which Part 6 explains. The next slide is an optional reference card for the symbols the papers use.
-
---
-
-<p class="eyebrow"><span class="paper">Mixture of experts</span> · Part 3, keeping experts busy · notation · optional</p>
-
-## Which letters do the papers use for the same things?
-
-<div class="cols wide-text">
-<div class="text">
-
-<table class="rules" style="font-size:17px">
-  <tr><td>meaning</td><td>Mixtral</td><td>GShard</td><td>survey</td><td>DeepSeekMoE</td><td>V3</td></tr>
-  <tr><td>number of experts</td><td>$n$</td><td>$E$</td><td>$N$</td><td>$N'$</td><td>$N_r$</td></tr>
-  <tr><td>experts per token</td><td>$K$ (2)</td><td>top 2</td><td>$k$</td><td>$K'$</td><td>$K_r$</td></tr>
-  <tr><td>tokens</td><td>none</td><td>$S$ (group)</td><td>$T$ (batch)</td><td>$T$ (sequence)</td><td>$T$ (sequence)</td></tr>
-  <tr><td>load share</td><td>none</td><td>$c_e/S$</td><td>$\mathcal D_i$</td><td>$f_i$</td><td>$f_i$</td></tr>
-  <tr><td>mean probability</td><td>none</td><td>$m_e$</td><td>$\mathcal P_i$</td><td>$P_i$</td><td>$P_i$</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- $T$ means the tokens of one sequence in DeepSeekMoE's and V3's loss, but a whole batch in the survey.
-- That difference is the one Part 6 turns on.
-- In DeepSeekMoE and V3, $f_i$ is scaled by $N'/K'$ (or $N_r/K_r$), so it equals 1 at balance, unlike $c_e/S$.
-- $N'$ and $K'$ count routed experts after splitting experts into smaller ones (Part 6).
-
-</div>
-</div>
-
-<p class="footnote">Lepikhin et al. 2021 §2.2; Cai et al. 2024 Eq. 6 to 8; Dai et al. 2024 Eq. 12 to 14; DeepSeek-V3 Eq. 17 to 20. Mixtral has no balancing loss</p>
-
-Note:
-A reference card; the same idea carries a different letter in each paper. Number of experts: n in Mixtral, E in GShard, N in the survey, N prime in DeepSeekMoE, N r in V3 (r for routed). Experts per token: K, top 2, k, K prime, K r. Tokens: S for GShard's group; T in the others, but with different meanings: the survey's T counts the tokens of a whole batch, whereas DeepSeekMoE's and V3's loss counts the tokens of one sequence. That difference matters in Part 6, where V3 balances per batch with a bias but per sequence with its small loss. Load share: GShard's c e over S, the survey's D i, and f i in the DeepSeek papers; f i there is scaled by N prime over K prime, so a perfectly balanced router gives f i equal to 1, while c e over S equals one over E. Mean probability: m e, P script i, and P i. Mixtral has no balancing loss in its paper.
+Week 6 ended with a clean rule: loss falls as a power law in the number of parameters, and every token costs about two multiply-adds per parameter. In a dense model those are the same parameters, so a model that knows more costs more on every token. A mixture of experts breaks that link: it stores many feed-forward networks, the experts, and a small router sends each token to only a few of them. Mixtral holds 47 billion parameters and uses 13 billion per token; DeepSeek-V3 holds 671 billion and uses 37 billion. We read Mixtral first, in its own order, then the survey as a map of the design choices, then the DeepSeek papers, and close with per-layer embeddings.
 
 
 ---
@@ -737,165 +51,228 @@ A reference card; the same idea carries a different letter in each paper. Number
 <ol class="track"><li class="now">Mixtral 2024<span>sparse 8x7B</span></li><li>Cai et al. 2024<span>the survey's map</span></li><li>DeepSeekMoE and V3<span>many small experts</span></li></ol>
 
 Note:
-Reading 1 of 3. Jiang and colleagues at Mistral AI, January 2024. It is a short paper, 13 pages with the appendix, and the first open sparse language model that was widely used. We walk through it in its own order: the architecture, the benchmark results, the instruct model, and the routing analysis. Keep one question in mind as we go: the paper shows a strong model, but does it show that sparsity is the reason?
+Reading 1 of 3. Jiang and colleagues at Mistral AI, January 2024. A short paper: an introduction, the architecture with its one Sparse Mixture of Experts section, the results, the instruct model and a routing analysis. We go through it in that order.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, architecture · what it is</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · p. 1 · title and abstract</p>
 
-## What is Mixtral?
+## What does the Mixtral paper claim?
 
 <div class="cols wide-text">
+<div class="fig"><img src="img/week-07-mixtral-p1.png" alt="Page 1 of the Mixtral paper: the title Mixtral of Experts, the 26 authors, and the abstract"></div>
 <div class="text">
 
-- Mixtral is Mistral 7B with every feed-forward network (FFN) replaced by 8 experts; each token uses 2.
-- Each **expert** is one SwiGLU feed-forward block, the gated FFN form Mistral and Llama use.
-- **Total parameters** are all the weights stored: 47B. **Active parameters** are those one token uses: 13B.
+<img src="img/week-07-mixtral-header.jpeg" alt="The paper's header image: the words Mistral AI in large orange block letters" style="max-width:100%; max-height:150px; margin:0 0 24px 0">
 
-</div>
-<div class="text">
-
-<table class="rules" style="font-size:16px">
-  <tr><td>setting</td><td>value</td><td>meaning</td></tr>
-  <tr><td>dim</td><td>4096</td><td>width of the hidden state</td></tr>
-  <tr><td>n_layers</td><td>32</td><td>Transformer blocks</td></tr>
-  <tr><td>hidden_dim</td><td>14336</td><td>width inside one expert</td></tr>
-  <tr><td>n_heads, n_kv_heads</td><td>32, 8</td><td>query heads, key/value heads</td></tr>
-  <tr><td>head_dim</td><td>128</td><td>size of one head</td></tr>
-  <tr><td>context_len</td><td>32768</td><td>tokens the model reads at once</td></tr>
-  <tr><td>vocab_size</td><td>32000</td><td>distinct tokens</td></tr>
-  <tr><td>num_experts, top_k_experts</td><td>8, 2</td><td>experts per layer, chosen per token</td></tr>
-</table>
+<p class="plain">8 experts in every layer, 2 used per token: 47B parameters stored, 13B used.</p>
 
 </div>
 </div>
 
-<p class="footnote">Jiang et al. 2024, "Mixtral of Experts", arXiv:2401.04088, §2, Table 1. Base and instruct weights released under Apache 2.0, a permissive open-source licence</p>
+<p class="footnote">Jiang et al. 2024, "Mixtral of Experts", arXiv:2401.04088, p. 1. Base and instruct weights released under Apache 2.0, a permissive open-source licence</p>
 
 Note:
-This is Table 1 of the paper, with a meaning column added. Mixtral keeps Mistral 7B's architecture and swaps each feed-forward block for 8 experts and a router that picks 2 per token. The paper says the model has a fully dense 32k context, and its Table 1 shows 32 query heads sharing 8 key/value heads, which is grouped-query attention, although the paper does not use that name. Every layer is an MoE layer; GShard, which you saw in Part 3, made only every other layer one.
-Numbering: the paper numbers experts from 0 to 7. We number from 1 on every slide; the paper's expert 0 is our expert 1.
-The two counts matter later. Memory to serve the model follows the 47B, because every expert must be loaded. Compute per token follows the 13B. The name 8x7B suggests 56B, but attention and embeddings are shared across experts, so the real total is about 47B. The paper never derives either number; the next slide does, from Table 1 (ours).
-
---
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, architecture · optional</p>
-
-## How do 47B and 13B follow from Table 1?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- One expert has three $4096 \times 14336$ matrices: 176M weights (ours).
-- All 8 experts in all 32 layers: 45.1B. Two per token: 11.3B (ours).
-- Attention (1.34B), embeddings (0.26B) and routers (1M) are used by every token (ours).
-- Total 46.7B and active 12.9B, which the paper rounds to 47B and 13B (ours).
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-params.png" alt="Illustration: two bars, total 46.7 billion parameters and active per token 12.9 billion; in both, the experts are almost all of the bar, then attention, then a sliver for embeddings and router"></div>
-</div>
-
-<p class="footnote">Our arithmetic from Table 1, assuming three-matrix SwiGLU experts and untied embeddings; the paper does not state either</p>
-
-Note:
-Optional arithmetic, ours. A SwiGLU expert has three matrices, 4096 by 14336, so 3 times 4096 times 14336, which is 176,160,768 weights. Eight experts in each of 32 layers is 45.1 billion. Attention per layer: queries and output are 4096 by 4096, keys and values are 4096 by 1024, so 2 times 4096 squared plus 2 times 4096 times 1024, about 41.9 million; over 32 layers 1.34 billion. Embedding in and out, untied, is 2 times 32000 times 4096, 0.26 billion. Add the routers and the total is 46.70 billion.
-Active: only 2 of 8 experts per layer, so 11.3 billion in experts plus the same 1.6 billion of shared weights gives 12.88 billion. Total over active is 3.6. The paper's headline "5x fewer active parameters" is 70 over 13, which is 5.4 (ours).
+The abstract in one breath. Mixtral 8x7B has the same architecture as Mistral 7B, except that each layer has 8 feed-forward blocks, the experts. For every token, at each layer, a router picks two experts and combines their outputs, and the two can differ from token to token and layer to layer. So each token has access to 47B parameters but uses 13B active parameters. It was trained with a 32k context, and the abstract claims it outperforms or matches Llama 2 70B and GPT-3.5 across all evaluated benchmarks, vastly so on maths, code and multilingual benchmarks. An instruct version beats GPT-3.5 Turbo, Claude-2.1, Gemini Pro and Llama 2 70B chat on human evaluations. Hold the word "all": we will check it against the tables.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, setup · the runs</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §1, §2.1 · Fig. 1</p>
 
-## What did they run, and what do they not tell us?
-
-<div class="cols wide-text">
-<div class="text">
-
-<table class="rules">
-  <tr><td>#</td><td>what they ran</td><td>where</td></tr>
-  <tr><td>1</td><td>base model against Llama 2 7B, 13B, 70B, Llama 1 34B and Mistral 7B, six benchmark groups</td><td>Table 2, Figs. 2, 3</td></tr>
-  <tr><td>2</td><td>against Llama 2 70B and GPT-3.5</td><td>Table 3</td></tr>
-  <tr><td>3</td><td>French, German, Spanish, Italian</td><td>Table 4</td></tr>
-  <tr><td>4</td><td>long context: passkey, perplexity</td><td>Fig. 4</td></tr>
-  <tr><td>5</td><td>bias: BBQ and BOLD</td><td>§3.3 table</td></tr>
-  <tr><td>6</td><td>instruct model: fine-tuning, then human votes</td><td>Fig. 6</td></tr>
-  <tr><td>7</td><td>routing analysis on the Pile</td><td>Figs. 7 to 10, Table 5</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- **Not disclosed**: training data and token count, compute, optimiser and router balancing.
-- Also missing: whether it started from Mistral 7B, the seeds, and any ablation.
-- No dense model of the same size was trained, and there are no error bars.
-- Remember this: it shapes every critique later.
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · §3 to §5. The paper does not number its experiments; the numbers are ours. BBQ, BOLD, passkey and the Pile are defined where they appear</p>
-
-Note:
-The paper has no numbered experiments, so here are seven sets of runs, numbered by us, in the paper's order. Experiments 1 and 2 are the headline: the base model against dense open models and against GPT-3.5. Experiments 3 to 5 check languages, long inputs and bias. Experiment 6 is the chat model. Experiment 7 is the routing analysis, which the authors call small.
-What the paper does not tell us is as important. It gives no training data or token count, no compute, no optimiser settings, no description of how the router is kept balanced, and it does not say whether the experts were copied from Mistral 7B or trained from scratch. There are no seeds or error bars anywhere. And there is no ablation: no dense model of matching size, no run with a different number of experts. Hold on to that; it decides which claims survive in the critiques.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, setup · how they compare</p>
-
-## How do they compare it with the others?
-
-<div class="cols wide-text">
-<div class="text">
-
-<table class="rules" style="font-size:16px">
-  <tr><td>group</td><td>benchmarks, with what each tests</td></tr>
-  <tr><td>commonsense, 0-shot</td><td>HellaSwag (pick a sentence ending), WinoGrande (resolve a pronoun), PIQA (physical know-how), ARC (school science)</td></tr>
-  <tr><td>knowledge, 5-shot</td><td>NaturalQuestions (real search queries), TriviaQA (trivia, no reference text)</td></tr>
-  <tr><td>comprehension, 0-shot</td><td>BoolQ (yes/no on a passage), QuAC (dialogue about a passage)</td></tr>
-  <tr><td>math</td><td>GSM8K (school word problems, 8-shot, maj@8), MATH (competition problems, 4-shot, maj@4)</td></tr>
-  <tr><td>code, 0-shot and 3-shot</td><td>HumanEval (write a function from a docstring), MBPP (short Python tasks)</td></tr>
-  <tr><td>aggregates</td><td>MMLU (57-subject exam, 5-shot), BBH (hard reasoning, 3-shot), AGI Eval (human exams)</td></tr>
-</table>
-
-</div>
-<div class="text">
-
-- They re-ran every open model on their own pipeline, so the numbers are not copied from other papers.
-- **maj@k**: a majority vote over $k$ sampled answers.
-- **$n$-shot**: the prompt holds $n$ solved examples; 0-shot has none.
-- Llama 2 34B was never released, so Llama 1 34B stands in.
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · §3, benchmark list, footnote 1, and the protocol note in §3: MBPP hand-verified subset; TriviaQA without Wikipedia contexts. Table 2 labels the stand-in "33B", the text "34B"</p>
-
-Note:
-Everything is re-run by the authors, which is good for fairness: the same prompts and scoring for every model. They group 19 benchmarks into six families. Shot counts are in the table. The commonsense group also has SIQA, OpenbookQA and CommonsenseQA, which Table 2 does not show; the paper does not say which go into the Fig. 2 and 3 averages.
-Two departures from the Llama 2 paper's own protocol, which the authors state: MBPP uses a hand-verified subset, and TriviaQA gets no Wikipedia passages. This is why numbers here differ from Llama 2's published ones.
-maj@8 on GSM8K means the model samples 8 answers and the most common final answer is scored, which helps a lot on math. It matters for the Table 3 slide: Table 2 uses that setting and Table 3 does not, so the two tables give different numbers for the same model.
-Llama 2 34B was never released, so the comparison uses Llama 1 34B; the paper's tables label it 33B and its text 34B, but it is the same model.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · Table 2</p>
-
-## Does it beat Llama 2 70B?
+## What does a Mixtral layer do?
 
 <div class="rows">
-<div class="points">
+<div class="fig"><img src="img/week-07-mixtral-fig1-layer.png" alt="Mixtral Figure 1: an input vector goes to a router that picks 2 of 8 feed-forward experts, and the layer's output is the weighted sum of the outputs of the two chosen experts"></div>
+<p class="plain">Each input vector goes to 2 of the 8 experts; the output is the weighted sum of their two outputs.</p>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · Fig. 1. An <b>expert</b> is a standard feed-forward block, as in a vanilla Transformer. The <b>router</b> is also called the gating network</p>
+
+Note:
+Figure 1 is the whole idea. Read it left to right. A token's vector arrives at the layer. The router, a small linear layer, scores all 8 experts and keeps the top 2. Only those two experts run on this token. Each returns a vector, and the layer's output is their weighted sum, with weights from the router. The other six experts do no work for this token, which is the saving. Every expert has the shape of an ordinary feed-forward block, and attention is untouched: it is shared by all tokens. The introduction's summary: at every layer, for every token, a router chooses two of eight groups of parameters and combines their output additively. That raises the parameter count while the cost per token follows only the two experts used.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2 · Table 1</p>
+
+## What are Mixtral's architecture settings?
+
+<div class="cols wide-text">
 <div class="text">
 
-- Mixtral is ahead of Llama 2 70B on 9 of 12 columns (ours); it trails on HellaSwag, WinoGrande and TriviaQA.
+<table class="rules" style="font-size:17px">
+  <tr><td>parameter</td><td>value</td><td>what it is</td></tr>
+  <tr><td><code>dim</code></td><td>4096</td><td>width of each token's hidden vector</td></tr>
+  <tr><td><code>n_layers</code></td><td>32</td><td>Transformer blocks, each with an MoE layer</td></tr>
+  <tr><td><code>head_dim</code></td><td>128</td><td>width of one attention head</td></tr>
+  <tr><td><code>hidden_dim</code></td><td>14336</td><td>width inside one expert</td></tr>
+  <tr><td><code>n_heads</code></td><td>32</td><td>query heads</td></tr>
+  <tr><td><code>n_kv_heads</code></td><td>8</td><td>key and value heads, each shared by 4 query heads</td></tr>
+  <tr><td><code>context_len</code></td><td>32768</td><td>tokens the model reads at once</td></tr>
+  <tr><td><code>vocab_size</code></td><td>32000</td><td>distinct tokens</td></tr>
+  <tr><td><code>num_experts</code></td><td>8</td><td>experts per layer</td></tr>
+  <tr><td><code>top_k_experts</code></td><td>2</td><td>experts used per token</td></tr>
+</table>
 
 </div>
 <div class="text">
 
-- The big gains are code and math: MATH 28.4 against 13.8, HumanEval 40.2 against 29.3.
-- Against dense Mistral 7B: MMLU +8.1 and GSM8K +24.4, but with more multilingual data (ours).
+- The same Transformer as Mistral 7B, with two changes.
+- A fully dense 32k context.
+- Every feed-forward block replaced by an MoE layer.
 
 </div>
 </div>
+
+<p class="footnote">Jiang et al. 2024 · §2, Table 1 ("Model architecture"); the third column is ours</p>
+
+Note:
+Table 1 as printed, with a column of meanings added. Mixtral is Mistral 7B's Transformer with two exceptions, in the paper's words: it supports a fully dense context length of 32k tokens, and the feed-forward blocks are replaced by mixture-of-experts layers. Each token is a 4096-wide vector, there are 32 layers, and each expert has a hidden width of 14336. Attention has 32 query heads of width 128 and 8 key and value heads, so 4 query heads share each key and value head, which is grouped-query attention, although the paper does not use that name. The last two rows are the mixture: 8 experts per layer and 2 used per token. Why 8x7B is 47B and not 56B: only the feed-forward blocks are copied 8 times; attention and embeddings are shared. The paper states 47B and 13B but does not derive them.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2.1 · the MoE layer</p>
+
+## What does the MoE layer output?
+
+<div class="cols wide-text">
+<div class="text">
+
+<div class="eq">$$\sum_{i=0}^{n-1} G(x)_i \cdot E_i(x)$$</div>
+
+<dl class="where">
+<dt>$x$</dt><dd>the input: one token's vector</dd>
+<dt>$n$</dt><dd>the number of experts $E_0, \ldots, E_{n-1}$</dd>
+<dt>$E_i(x)$</dt><dd>the output of the $i$-th expert</dd>
+<dt>$G(x)_i$</dt><dd>the gating network's output for the $i$-th expert</dd>
+</dl>
+
+<p class="plain">Where the gate is 0, that expert's output is never computed.</p>
+
+</div>
+<div class="fig"><img src="img/week-07-gate.png" alt="Our example gate for one token over four experts: weights 0.731 for expert 0, 0.269 for expert 1, and 0 for experts 2 and 3"></div>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · §2.1. Picture: our example, $n = 4$ experts, 2 kept (ours)</p>
+
+Note:
+The paper's first equation. The layer's output is a weighted sum of the expert outputs, and the weights come from the gating network, G. In the picture, our own small example with four experts: the gate gives 0.731 to expert 0, 0.269 to expert 1 and exactly 0 to experts 2 and 3. The paper's point is in one sentence: if the gating vector is sparse, we can avoid computing the outputs of experts whose gates are zero. So the sum runs over all n experts on paper, but only two terms are ever computed. The next two slides build G.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2.1 · the gate</p>
+
+## How is the gate $G(x)$ computed?
+
+<div class="rows">
+<div class="eq">$$G(x) := \text{Softmax}(\text{TopK}(x \cdot W_g))$$</div>
+<div class="fig"><img src="img/week-07-router.png" alt="Our example in three panels: the logits 2.0, 1.0, 0.5 and minus 1.0 for experts 0 to 3; the top 2 kept and the other two set to minus infinity; the softmax weights 0.731 and 0.269, and 0 for experts 2 and 3"></div>
+<dl class="where">
+<dt>$x$, $G(x)$</dt><dd>one token's vector, and its gate: one weight per expert</dd>
+<dt>$W_g$</dt><dd>the router's weights, one column per expert; $x \cdot W_g$ gives one <b>logit</b> (raw score) per expert</dd>
+<dt>TopK</dt><dd>keeps the $K$ largest logits and sets the rest to $-\infty$ (next slide)</dd>
+<dt>Softmax</dt><dd>$e^{v_i} / \sum_j e^{v_j}$: positive weights that sum to 1, and $e^{-\infty} = 0$</dd>
+</dl>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · §2.1: "taking the softmax over the Top-K logits of a linear layer", after Shazeer et al. 2017. Numbers in the picture are ours: $e^2 / (e^2 + e^1) = 0.731$</p>
+
+Note:
+The gate in three moves, left to right in the picture. First, the router is one linear layer: multiply the token's vector x by W g, a 4096 by 8 matrix in Mixtral, to get one score per expert. In our example the four scores are 2.0, 1.0, 0.5 and minus 1.0. Second, TopK keeps the K largest and sets the rest to minus infinity; with K equal to 2 that keeps experts 0 and 1. Third, the softmax: e to the minus infinity is 0, so the masked experts get weight 0, and the two kept ones share the weight. e squared is 7.389, e to the one is 2.718, their sum is 10.107, so the weights are 0.731 and 0.269. The paper notes there are other ways to build G; this one it calls simple and performant.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2.1 · TopK</p>
+
+## What does TopK keep, and what does $K$ control?
+
+<div class="rows">
+<div class="eq">$$(\text{TopK}(\ell))_i := \begin{cases} \ell_i & \text{if } \ell_i \text{ is among the top-K coordinates of } \ell \in \mathbb{R}^n \\ -\infty & \text{otherwise} \end{cases}$$</div>
+<div class="cols wide-fig" style="flex:1 1 auto; min-height:0">
+<div class="text">
+
+
+
+<dl class="where">
+<dt>$\ell$, $\ell_i$</dt><dd>the logits $x \cdot W_g$, one per expert; $\ell_i$ is expert $i$'s</dd>
+<dt>$n$, $K$</dt><dd>the number of experts, and the number used per token</dd>
+</dl>
+
+- $K$ sets the compute per token; $n$ sets the parameters stored.
+- **Sparse** (total) count grows with $n$; **active** count grows with $K$: 47B and 13B.
+
+</div>
+<div class="fig"><img src="img/week-07-topk.png" alt="Our example: logits 2.0 and 1.0 for experts 0 and 1 kept, experts 2 and 3 set to minus infinity"></div>
+</div>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · §2.1, its definition written as cases. Picture: our example, $K = 2$ of $n = 4$ (ours)</p>
+
+Note:
+The paper's definition of TopK: keep a logit if it is among the K largest, otherwise replace it with minus infinity. The paper then says what K is for: it is a hyperparameter that sets the amount of compute used per token. Raise the number of experts n with K fixed and the parameter count grows while the cost per token stays about the same. Hence the paper's two counts: the sparse parameter count, all the weights stored, which grows with n, and the active parameter count, the weights one token uses, which grows with K. For Mixtral, 47B and 13B. The paper gives no reason for K equal to 2.
+The rest of §2.1, briefly: MoE layers run fast on one GPU with special kernels, Megablocks, and can be spread over GPUs by expert parallelism, one expert per device, which makes balancing the load across GPUs important. The paper does not say how Mixtral balances its load.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2.1 · Mixtral's layer</p>
+
+## What is Mixtral's layer, once $K = 2$?
+
+<div class="rows">
+<div class="eq">$$y = \sum_{i=0}^{n-1} \text{Softmax}(\text{Top2}(x \cdot W_g))_i \cdot \text{SwiGLU}_i(x)$$</div>
+<div class="cols wide-fig" style="flex:1 1 auto; min-height:0">
+<div class="text">
+
+
+
+<dl class="where">
+<dt>$x$, $y$</dt><dd>one token's input to the layer, and the layer's output</dd>
+<dt>$n$, $i$</dt><dd>8 experts, indexed $i = 0, \ldots, 7$</dd>
+<dt>$W_g$, Top2</dt><dd>the router's weights; TopK with $K = 2$, then Softmax as before</dd>
+<dt>$\text{SwiGLU}_i$</dt><dd>expert $i$: a SwiGLU feed-forward block with its own weights</dd>
+</dl>
+
+- Applied to each token separately, in place of every feed-forward block.
+
+</div>
+<div class="fig"><img src="img/week-07-mixtral-fig1-layer.png" alt="Mixtral Figure 1: the router picks 2 of 8 feed-forward experts and the output is the weighted sum of their two outputs"></div>
+</div>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · §2.1, Fig. 1. <b>SwiGLU</b>: the gated feed-forward block of Week 4, the same one Mistral 7B uses</p>
+
+Note:
+Putting it together, the paper's last equation. The experts are SwiGLU blocks, the same feed-forward form as Mistral 7B, and K is 2. So each token is sent to two SwiGLU blocks with different weights, and the output is their weighted sum. In our example, y equals 0.731 times expert 0's output plus 0.269 times expert 1's. The layer is applied independently per token, so two neighbouring tokens can use different experts, and it replaces the feed-forward sub-block in all 32 layers. The paper closes §2.1 by comparing with an earlier design, GShard, which replaced every other block and used a more elaborate rule for the second expert.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §2.1 · the gradient (ours)</p>
+
+## How does the gradient reach the router?
+
+<div class="rows">
+<div class="eq">$$\frac{\partial y}{\partial \ell_i} = \begin{cases} G(x)_i\,\big(E_i(x) - y\big) & \text{if } i \text{ is one of the top } K \\ 0 & \text{otherwise} \end{cases}$$</div>
+<div class="fig"><img src="img/week-07-router-grad.png" alt="Left: our example's gradient of the output with respect to each logit, 0.197 for expert 0, minus 0.197 for expert 1, and 0 for experts 2 and 3. Right: the product of the two kept weights against the gap between their logits, 0.25 at gap 0 falling towards 0, with our token at gap 1 and 0.197"></div>
+<dl class="where">
+<dt>$\ell_i$, $K$</dt><dd>expert $i$'s logit, from $x \cdot W_g$; $K$ experts are kept</dd>
+<dt>$y$, $E_i(x)$, $G(x)_i$</dt><dd>the layer output, expert $i$'s output, and its gate weight</dd>
+</dl>
+</div>
+
+<p class="footnote">Not in the paper: our derivation from the §2.1 formula (ours). With $K = 2$: $\partial y / \partial \ell_0 = G(x)_0\, G(x)_1\, (E_0(x) - E_1(x))$</p>
+
+Note:
+The paper does not discuss training the router, so this slide is ours, derived from its formula. The top-K choice itself has no gradient. Gradient flows only through the softmax over the kept experts. For a kept expert i, the derivative of y with respect to its logit is its weight times how far its output is from the layer's output. Masked experts get exactly zero: neither they nor their router columns learn anything from this token.
+With two kept experts it simplifies: the derivative for expert 0 is G0 times G1 times E0 minus E1, and expert 1's is the negative. So the router learns only how to split the weight between the two experts it already picked. In our example that factor is 0.731 times 0.269, 0.197. The right panel shows it shrinking as the gap between the two logits grows: a confident router gets little gradient. The router weights W g get x transposed times the gradient on the logits. One more consequence, ours: with K equal to 1, the single weight is always 1, so no gradient reaches the router at all.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3 · Table 2</p>
+
+## Does Mixtral match Llama 2 70B with 13B active parameters?
+
+<div class="rows">
+<p class="plain">Ahead on 9 of 12 columns (ours); behind on HellaSwag, WinoGrande and TriviaQA. Largest gains: code and maths.</p>
 
 <table class="rules tight" style="font-size:14px">
   <tr><td>model</td><td>active</td><td>MMLU</td><td>HellaS</td><td>WinoG</td><td>PIQA</td><td>Arc-e</td><td>Arc-c</td><td>NQ</td><td>TriQA</td><td>HumanE</td><td>MBPP</td><td>Math</td><td>GSM8K</td></tr>
@@ -908,71 +285,48 @@ Llama 2 34B was never released, so the comparison uses Llama 1 34B; the paper's 
 </table>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · Table 2, accuracy in %, bold as the paper bolds (best per column). "Active": parameters used per token. Metrics as on the last slide; NQ and TriQA are 5-shot, Arc-e and Arc-c the easy and hard school-science sets</p>
+<p class="footnote">Jiang et al. 2024 · Table 2, %, paper's bold. MMLU: 57-subject exam; HellaS: sentence endings; WinoG: pronouns; PIQA: physical know-how; Arc-e, Arc-c: school science, easy and hard; NQ, TriQA: trivia questions; HumanE, MBPP: Python tasks; Math, GSM8K: competition and school maths</p>
 
 Note:
-This is Table 2 in full, with the paper's own bold. The caption says Mixtral "outperforms or matches Llama 2 70B performance on almost all popular benchmarks while using 5x fewer active parameters during inference". Counting the columns (ours), Mixtral is ahead on 9 of the 12 and behind on HellaSwag by 1.0, WinoGrande by 3.2 and TriviaQA by 1.5 points. The largest gaps in its favour are MATH, 28.4 against 13.8, a ratio of 2.1, and HumanEval and MBPP, each about 11 points.
-The tempting reading is "sparsity gave these gains". The closest pair in the table is Mistral 7B, the same architecture but dense: Mixtral beats it by 8.1 on MMLU and 24.4 on GSM8K. But the paper says Mixtral saw much more multilingual data, and everything else about its training is unknown. So this is the closest pair the paper gives, not a controlled test of sparsity.
+Table 2 in full, with the paper's own bold. The authors re-ran every model on their own evaluation pipeline, so the numbers are comparable within the table. The caption: Mixtral "outperforms or matches Llama 2 70B performance on almost all popular benchmarks while using 5x fewer active parameters during inference". Counting columns (ours), it is ahead on 9 of 12 and behind on HellaSwag by 1.0, WinoGrande by 3.2 and TriviaQA by 1.5. The biggest gaps are MATH, 28.4 against 13.8, and the two code sets, about 11 points each. Settings, from §3: commonsense sets 0-shot, NaturalQuestions and TriviaQA 5-shot, GSM8K 8-shot with a majority vote over 8 samples, MATH 4-shot with a vote over 4, HumanEval 0-shot, MBPP 3-shot, MMLU 5-shot. Llama 2 34B was never released, so Llama 1 stands in; the table says 33B, the text 34B. Single runs, no error bars, and no dense model trained the same way, so the table does not say how much of the gain is the experts.
 
----
+--
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · Fig. 3</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3 · Fig. 2 · optional</p>
 
-## How should you read Fig. 3?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- The x axis is **active parameters**, the compute cost per token: 7B, 13B, 34B, 70B.
-- Llama 2 is one line from 7B to 70B; Mistral's line runs from 7B to Mixtral at 13B.
-- Mixtral sits at or above Llama 2 70B in five panels and below on comprehension (approximate reads).
-- The memory axis, 47B stored, is not drawn.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig3-active.png" alt="Jiang et al. Figure 3: six panels, MMLU, knowledge, reasoning, comprehension, math and code, each with accuracy against active parameters; Mixtral at 13B sits near or above the Llama 2 70B point in all but comprehension"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · §3, Fig. 3. Panels are the §3 benchmark groups, not all in Table 2; accuracy in %. Reads from the axes are ours, the figure prints no numbers</p>
-
-Note:
-Figure 3 turns the benchmark groups into a cost picture; comprehension, BoolQ and QuAC, is not in Table 2 at all. The horizontal axis is active parameters, which is proportional to compute per token. Llama 2 gives a line of three points; Mistral 7B to Mixtral is the second line, and the jump between them is large in every panel. At 13B active, Mixtral lands at or above Llama 2 70B in MMLU, knowledge, reasoning, math and code, and below it on comprehension, about 65.8 against 67 (approximate reads, ours). The caption's "largely outperforms" is generous: on knowledge and reasoning the margins read as about 1 and 0.5 points.
-This is the honest framing for a sparse model: it compares on compute. But the figure leaves out the other cost. Serving needs all 47 billion parameters in memory, so a point drawn at 13B on the x axis hides a model that does not fit where a 13B dense model fits. The paper says so in words, in §3, but not in the figure.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · Fig. 2</p>
-
-## What does Fig. 2 show that its caption does not?
+## How does Fig. 2 group the same results?
 
 <div class="rows">
-<div class="points">
-<div class="text">
-
-- The caption: Mixtral "outperforms or matches Llama 2 70B on all benchmarks".
-- The bars show Llama 2 70B above Mixtral on AGI Eval, BBH and comprehension (approximate reads).
-
-</div>
-<div class="text">
-
-- The claim shifts: abstract "across all"; Fig. 2 "all"; Table 2 "almost all"; Fig. 3 "except comprehension".
-- Check each caption against its data before you cite it.
-
-</div>
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig2-bars.png" alt="Jiang et al. Figure 2: grouped bars for six models on MMLU, knowledge, reasoning, comprehension, AGI Eval, math, BBH and code; Llama 2 70B is the tallest bar on AGI Eval, BBH and comprehension"></div>
+<div class="fig"><img src="img/week-07-mixtral-fig2-bars.png" alt="Jiang et al. Figure 2: grouped bars for six models on MMLU, knowledge, reasoning, comprehension, AGI Eval, math, BBH and code; Mixtral is tallest on math and code, and Llama 2 70B is tallest on AGI Eval, BBH and comprehension"></div>
+<p class="plain">Mixtral leads on maths and code; by eye (ours), Llama 2 70B is taller on AGI Eval, BBH and comprehension.</p>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · Fig. 2, abstract, Table 2, Fig. 3 captions. BBH: hard reasoning tasks; AGI Eval: questions from human exams. Reads from the bars are ours; the paper prints no values</p>
+<p class="footnote">Jiang et al. 2024 · Fig. 2. BBH: hard reasoning tasks; AGI Eval: questions from human exams; comprehension: BoolQ (yes or no on a passage) and QuAC (dialogue about a passage)</p>
 
 Note:
-Read the caption of Fig. 2 and then look at the bars. Mixtral is the clear winner on math and code. But on AGI Eval, BBH and comprehension the Llama 2 70B bar is visibly taller: about 54 against 51 on AGI Eval, 45 against 42 on BBH, and 67 against 66 on comprehension (approximate reads, ours; no numbers are printed).
-The paper's own wording drifts. The abstract says "across all evaluated benchmarks"; the Fig. 2 caption says "all benchmarks"; the Table 2 caption says "almost all"; the Fig. 3 caption says "all benchmarks, except on reading comprehension"; the conclusion says Mixtral outperforms the previous best model that uses 70B parameters per token. The most careful versions are the ones next to the numbers. This is a reading lesson, the same one as Week 6's: check the claim against the data it sits on.
+Figure 2 is Table 2 grouped into categories, plus three that are not in the table: reading comprehension, AGI Eval and BBH. Its caption says Mixtral "outperforms or matches Llama 2 70B on all benchmarks". By eye, the Llama 2 70B bar is taller on AGI Eval, about 54 against 51, on BBH, about 45 against 42, and on comprehension, about 67 against 66 (approximate reads, ours; the figure prints no values). So the claim drifts across the paper: "all" in the abstract and this caption, "almost all" in Table 2's caption, "except reading comprehension" in Fig. 3's. The careful versions are the ones next to the numbers.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · Table 3</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3, size and efficiency · Fig. 3</p>
 
-## Does it beat GPT-3.5, and why do the numbers change?
+## How does accuracy grow with active parameters?
+
+<div class="rows">
+<div class="fig"><img src="img/week-07-mixtral-fig3-active.png" alt="Jiang et al. Figure 3: six panels, MMLU, knowledge, reasoning, comprehension, math and code, each with accuracy against active parameters; Mixtral at 13B sits near or above the Llama 2 70B point in all but comprehension"></div>
+<p class="plain">The x axis is active parameters, the compute per token. Memory follows the 47B stored, which is not drawn.</p>
+</div>
+
+<p class="footnote">Jiang et al. 2024 · §3, Fig. 3. Accuracy in %, panels are the §3 benchmark groups</p>
+
+Note:
+Figure 3 puts the results on a cost axis: active parameters, which the paper says is directly proportional to inference compute. Llama 2 is a line through 7B, 13B and 70B; Mistral runs from 7B to Mixtral at 13B. With 5x fewer active parameters, Mixtral is at or above Llama 2 70B in every panel except comprehension. The paper's own caveat, in the same paragraph: this ignores memory and hardware use. Serving memory is proportional to the sparse count, 47B, still smaller than 70B. And the routing adds overhead, so MoE layers suit batched workloads, where many tokens share each expert's weights. The introduction's claim of faster inference has no speed measurement in the paper.
+
+---
+
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3 · Table 3</p>
+
+## Does Mixtral match GPT-3.5?
 
 <div class="cols wide-text">
 <div class="text">
@@ -981,63 +335,57 @@ The paper's own wording drifts. The abstract says "across all evaluated benchmar
   <tr><td>benchmark</td><td>Llama 2 70B</td><td>GPT-3.5</td><td>Mixtral</td></tr>
   <tr><td>MMLU</td><td>69.9</td><td>70.0</td><td><b>70.6</b></td></tr>
   <tr><td>HellaSwag, 10-shot</td><td><b>87.1</b></td><td>85.5</td><td>86.7</td></tr>
-  <tr><td>ARC-c, 25-shot</td><td>85.1</td><td>85.2</td><td><b>85.8</b></td></tr>
+  <tr><td>ARC Challenge, 25-shot</td><td>85.1</td><td>85.2</td><td><b>85.8</b></td></tr>
   <tr><td>WinoGrande, 5-shot</td><td><b>83.2</b></td><td>81.6</td><td>81.2</td></tr>
   <tr><td>MBPP, pass@1</td><td>49.8</td><td>52.2</td><td><b>60.7</b></td></tr>
-  <tr><td>GSM8K, 5-shot</td><td>53.6</td><td>57.1</td><td><b>58.4</b></td></tr>
-  <tr><td>MT-Bench, instruct</td><td>6.86</td><td><b>8.32</b></td><td>8.30</td></tr>
+  <tr><td>GSM-8K, 5-shot</td><td>53.6</td><td>57.1</td><td><b>58.4</b></td></tr>
+  <tr><td>MT Bench, instruct models</td><td>6.86</td><td><b>8.32</b></td><td>8.30</td></tr>
 </table>
 
 </div>
 <div class="text">
 
-- Mixtral loses HellaSwag and WinoGrande to Llama 2 70B, and WinoGrande and MT-Bench to GPT-3.5.
-- Same model, new numbers: GSM8K 74.4 in Table 2 (8-shot, maj@8) and 58.4 here (5-shot).
-- ARC-c: 59.7 (0-shot) in Table 2 and 85.8 (25-shot) here.
-- Shot counts and scoring decide the level, so compare only within one table.
+- The paper: Mixtral "performs similarly or above the two other models".
+- GSM8K is 74.4 in Table 2 (8-shot, vote of 8) but 58.4 here (5-shot).
 
 </div>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · Table 3, %, bold as the paper bolds. pass@1: solved with one answer; MT-Bench: chat questions scored out of 10 by a judge model; GPT-3.5 on MT-Bench is gpt-3.5-turbo-1106</p>
+<p class="footnote">Jiang et al. 2024 · Table 3, %, paper's bold. MMLU: 57-subject exam; HellaSwag: sentence endings; ARC: school science; WinoGrande: pronouns; MBPP: Python, pass@1 = solved with one answer; GSM-8K: school maths; MT Bench: chat scored out of 10 by a judge model</p>
 
 Note:
-Table 3 adds GPT-3.5 and keeps the losses in. Mixtral wins MMLU, ARC-challenge, MBPP and GSM8K and loses HellaSwag and WinoGrande to Llama 2 70B. Against GPT-3.5 it loses WinoGrande by 0.4 and MT-Bench by 0.02, which is a tie. The text of the paper says Mixtral "performs similarly or above the two other models", which is fair; the abstract's "across all evaluated benchmarks" is not.
-The point to teach is the second column of bullets. The same Mixtral scores 74.4 on GSM8K in Table 2 and 58.4 in Table 3; the Llama 2 70B figure drops from 69.6 to 53.6. The settings differ: Table 2 uses 8-shot with a majority vote over 8 samples, Table 3 uses 5-shot. ARC-challenge goes from 59.7 to 85.8 between 0-shot and 25-shot. The Table 2 caption does not say its settings differ from Table 3's. In Table 3 the HellaSwag and WinoGrande gaps to Llama 2 70B narrow to 0.4 and 2.0 points. The paper's text also says "47B tokens" where it means 47B parameters, a slip. The MT-Bench pointer in the instruct section names Table 2, but the number is in this table.
+Table 3 adds GPT-3.5. Mixtral is best on MMLU, ARC Challenge, MBPP and GSM8K, behind Llama 2 70B on HellaSwag and WinoGrande, and level with GPT-3.5 on MT Bench, 8.30 against 8.32. The text's wording, similar or above, fits. Two things to notice. The same model has different numbers in the two tables: GSM8K 74.4 in Table 2, 8-shot with a vote over 8 samples, and 58.4 here at 5-shot; ARC Challenge 59.7 at 0-shot and 85.8 at 25-shot. So compare only within one table. And the paper lists its own evaluation differences from the Llama 2 paper: MBPP uses the hand-verified subset, and TriviaQA gets no Wikipedia contexts. One slip: the text says "47B tokens" where it means parameters.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · §3.1, §3.2</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3.1, §3.2 · Fig. 4</p>
 
-## Does it hold up on long inputs and other languages?
+## Does it hold up in other languages and on long inputs?
 
 <div class="rows">
 <div class="points">
 <div class="text">
 
-- **Passkey retrieval**: find a number hidden in a long prompt. Mixtral scores 100% at every length and position up to 32k.
-- Perplexity on a maths-text subset falls as the context grows, then flattens.
+- §3.1: more multilingual data than Mistral 7B; ahead of Llama 2 70B in all 12 French, German, Spanish and Italian cells.
 
 </div>
 <div class="text">
 
-- Multilingual: Mixtral beats Llama 2 70B in all 12 cells, by +3.1 to +8.3 points (ours).
-- The authors credit a larger share of multilingual data, so this says little about sparsity.
+- §3.2: 100% passkey retrieval at every length and position; perplexity falls as the context grows.
 
 </div>
 </div>
 <div class="fig"><img src="img/week-07-mixtral-fig4.png" alt="Jiang et al. Figure 4: left, a passkey heat map where every filled cell is green, 100 percent accuracy, across sequence lengths to 32 thousand; right, proof-pile perplexity falling from about 3.8 to about 1.9 as context length grows"></div>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §3.1 Table 4, §3.2 Fig. 4. Perplexity: how surprised the model is by text, lower is better; proof-pile: a dataset of mathematical text; the number of trials is not given. Curve values are our reads</p>
+<p class="footnote">Jiang et al. 2024 · §3.1, Table 4; §3.2, Fig. 4. Passkey: find a number hidden at a random place in a long prompt. Perplexity: how surprised the model is by text, lower is better; proof-pile: mathematical text</p>
 
 Note:
-Two more checks, each short. Long context: the passkey task hides a number at a random place in a long prompt and asks for it. The heat map is green everywhere it is filled; the cells above the diagonal are empty because a passkey cannot sit after the end of the prompt. The paper gives no trial counts. The perplexity curve on a subset of proof-pile falls from about 3.8 at short contexts to about 2.0 near 10k and then falls less than 0.1 more out to 32k (approximate reads, ours).
-Languages: Table 4 is on the next, optional slide. Mixtral wins every one of the twelve cells against Llama 2 70B in French, German, Spanish and Italian on ARC-challenge, HellaSwag and MMLU. But the paper itself says it significantly upsampled multilingual data relative to Mistral 7B, and gives no fraction. So the gain is evidence about the data mix, not about experts.
+Two short checks. Languages, §3.1: compared with Mistral 7B the authors significantly upsampled multilingual data, and Mixtral beats Llama 2 70B on ARC Challenge, HellaSwag and MMLU in French, German, Spanish and Italian, all 12 cells, by 3.1 to 8.3 points (ours); the table is the next sub-slide. Because the data changed, this says more about the data mix than about experts. Long context, §3.2: the passkey task hides a number in a long prompt and asks for it; the heat map is 100% in every filled cell up to 32k tokens, and the cells above the diagonal are empty because a passkey cannot sit past the end of the prompt. Perplexity on a subset of proof-pile falls monotonically as the context grows, from about 3.8 to about 2.0 by 10k and to about 1.9 at 32k (by eye, ours). No trial counts are given.
 
 --
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · Table 4 · optional</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3.1 · Table 4 · optional</p>
 
 ## What does the multilingual table say?
 
@@ -1048,150 +396,111 @@ Languages: Table 4 is on the next, optional slide. Mixtral wins every one of the
   <tr><td>Llama 2 70B</td><td>70B</td><td>49.9</td><td>72.5</td><td>64.3</td><td>47.3</td><td>68.7</td><td>64.2</td><td>50.5</td><td>74.5</td><td>66.0</td><td>49.4</td><td>70.9</td><td>65.1</td></tr>
   <tr class="total"><td>Mixtral 8x7B</td><td>13B</td><td><b>58.2</b></td><td><b>77.4</b></td><td><b>70.9</b></td><td><b>54.3</b></td><td><b>73.0</b></td><td><b>71.5</b></td><td><b>55.4</b></td><td><b>77.6</b></td><td><b>72.5</b></td><td><b>52.8</b></td><td><b>75.1</b></td><td><b>70.9</b></td></tr>
 </table>
-<div class="points">
-<div class="text">
-
-- The smallest gap over Llama 2 70B is +3.1 (Spanish HellaSwag); the largest is +8.3 (French ARC-c) (ours).
-- Mistral 7B is not in this table, so the effect of the extra multilingual data cannot be separated.
-
-</div>
-</div>
+<p class="plain">Mixtral is ahead in every cell, by 3.1 to 8.3 points (ours). Mistral 7B is not in the table.</p>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · Table 4, accuracy in %, the paper bolds every Mixtral cell. FR, DE, ES, IT: French, German, Spanish, Italian; ARC-c: hard school science; HellaS: sentence endings; MMLU: 57-subject exam</p>
+<p class="footnote">Jiang et al. 2024 · Table 4, %, the paper bolds every Mixtral cell. FR, DE, ES, IT: French, German, Spanish, Italian; Arc-c: hard school science; HellaS: sentence endings; MMLU: 57-subject exam</p>
 
 Note:
-Table 4 in full. The paper bolds every Mixtral cell, and the differences are all positive, between 3.1 and 8.3 points. The reason the authors give is that they upsampled the multilingual share of the data compared with Mistral 7B, and that "the extra capacity" lets it keep English accuracy. The extra capacity is a claim about experts, but there is no run that tests it, and the multilingual Mistral 7B is not in the table. The data fraction is not given.
+Table 4 in full. The smallest gap over Llama 2 70B is 3.1 points, Spanish HellaSwag, and the largest 8.3, French ARC Challenge (ours). The authors give two reasons together: more multilingual data, and "the extra capacity" that lets the model keep its English accuracy. Neither is separated by a run, the data share is not given, and Mistral 7B, the dense model with the old data mix, is missing from the table.
 
 --
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, results · §3.3 · optional</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §3.3 · bias benchmarks · optional</p>
 
-## Does the bias table say what its caption says?
+## How biased is the base model?
 
 <div class="cols wide-text">
 <div class="text">
 
 <table class="rules">
-  <tr><td></td><td>Llama 2 70B</td><td>Mixtral</td></tr>
+  <tr><td></td><td>Llama 2 70B</td><td>Mixtral 8x7B</td></tr>
   <tr><td>BBQ accuracy</td><td>51.5</td><td>56.0</td></tr>
   <tr><td>BOLD gender</td><td>0.293 ± 0.073</td><td>0.323 ± 0.045</td></tr>
   <tr><td>BOLD profession</td><td>0.218 ± 0.073</td><td>0.243 ± 0.087</td></tr>
-  <tr><td>BOLD religion</td><td>0.188 ± 0.133</td><td>0.144 ± 0.089</td></tr>
-  <tr><td>BOLD politics</td><td>0.149 ± 0.140</td><td>0.186 ± 0.146</td></tr>
+  <tr><td>BOLD religious ideology</td><td>0.188 ± 0.133</td><td>0.144 ± 0.089</td></tr>
+  <tr><td>BOLD political ideology</td><td>0.149 ± 0.140</td><td>0.186 ± 0.146</td></tr>
   <tr><td>BOLD race</td><td>0.232 ± 0.049</td><td>0.232 ± 0.052</td></tr>
 </table>
 
 </div>
 <div class="text">
 
-- The caption says "lower std on BOLD". The spread is lower in 2 of 5 groups, higher in 3 (ours).
-- The text's "similar variances" fits the table better.
-- BBQ accuracy mixes bias with plain ability to answer, and no error bars are given.
+- Higher BBQ accuracy; more positive BOLD sentiment in 3 of 5 groups (ours).
+- The text says "similar variances"; the spread is lower in 2 of 5 groups (ours).
 
 </div>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §3.3 (the table is printed as Fig. 5). BBQ: hand-written questions on nine social biases; BOLD: 23,679 text prompts, scored by average sentiment (higher is more positive) and its spread (std)</p>
+<p class="footnote">Jiang et al. 2024 · §3.3, printed as Fig. 5. BBQ: hand-written questions on nine social biases; BOLD: 23,679 text prompts, average sentiment ± its spread</p>
 
 Note:
-Optional. The authors test the base model on two bias sets. BBQ gives 56.0 for Mixtral against 51.5 for Llama 2 70B, and the text calls this "less bias". But BBQ accuracy counts correct answers, so a more capable model scores higher without being less biased; the paper does not split the ambiguous and the clear questions. On BOLD, each row is the average sentiment of generated text, with its standard deviation. The caption claims lower std; checking row by row (ours), gender 0.045 against 0.073 and religion 0.089 against 0.133 are lower, while profession, politics and race are slightly higher. So the text, "similar variances", is the safer sentence. The table is printed as Figure 5 in the paper though it is a table. One more mismatch: the introduction says the instruct model shows reduced bias, but §3.3 tests the base model.
+Optional. The authors measure the base model, to find flaws for fine-tuning to fix. BBQ is hand-written questions targeting nine social biases; Mixtral scores 56.0 against 51.5, which the paper reads as less bias, although a more capable model also answers more questions right. BOLD gives prompts in five domains and scores the sentiment of what the model writes: higher average is more positive, lower spread less bias within a group. Mixtral is more positive in three of five groups, less on religious ideology, level on race, and its spread is lower for gender and religious ideology only (ours). So the caption's "lower std" overstates; the text's "similar variances" fits the table. The table is printed as a figure, Fig. 5.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, instruct model · §4</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §4 · Fig. 6</p>
 
-## How was the instruct model made, and how good is it?
+## How good is the instruct model?
 
 <div class="cols wide-fig">
 <div class="text">
 
-- **SFT** (supervised fine-tuning) on instructions, then **DPO** (Direct Preference Optimization, Week 9) on paired feedback.
-- MT-Bench 8.30, the best open-weights score in December 2023.
-- Arena Elo 1121, above Claude-2.1 and the best GPT-3.5-Turbo (both 1117), and Gemini Pro (1111).
-- The next open models, Tulu-2-DPO-70B and Yi-34B-Chat, are at 1110: 11 back, no intervals given.
+- Supervised fine-tuning, then DPO on paired feedback.
+- MT-Bench 8.30, the best open-weights model in December 2023.
+- Arena Elo 1121: above Claude-2.1 and GPT-3.5-Turbo (1117), Gemini Pro (1111) and Llama-2-70b-chat (1077).
 
 </div>
 <div class="fig"><img src="img/week-07-mixtral-fig6-lmsys.png" alt="Jiang et al. Figure 6: LMSys leaderboard screenshot of 22 December 2023; Mixtral-8x7b-Instruct-v0.1 is highlighted at Arena Elo 1121, below GPT-4 and Claude-1 and Claude-2.0, above Claude-2.1, GPT-3.5-Turbo, Gemini Pro and Llama-2-70b-chat at 1077"></div>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §4, Fig. 6, screenshot of 22 Dec 2023. Arena Elo: a rating from human votes between two anonymous models; MT-Bench: chat questions scored out of 10 by a judge model</p>
+<p class="footnote">Jiang et al. 2024 · §4, Fig. 6, screenshot of 22 Dec 2023. DPO: Direct Preference Optimization, Week 9. Arena Elo: a rating from human votes between two anonymous models; MT-Bench: chat questions scored by a judge model</p>
 
 Note:
-The chat model is trained in two steps: supervised fine-tuning on an instruction set, then direct preference optimization on pairs of better and worse answers. DPO is Week 9's reading, so one line is enough here. The paper gives no data sizes, hyperparameters, or a comparison of SFT alone against SFT plus DPO.
-Two evaluations. MT-Bench: 8.30, which Table 3 shows level with GPT-3.5's 8.32. And the LMSys Chatbot Arena, where people vote between two anonymous models: Elo 1121 in the screenshot of 22 December 2023. Mixtral sits below the GPT-4 versions, Claude-1 and Claude-2.0, by 10 to 122 points. It sits above Claude-2.1 and GPT-3.5-Turbo (best version) by 4 points, Gemini Pro by 10 and Llama-2-70b-chat by 44. A 4 point gap may well be within the noise of the votes; no confidence intervals are printed (ours). The paper says the model is the best open-weights model "by a large margin", yet the next open models in the screenshot, Tulu-2-DPO-70B and Yi-34B-Chat, are 11 points behind.
+§4 is one paragraph. Mixtral Instruct is trained with supervised fine-tuning on an instruction dataset and then Direct Preference Optimization on a paired feedback dataset; DPO is Week 9's reading. No data sizes or settings are given. MT-Bench is 8.30. The independent human evaluation is the LMSys Chatbot Arena, where people vote between two anonymous models: Elo 1121 on 22 December 2023, above Claude-2.1 and the best GPT-3.5-Turbo at 1117, Gemini Pro at 1111 and Llama-2-70b-chat at 1077, and below the GPT-4 versions, Claude-1 and Claude-2.0. A 4-point gap is likely within the noise of the votes; the screenshot prints no intervals (ours).
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, routing analysis · Fig. 7</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §5, routing analysis · Fig. 7</p>
 
 ## Did the experts specialise by topic?
 
-<div class="cols wide-fig">
-<div class="text">
-
-- If experts are "experts", one should favour maths and another biology. Predict before you look.
-- They ran eight Pile subsets and counted each expert's share of tokens as first or second choice, at layers 0, 15, 31.
-- Their words: "we do not observe obvious patterns in the assignment of experts based on the topic".
-- ArXiv, PubMed and PhilPapers look alike; only DM Mathematics differs, "likely" because it is synthetic.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig7-routing.png" alt="Jiang et al. Figure 7: three panels for layers 0, 15 and 31, selection proportion by expert 0 to 7 for eight Pile subsets; the colored bars are close together at every expert, with DM Mathematics slightly apart"></div>
+<div class="rows">
+<div class="fig"><img src="img/week-07-mixtral-fig7-routing.png" alt="Jiang et al. Figure 7: three panels for layers 0, 15 and 31, selection proportion by expert 0 to 7 for eight Pile subsets; the coloured bars are close together at every expert, with DM Mathematics slightly apart"></div>
+<p class="plain">"Surprisingly, we do not observe obvious patterns in the assignment of experts based on the topic."</p>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §5, Fig. 7. The Pile: a large public mix of web, books, code and papers; DM Mathematics: synthetic maths exercises. The grey 1/8 line is the even-share level (drawn horizontal, captioned vertical)</p>
+<p class="footnote">Jiang et al. 2024 · §5, Fig. 7: share of tokens sent to each expert, first or second choice, layers 0, 15, 31. The Pile: a public mix of web, books, code and papers; DM Mathematics: synthetic maths exercises. Grey dashed line: 1/8, an even share</p>
 
 Note:
-Ask the room first: if you trained eight experts, would you expect one to handle mathematics, one biology, one law? That is what the word expert suggests. The authors check this on the validation split of the Pile, eight subsets, at layers 0, 15 and 31, counting the share of tokens that picked each expert as first or second choice. The 1/8 reference line is drawn horizontal in the figure although the caption calls it vertical.
-Their finding, in their words: "Surprisingly, we do not observe obvious patterns in the assignment of experts based on the topic." ArXiv papers in LaTeX, PubMed biology and PhilPapers philosophy look the same. Only DM Mathematics is marginally different, particularly at the first and last layers, which the authors attribute to the dataset being synthetic with limited coverage of natural language; that explanation is stated as "likely" and untested. The paper does not say whether this is the base or the instruct model.
+Ask the room first: with eight experts, would you expect one for maths, one for biology, one for philosophy? That is what the word expert suggests. The authors check on the validation set of the Pile: for each of eight subsets, the share of tokens that picked each expert as first or second choice, at the first, middle and last layers. The answer, in their words: surprisingly, no obvious patterns by topic. ArXiv papers in LaTeX, PubMed biology and PhilPapers philosophy look the same at every layer. Only DM Mathematics is marginally different, most at the first and last layers, which they put down, "likely", to its synthetic text and to those layers' hidden states being close to the input and output embeddings. That explanation is not tested.
 
 ---
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, routing analysis · Fig. 8</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §5, routing analysis · Fig. 8</p>
 
 ## Then what does the router follow?
 
-<div class="cols wide-fig">
-<div class="text">
-
-- Fig. 8 colours each token by its first-choice expert, in Python, maths and English samples.
-- The text: `self` and the indentation get the same expert, "particularly at the first and last layers".
-- The authors read this as "structured syntactic behavior".
-- Our caveat: three hand-picked samples, no colour legend, no quantified test.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig8-tokens.png" alt="Jiang et al. Figure 8: three text samples, Python code, maths questions and an English question, each in three columns for layers 0, 15 and 31, every token shaded by its first-choice expert; indentation blocks in the code are one solid colour at layer 31 and mostly one colour at layer 0"></div>
+<div class="rows">
+<div class="fig"><img src="img/week-07-mixtral-fig8-tokens.png" alt="Jiang et al. Figure 8: three text samples, Python code, maths questions and an English question, each in three columns for layers 0, 15 and 31, every token shaded by its first-choice expert; indentation blocks in the code are one solid colour at layer 31"></div>
+<p class="plain">Each token coloured by its first-choice expert: the choice "appears to be more aligned with the syntax rather than the domain".</p>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §5, Fig. 8. First choice: the expert with the largest router weight for a token. The text's "Question in English" matches only the maths sample in the image (ours)</p>
+<p class="footnote">Jiang et al. 2024 · §5, Fig. 8. First choice: the expert the router ranks first of its two; the samples are Python code, maths and English</p>
 
 Note:
-If the router does not follow topic, what does it follow? The authors colour each token by its first-choice expert and look. In the code sample the indentation is one solid colour at layer 31, but at layer 0 it is mostly one colour with a few rows in two others, so the text's "always assigned to the same experts" is stronger than the image (ours). `self` often, not always, keeps one colour. They conclude that the router "does exhibit some structured syntactic behavior" and that expert choice looks more aligned with syntax than with domain, especially at the initial and final layers.
-Our reading: this is a suggestion, not a measurement. Three samples chosen by the authors, no legend telling us which colour is which expert, and no number such as how much information the token type gives about the expert. One detail may not match the image: the text says the word "Question" gets one expert in English, but the only "Question" in the figure is in the maths sample. Also, authors expected topic and found none; syntax is the explanation they reach for, and nothing here rules out others.
+If not topic, then what? Figure 8 colours every token by the expert it chose first, for a Python sample, a maths sample and an English sample, at layers 0, 15 and 31. The authors' reading: the choice is more aligned with syntax than with domain, especially at the first and last layers. The word self in Python and the word Question often get the same expert even though they span several tokens, and in code the indentation tokens get the same experts, particularly at the first and last layers. They call this structured syntactic behaviour. Two cautions, ours: these are three hand-picked samples with no colour legend and no number behind them, and in the image the indentation at layer 0 is mostly, not always, one colour. The paper's conclusion then restates the headline: the first mixture of experts to reach state of the art among open models, with 13B active parameters per token against Llama 2 70B's 70B.
 
----
+--
 
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, routing analysis · Table 5</p>
+<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · §5, routing analysis · Table 5 · optional</p>
 
-## Do neighbouring tokens share experts, and why does it matter?
+## Do neighbouring tokens share experts?
 
 <div class="rows">
-<div class="points">
-<div class="text">
-
-- **Repetition**: how often token $i+1$ uses the same expert as token $i$ ("first"), or shares one of its two ("either").
-- Even chance would be $1/8$, or 12.5%, for first, and about 46% for either (ours: $1 - \tfrac68 \cdot \tfrac57$).
-
-</div>
-<div class="text">
-
-- Layer 0 is near chance; layer 15 is about twice it on first choice (23.6 to 28.4%).
-- Runs of one expert can overload a GPU, or let a cache reuse it.
-
-</div>
-</div>
+<p class="plain">Same expert for token $i$ and token $i+1$: near chance at layer 0, well above it at layers 15 and 31.</p>
 <table class="rules tight" style="font-size:14px">
-  <tr><td>Pile subset</td><td>first L0</td><td>first L15</td><td>first L31</td><td>either L0</td><td>either L15</td><td>either L31</td></tr>
+  <tr><td>Pile subset</td><td>first, layer 0</td><td>first, 15</td><td>first, 31</td><td>first or second, 0</td><td>first or second, 15</td><td>first or second, 31</td></tr>
   <tr><td>ArXiv</td><td>14.0</td><td>27.9</td><td>22.7</td><td>46.5</td><td>62.3</td><td>52.9</td></tr>
   <tr><td>DM Mathematics</td><td>14.1</td><td>28.4</td><td>19.7</td><td>44.9</td><td>67.0</td><td>44.5</td></tr>
   <tr><td>Github</td><td>14.9</td><td>28.1</td><td>19.7</td><td>49.9</td><td>66.9</td><td>49.2</td></tr>
@@ -1203,207 +512,10 @@ Our reading: this is a suggestion, not a measurement. Three samples chosen by th
 </table>
 </div>
 
-<p class="footnote">Jiang et al. 2024 · §5, Table 5, % of consecutive token pairs; L0, L15, L31: layers 0, 15, 31. Github: code; Gutenberg: books; PhilPapers: philosophy; StackExchange: Q and A forums. The caption's "significantly higher" has no test behind it</p>
+<p class="footnote">Jiang et al. 2024 · Table 5, % of consecutive token pairs. Chance: $\frac{1}{8} = 12.5$ for first choice, $1-\frac{6}{8} \frac{5}{7} \approx 46$ for first or second. DM Mathematics: synthetic maths; Github: code; Gutenberg: books; PhilPapers: philosophy; StackExchange: Q and A forums</p>
 
 Note:
-Table 5 asks a different question: is the expert for token i+1 the same as for token i? The paper reports two measures. "First" is the same first-choice expert. "First or second" means the two experts of the next token share at least one with the two of this token.
-The baseline, if every expert were equally likely: 1/8 or 12.5% for first. For first-or-second, token i+1's two experts both have to avoid token i's two; the first avoids them with probability 6 over 8, the second with 5 over 7, so no overlap has probability 30 over 56, and overlap 1 minus that, about 46%. Layer 0 sits near both baselines, 13.6 to 14.9% on first choice. Layer 15 is about twice the chance level, and at layer 31 first-choice repeats are 19.7 to 26.3%; Gutenberg and Wikipedia repeat more at 31 than at 15.
-Our checks (ours): on first-or-second, DM Mathematics at layer 31 is 44.5%, below the 46% baseline, so the caption's "significantly higher at layers 15 and 31" fails there, and no test is given. Also the baseline assumes even loads, while Fig. 7 shows shares up to about 0.20, so the true chance rate is a little above 1/8.
-Why it matters, in the authors' words: locality can cause over-subscription of some experts under expert parallelism, and it can be used for caching, as in Eliseev and Mazur 2023, which is their claim to check. The appendix shows every layer.
-
---
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, routing analysis · Fig. 10 · optional</p>
-
-## How does repetition change across all 32 layers?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- Appendix Fig. 10 plots the same two repeat rates at every layer, one curve per Pile subset.
-- The dashed lines mark the even-chance levels, 12.5% and about 46%.
-- The authors say repeats occur "a lot more often" than chance, with fewer for DM Mathematics.
-- No per-layer numbers are printed, so reads from the curves are approximate.
-
-</div>
-<div class="fig"><img src="img/week-07-mixtral-fig10-repeats.png" alt="Jiang et al. Figure 10: two panels, first choice and first or second choice, repeated assignments by layer 0 to 31 for eight Pile subsets, curves above the dashed chance lines in most layers, DM Mathematics often lowest"></div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · Appendix, Fig. 10. Proportion of consecutive tokens with a repeated expert; Pile subsets as in Table 5</p>
-
-Note:
-Optional. Table 5 gave three layers; Figure 10 in the appendix gives all 32 as curves. The dashed lines are the chance levels. The authors' caption says repeated assignments occur a lot more often than they would with uniform assignment, with patterns similar across datasets and fewer repeats for DM Mathematics. Layer 0 is near chance and the middle layers are well above, matching the table. Because the figure prints no values, any number you read off it is approximate.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, after the paper · limits</p>
-
-## What limits do the authors admit?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Active parameters ignore "memory costs and hardware utilization".
-- Routing adds overhead and "increased memory loads", so MoE suits "batched workloads".
-- Expert parallelism (EP, experts on different GPUs) "introduces challenges in load balancing".
-- The routing study is "a small analysis"; their protocol differs from Llama 2's.
-
-</div>
-<div class="text">
-
-- There is no limitations section, and the conclusion lists no weaknesses.
-- The intro claims faster inference at low batch size, but no speed is ever measured.
-- Missing, and not admitted: no matched dense model and no error bars.
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · §2.1, §3 (size and efficiency), §3 (protocol note), §5; quotes are the paper's. Batch size: tokens or prompts processed together</p>
-
-Note:
-The paper has no limitations section. These are the nearest admissions, in the authors' words. First, comparing by active parameters leaves out memory and hardware use: serving cost follows the 47B, and the routing adds overhead, so sparse models suit batched workloads where the arithmetic is dense enough. Second, expert parallelism, which places experts on different GPUs, makes load balancing hard. Third, they call the routing study a small analysis, and they note that their evaluation protocol differs from Llama 2's.
-Two things stand out that they do not admit. The introduction says sparse models give faster inference at low batch sizes, yet the only related text says they suit batched workloads, which cuts the other way, and no speed measurement appears. And there is no matched dense baseline, so the paper cannot say how much of the gain is sparsity.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, after the paper · verdict</p>
-
-## What does Mixtral show, and not show?
-
-<div class="cols wide-text">
-<div class="text">
-
-**Shows**
-
-- A released model with 47B total and 13B active parameters.
-- It matches or beats Llama 2 70B on most of the benchmarks they re-ran, and GPT-3.5 on most of theirs.
-- At three layers, its router shows no obvious topic pattern.
-
-</div>
-<div class="text">
-
-**Does not show**
-
-- That sparsity is the cause: no matched dense run, data unknown.
-- Speed: nothing was measured.
-- That its "experts" are experts in a human sense.
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · whole paper. The "does not show" list is our reading of what the paper omits</p>
-
-Note:
-Putting the paper together. What it shows is solid and useful: a released sparse model, 47 billion stored and 13 billion used per token, that matches or beats a dense model with five times its active parameters on most of the benchmarks the authors re-ran, and GPT-3.5 on most of the ones in Table 3, with the losses on the table.
-What it does not show is also clear. Sparsity as the cause: no dense model of matching size was trained, and the data are not disclosed. Speed: no measurement. And the word "expert": at the layers checked, the router does not split by subject.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, critique 1 of 2</p>
-
-## Is there a controlled comparison?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Objection (ours): no dense model of the same size and data was trained.
-- Mistral 7B differs from Mixtral in data as well as architecture, and the data are unknown.
-- Do they admit it? No.
-- Does it sink the argument? It sinks "sparsity caused the gain", not "this model is strong per active parameter".
-
-</div>
-<div class="text">
-
-<p class="plain">The paper's evidence is one model against other released models, so every gap mixes sparsity, data and training choices.</p>
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · whole paper; the objection is ours. Matched means same size, data and training budget, with only the architecture changed</p>
-
-Note:
-Critique one. A controlled test would train a dense model and a sparse model on the same data with the same training compute and compare. The paper does not. Its comparisons are against Llama 2, trained by someone else on different data, and against Mistral 7B, whose training data is also unspecified. Mixtral is described as having more multilingual data than Mistral 7B, which alone could explain part of the gain.
-Do they admit it? No. Does it sink the argument? It depends on which claim you take. If the claim is "sparsity is why Mixtral beats Llama 2 70B", it fails: the paper cannot support it. If the claim is "an open model with 13B active parameters can be as strong as a dense 70B", the evidence is the benchmark table, and it holds on most columns. Week 7's other readings, DeepSeekMoE and V3, are where controlled ablations appear. The point about captions that overstate is already made on the Fig. 2 slide.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, critique 2 of 2</p>
-
-## How much can the routing analysis carry?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Objection (ours): three layers, eight domains and three hand-picked samples.
-- The syntax claim has no test, such as how well token type predicts the expert.
-- Do they admit it? In part: they call it "a small analysis".
-- Does it sink the argument? It limits "syntax, not domain" to a suggestion.
-
-</div>
-<div class="text">
-
-<p class="plain">The no-topic result stands for these layers and subsets; the syntax explanation is a hypothesis.</p>
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · §5, Figs. 7 and 8, Table 5; the objection is ours</p>
-
-Note:
-Critique two. The routing section is the paper's one look inside the model, and it is small by the authors' own word: layers 0, 15 and 31 out of 32, eight Pile subsets, three samples chosen by hand for the coloured text, no count of tokens, and no statement of whether it is the base or the instruct model. The syntax conclusion comes from looking at colours, not from a measure.
-They do admit it is small. It does not sink the finding that domains look alike at these layers. It does leave "the router follows syntax" as a suggestion to test, not a result. The sub-slide shows what later work found.
-
---
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, later work · DeepSeek-V3 Fig. 9</p>
-
-## Does later work overturn the no-topic finding?
-
-<div class="cols wide-fig">
-<div class="text">
-
-- DeepSeek-V3 compares two 16B models on the Pile: one balanced within each sequence, one over the whole batch.
-- **Per-batch balance** only asks that experts share the load across a batch, not inside each sequence.
-- With it, some experts run hot for one domain, such as expert 25 on DM Mathematics.
-- Verdict (ours): Mixtral is challenged, not revised.
-
-</div>
-<div class="fig"><img src="img/week-07-v3-fig9-load.png" alt="DeepSeek-V3 Figure 9: heat maps of relative expert load for Wikipedia, Github and DM Mathematics across 64 experts at two layers; the sequence-wise balanced model is evenly pale, the auxiliary-loss-free model has a few hot experts for individual domains"></div>
-</div>
-
-<p class="footnote">DeepSeek-AI 2024 (DeepSeek-V3), §4.5.3, Fig. 9. Relative expert load: actual load divided by perfectly even load. Our caveat: its domains also differ in token type, and its experts are small and numerous</p>
-
-Note:
-Later work, from Part 6. DeepSeek-V3 records the expert load of two 16B models on three Pile domains. When the load is balanced within each sequence, every domain uses every expert about evenly, much like Mixtral. When it is balanced only over the batch, some experts become hot for one domain, for example one expert at about ten times its even load for DM Mathematics at layer 9 (approximate read, ours). The authors say the flexibility lets experts specialise.
-Does that overturn Mixtral? Not cleanly. Their domains are Wikipedia, GitHub and DM Mathematics, where the token types, code and digits, differ as well, so this cannot tell domain experts from token-type experts. And DeepSeek's model has 64 small experts, not 8. Also the claim is visual, with no number for "greater specialisation". Verdict: challenged, not revised. It is a reminder that Mixtral's no-topic result may depend on how the router was balanced in training, which Mixtral does not disclose.
-
----
-
-<p class="eyebrow"><span class="paper">Jiang et al. 2024</span> · Part 4, synthesis</p>
-
-## What should you keep from Mixtral?
-
-<div class="cols wide-text">
-<div class="text">
-
-- Two counts: 47B total sets memory, 13B active sets compute per token.
-- A top-2 of 8 model, MoE in every layer, matched or beat a dense model with 5x its active parameters on most benchmarks. The paper does not separate sparsity from data.
-- Its experts are not topic experts at the layers checked.
-- Neighbouring tokens reuse experts in the middle layers.
-
-</div>
-<div class="text">
-
-<p class="plain">Open question: how much of the gain is sparsity, and how much is data?</p>
-
-</div>
-</div>
-
-<p class="footnote">Jiang et al. 2024 · summary of §2 to §5. Top-2 of 8: each token goes to 2 of 8 experts</p>
-
-Note:
-Four things to keep. One: the two parameter counts and which cost each sets. Memory follows the 47B, compute per token follows the 13B. Two: a model that picks 2 of 8 experts in every layer matched or beat a dense model with five times its active parameters on most of these benchmarks, for reasons the paper does not separate. Three: the experts are not topic experts, at least at layers 0, 15 and 31 on these Pile subsets. Four: in the middle layers, neighbouring tokens tend to reuse experts, which matters for load and for caching.
-The open question for the rest of the day: how much of the gain is sparsity, and how much is data? The survey that follows gives a map of the design choices, and the DeepSeek papers are the ones that run ablations.
+Table 5 asks whether token i+1 gets the same expert as token i. Two measures: the same first choice, or any overlap between the two experts of each. The paper's chance levels: one in eight, 12.5%, for first choice, and 1 minus six eighths times five sevenths, about 46%, for first or second. Layer 0 is near chance, 13.6 to 14.9% on first choice; at layer 15 first-choice repeats are about twice chance, 23.6 to 28.4%, and first-or-second repeats are about 1.4 times it, 61.6 to 67.0% (ours). The authors call this temporal locality and say it matters for speed: runs of one expert can overload one GPU under expert parallelism, and can be exploited by caching. A check, ours: DM Mathematics at layer 31 on first or second is 44.5%, below the 46% chance level, so the caption's "significantly higher at layers 15 and 31" does not hold in that cell, and no test is given. The appendix's Fig. 10 shows all 32 layers.
 
 
 ---
@@ -1504,8 +616,8 @@ One thing the tree makes visible: many papers appear in several leaves, one meth
 <p class="footnote">Cai et al. 2024 · §2.2 Eq. 3, §4.1.1, Fig. 4; renormalising helped upcycled vision models, hurt upcycled language models (Komatsuzaki et al.). OpenMoE: an open mixture of experts model family</p>
 
 Note:
-Choice 1, gating. What we built in Part 2 is token choice: every token scores all experts and picks its own top k. The survey's Equation 3 is the Shazeer 2017 form: add noise to the router scores, keep the top k, and apply softmax to the survivors. The noise is meant to encourage exploration among experts, and the survey never says what distribution or scale it has. Who uses which k: k equals 1 for Switch; k equals 2 for GShard, GLaM, ST-MoE (Google's stable sparse model), Mixtral and Skywork-MoE.
-Why the order of softmax and TopK matters: with softmax after TopK, as in Mixtral and Equation 3, the surviving weights sum to one. With TopK after softmax, as in GShard, Switch and OpenMoE, the kept weights are slices of a larger distribution and sum to less than one. With k equal to 1, TopK after softmax is what keeps the router learning: if you renormalised a single kept weight it would always be exactly one, and the router would receive no gradient through it. That reasoning is ours (the survey gives only the two orders and the upcycling finding) and ties back to Part 2. DeepSeekMoE also takes TopK after softmax without renormalising.
+Choice 1, gating. What Mixtral uses is token choice: every token scores all experts and picks its own top k. The survey's Equation 3 is the Shazeer 2017 form: add noise to the router scores, keep the top k, and apply softmax to the survivors. The noise is meant to encourage exploration among experts, and the survey never says what distribution or scale it has. Who uses which k: k equals 1 for Switch; k equals 2 for GShard, GLaM, ST-MoE (Google's stable sparse model), Mixtral and Skywork-MoE.
+Why the order of softmax and TopK matters: with softmax after TopK, as in Mixtral and Equation 3, the surviving weights sum to one. With TopK after softmax, as in GShard, Switch and OpenMoE, the kept weights are slices of a larger distribution and sum to less than one. With k equal to 1, TopK after softmax is what keeps the router learning: if you renormalised a single kept weight it would always be exactly one, and the router would receive no gradient through it. That reasoning is ours (the survey gives only the two orders and the upcycling finding) and ties back to the gradient slide in Mixtral. DeepSeekMoE also takes TopK after softmax without renormalising.
 The survey's only evidence on this is a relayed one: renormalising the combined weights to one helped upcycled vision models and hurt upcycled language models. A caution in passing: its Equation 3 is the Mixtral order, but the survey says later models use the other order, so its background equation is not the order its own text describes for most models. Figure 4 shows six gating ideas in one picture; the next slide takes the ones that are not token choice.
 
 --
@@ -1979,7 +1091,7 @@ Pile loss goes from 1.867 to 1.808, a drop of 0.059, and DeepSeekMoE is best on 
 <p class="footnote">Dai et al. 2024 · §4.3, Table 2. "Upper bound" is the authors' word, not a theorem; they claim it only "at least at the scale of about 2B parameters and 100B training tokens". RACE-middle: reading comprehension from school exams, accuracy</p>
 
 Note:
-Dense x16 is a model whose 16 experts are all shared, so every parameter is used for every token. The paper treats it as the capacity ceiling: in its view no routing choice can do better with the same parameters. DeepSeekMoE reaches 1.808 against its 1.806 at less than a fifth of the arithmetic (4.3T against 24.6T FLOPs, 5.7 times, ours). That ties back to Part 1: at this size and data, stored sparse capacity is worth almost what dense capacity is.
+Dense x16 is a model whose 16 experts are all shared, so every parameter is used for every token. The paper treats it as the capacity ceiling: in its view no routing choice can do better with the same parameters. DeepSeekMoE reaches 1.808 against its 1.806 at less than a fifth of the arithmetic (4.3T against 24.6T FLOPs, 5.7 times, ours). That answers the week's opening question: at this size and data, stored sparse capacity is worth almost what dense capacity is.
 Read the claims carefully. "Upper bound" is the paper's framing. The abstract says GShard x1.5 has 1.5 times the computation, but the table's FLOPs ratio is 5.8 over 4.3, 1.35 (ours); the 1.5 is the expert-size ratio. The match is on Pile loss and most tasks; the RACE reading-comprehension rows are 0.7 to 2.4 points below both comparators and the paper does not discuss it. Another detail: DeepSeekMoE has 0.3B active parameters in Table 1 but 0.24B in Table 2, because Table 2 counts expert weights only; GShard x1.5's 0.35B is a bigger model than Table 1's GShard.
 
 ---
@@ -2298,24 +1410,24 @@ For Gemma 3n E2B the documentation figure shows 5.44B loaded in standard executi
 ---
 
 
-<p class="eyebrow"><span class="paper">Week 7</span> · synthesis · the four layers side by side</p>
+<p class="eyebrow"><span class="paper">Week 7</span> · synthesis · the three layers side by side</p>
 
-## How do the four layer designs compare?
+## How do the three layer designs compare?
 
 <table class="rules">
-  <tr><td></td><td>GShard</td><td>Mixtral</td><td>DeepSeekMoE 16B</td><td>DeepSeek-V3</td></tr>
-  <tr><td>experts per MoE layer</td><td>2048 (600B model)</td><td>8</td><td>2 shared + 64 routed</td><td>1 shared + 256 routed</td></tr>
-  <tr><td>chosen per token</td><td>2 (second one random)</td><td>2</td><td>2 shared + 6 routed</td><td>1 shared + 8 routed</td></tr>
-  <tr><td>which layers</td><td>every other layer</td><td>every layer</td><td>all but the first</td><td>all but the first 3</td></tr>
-  <tr><td>router</td><td>softmax, top 2 renormalised</td><td>softmax over the top 2</td><td>softmax, top-k not renormalised</td><td>sigmoid, top 8 renormalised</td></tr>
-  <tr><td>balancing</td><td>auxiliary loss</td><td>not stated</td><td>expert loss 0.001, no device loss</td><td>bias, plus loss 0.0001</td></tr>
-  <tr class="total"><td>dropped tokens</td><td>yes, on overflow</td><td>not stated</td><td>none</td><td>none</td></tr>
+  <tr><td></td><td>Mixtral</td><td>DeepSeekMoE 16B</td><td>DeepSeek-V3</td></tr>
+  <tr><td>experts per MoE layer</td><td>8</td><td>2 shared + 64 routed</td><td>1 shared + 256 routed</td></tr>
+  <tr><td>chosen per token</td><td>2</td><td>2 shared + 6 routed</td><td>1 shared + 8 routed</td></tr>
+  <tr><td>which layers</td><td>every layer</td><td>all but the first</td><td>all but the first 3</td></tr>
+  <tr><td>router</td><td>softmax over the top 2</td><td>softmax, top-k not renormalised</td><td>sigmoid, top 8 renormalised</td></tr>
+  <tr><td>balancing</td><td>not stated</td><td>expert loss 0.001, no device loss</td><td>bias, plus loss 0.0001</td></tr>
+  <tr class="total"><td>dropped tokens</td><td>not stated</td><td>none</td><td>none</td></tr>
 </table>
 
-<p class="footnote">Lepikhin et al. 2021 (GShard), Jiang et al. 2024 (Mixtral), Dai et al. 2024, DeepSeek-AI 2024. Router: the small network scoring experts. Top 2: keep the 2 highest scores. Overflow: an expert receives more tokens than its capacity</p>
+<p class="footnote">Jiang et al. 2024 (Mixtral), Dai et al. 2024, DeepSeek-AI 2024. Router: the small network scoring experts. Top 2: keep the 2 highest scores</p>
 
 Note:
-One table across the readings. Reading across: the number of experts per layer rises from 8 (Mixtral) to 66 (DeepSeekMoE 16B) to 257 (V3), while the number chosen stays small, so the experts get smaller. GShard's 2048 experts are for its 600B model. The router moves from softmax over all experts to a softmax over the top 2 (Mixtral) to a sigmoid with renormalisation. Balancing moves from an auxiliary loss to an expert-level loss to a bias plus a very small loss. Dropped tokens: GShard drops tokens that overflow an expert's capacity; DeepSeekMoE and V3 drop none; Mixtral does not say. Note: the 16B model has 2 shared and 6 routed chosen; Mixtral's balancing method is not stated in its paper.
+One table across the readings. Reading across: the number of experts per layer rises from 8 (Mixtral) to 66 (DeepSeekMoE 16B) to 257 (V3), while the number chosen stays small, so the experts get smaller. The router moves from a softmax over the top 2 (Mixtral) to a softmax without renormalising (DeepSeekMoE) to a sigmoid with renormalisation (V3). Balancing goes from unstated (Mixtral) to an expert-level loss to a bias plus a very small loss. Dropped tokens: DeepSeekMoE and V3 drop none; Mixtral does not say. Note: the 16B model has 2 shared and 6 routed chosen; Mixtral's balancing method is not stated in its paper.
 
 ---
 
@@ -2370,10 +1482,10 @@ In their own words, as far as they say them. Mixtral admits that all experts mus
   <tr class="total"><td>cost at batch size 1</td><td>every expert must be resident, but few are used</td></tr>
 </table>
 
-<p class="footnote">Part 1 posed the first question (does stored capacity count like dense capacity?). Batch size 1: one request at a time, as on a phone or laptop</p>
+<p class="footnote">The first question is the week's opening one (does stored capacity count like dense capacity?). Batch size 1: one request at a time, as on a phone or laptop</p>
 
 Note:
-Four directions the readings point to. First, the question from Part 1: does stored sparse capacity count like dense capacity? DeepSeekMoE answers at 2B and 100B tokens, and against a dense 7B on the same 2T tokens; Mixtral has no matched dense model. Second, why routers specialise: Mixtral saw syntax-like patterns, V3 saw domain-hot experts, and neither tests a cause. Third, granularity: only DeepSeekMoE varies it (16, 32 and 64 experts at 2B, its ablation figure); Mixtral's 8 and V3's 257 are not ablated. Fourth, cost at batch size 1: with one request, few experts are used but all must be in memory, which is where per-layer embeddings, fetched by token id, offer a different trade.
+Four directions the readings point to. First, the week's opening question: does stored sparse capacity count like dense capacity? DeepSeekMoE answers at 2B and 100B tokens, and against a dense 7B on the same 2T tokens; Mixtral has no matched dense model. Second, why routers specialise: Mixtral saw syntax-like patterns, V3 saw domain-hot experts, and neither tests a cause. Third, granularity: only DeepSeekMoE varies it (16, 32 and 64 experts at 2B, its ablation figure); Mixtral's 8 and V3's 257 are not ablated. Fourth, cost at batch size 1: with one request, few experts are used but all must be in memory, which is where per-layer embeddings, fetched by token id, offer a different trade.
 
 ---
 
