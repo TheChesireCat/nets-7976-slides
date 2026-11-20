@@ -325,3 +325,9 @@
 .reveal .frame .text .task { font-family: Menlo, Consolas, monospace; font-size: 15px; line-height: 1.4; background: #f3f3f3; border-left: 3px solid #c8c8c8; padding: 8px 12px; margin: 0 0 12px 0; text-align: left; }
 .reveal .frame .text .task .k { display: block; font-family: Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; color: #555; margin: 4px 0 2px 0; }
 .reveal .frame .text .task .k:first-child { margin-top: 0; }
+
+/* Wide benchmark tables (12+ columns): tighter cells, no wrapping inside a cell. */
+.reveal .frame table.rules.tight td { padding-right: 14px; white-space: nowrap; }
+.reveal .frame table.rules.tight tr:first-child td { font-size: 12px; letter-spacing: 0.03em; }
+/* A figure wrapped in a link (click to open full size) keeps the figure's sizing. */
+.reveal .frame .fig > a { display: flex; align-items: center; justify-content: center; height: 100%; max-width: 100%; }
